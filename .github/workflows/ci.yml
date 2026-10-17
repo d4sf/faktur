@@ -45,7 +45,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Build production image
-        run: docker build -f Containerfile -t blinka-payagent:ci .
+        run: docker build -t blinka-payagent:ci .
 
       - name: Smoke test
         run: |

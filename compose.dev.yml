@@ -2,7 +2,7 @@ services:
   app:
     build:
       context: .
-      dockerfile: Containerfile.dev
+      dockerfile: Dockerfile.dev
     image: ${APP_IMAGE_DEV:-blinka-payagent:dev}
     command: npm run dev
     ports:

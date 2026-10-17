@@ -10,7 +10,7 @@ data
 docs
 diagramas
 *.md
-Containerfile
-Containerfile.dev
+Dockerfile
+Dockerfile.dev
 compose*.yml
 .dockerignore
