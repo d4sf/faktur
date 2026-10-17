@@ -48,7 +48,7 @@ export function resetDatabase(options: ResetOptions): ResetResult {
   const startedAt = Date.now();
   closeDb();
   const deleted_files = removeDbFiles(dbPath);
-  const cleared_uploads = clearUploads(dirname(dbPath));
+  const cleared_uploads = clearUploads(join(dirname(dbPath), "uploads"));
   loadDb(dbPath);
   const seeded = runSeedProfile(getDb(), profile);
 

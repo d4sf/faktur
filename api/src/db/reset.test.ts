@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, test } from "node:test";
@@ -56,6 +56,20 @@ test("reset vacía uploads/ y cuenta las entradas", () => {
   writeFileSync(join(uploads, "hash-abc"), "x");
 
   assert.equal(clearUploads(uploads), 1);
+});
+
+test("reset vacía solo uploads/ y conserva el resto de data/", () => {
+  const uploads = join(dataDir, "uploads");
+  mkdirSync(uploads, { recursive: true });
+  writeFileSync(join(uploads, "hash-abc"), "x");
+  writeFileSync(join(dataDir, ".gitkeep"), "");
+
+  const result = resetDatabase({ dbPath, profile: "reference" });
+
+  assert.equal(result.cleared_uploads, 1);
+  assert.ok(existsSync(uploads), "uploads/ tiene que seguir existiendo");
+  assert.deepEqual(readdirSync(uploads), []);
+  assert.ok(existsSync(join(dataDir, ".gitkeep")), "data/.gitkeep no se borra");
 });
 
 test("reset con demo siembra los fixtures y es idempotente", () => {
