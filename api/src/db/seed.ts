@@ -101,6 +101,11 @@ const FX_RATES: Array<{ currency: string; rate_to_usd: number }> = [
  * parcial no pase desapercibido.
  */
 export function seed(db: Database.Database): void {
+  // Si v1 ya existe, la base ya fue sembrada (posiblemente con datos demo encima).
+  // No re-sembrar para no duplicar ni fallar en los conteos.
+  const existing = db.prepare("SELECT version FROM policies WHERE version = 'v1'").get();
+  if (existing) return;
+
   const insertCategory = db.prepare("INSERT OR IGNORE INTO categories (name) VALUES (?)");
   for (const cat of CATEGORIES) {
     insertCategory.run(cat);
