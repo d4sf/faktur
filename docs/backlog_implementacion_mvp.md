@@ -647,7 +647,7 @@ El runner tiene que **afirmar que el conjunto de `reason_code` que produjo es ig
 
 ---
 
-#### [ ] T21 · Bandeja HITL
+#### [x] T21 · Bandeja HITL
 
 **Síntesis.** Vista de pendientes con emisor, importe USD, regla disparada y explicación, y los botones `[Autorizar Pago]` y `[Rechazar]` con comentario. Al resolver, la fila sale de la bandeja y la tabla refleja el estado. Doble clic deshabilitado, y el 409 de la regla de excepción se muestra como tal.
 
@@ -681,7 +681,7 @@ El runner tiene que **afirmar que el conjunto de `reason_code` que produjo es ig
 
 ### Bloque I — Cierre
 
-#### [ ] T23 · Smoke end-to-end y fail-closed verificado
+#### [x] T23 · Smoke end-to-end y fail-closed verificado
 
 **Síntesis.** Recorre los 6 puntos del checklist de aceptación del MVP §12 con evidencia: subir → decisión sin tocar nada; mover el umbral y ver PAGAR convertirse en ESCALAR; duplicado FRENADO con motivo legible; escalada aprobada y registrada; factura con datos faltantes que **no** se paga; CSV con motivo en cada fila. Corre contra `DATA_DIR` temporal, no contra la base de demo.
 
