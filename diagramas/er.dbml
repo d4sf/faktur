@@ -114,6 +114,17 @@ Table NOTIFICATIONS {
   status varchar [note: 'PENDIENTE | ENVIADA | FALLIDA']
 }
 
+Table AI_EXPLANATIONS {
+  id varchar [pk]
+  invoice_id varchar [ref: > INVOICES.id, note: 'FK a invoices']
+  decision_id varchar [ref: > DECISIONS.id, note: 'cache por decision']
+  policy_version varchar [ref: > POLICIES.version]
+  model varchar [note: 'modelo Gemini usado']
+  prompt_version varchar [note: 'version del prompt']
+  explanation varchar [note: 'explicacion en lenguaje natural, <= 1500 chars']
+  created_at varchar
+}
+
 Ref: INGEST_ATTEMPTS.invoice_id > INVOICES.id [delete: set null]
 Ref: INGEST_ATTEMPTS.duplicate_of_invoice_id > INVOICES.id [delete: set null]
 Ref: DECISIONS.invoice_id > INVOICES.id [delete: cascade]

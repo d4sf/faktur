@@ -220,6 +220,18 @@ Solo existe si `decisions.verdict = ESCALAR`.
 
 Si hay que recortar para el hackathon, se recorta esta tabla (MVP §1: el 7 es sacrificable). El resto no.
 
+### 2.12 `ai_explanations` — explicación con IA (post-MVP)
+- `id` — PK.
+- `invoice_id` — FK → `invoices.id` (ON DELETE CASCADE).
+- `decision_id` — FK → `decisions.id` (ON DELETE CASCADE). **Clave de caché**: una explicación se ancla a la decisión que explica; si la factura se re-evalúa (nueva decisión), la explicación vieja no se sirve.
+- `policy_version` — FK → `policies.version`: la política congelada de esa decisión.
+- `model` — modelo Gemini usado.
+- `prompt_version` — versión del prompt (auditoría/reproducibilidad).
+- `explanation` — texto en lenguaje natural, ≤ 1500 caracteres.
+- `created_at`.
+
+La IA **explica** la decisión determinista y sugiere pasos; no la cambia ni la cuestiona. Persistir evita repetir el costo de la llamada y mantiene el audit trail.
+
 ---
 
 ## 3. Diagrama ER (Mermaid)
