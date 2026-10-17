@@ -36,7 +36,7 @@
 | MVP §4 `ledger` | Saldo del periodo | `ledger_entries` |
 | MVP §4 `policy` + PRD RF-6.2 | Reglas configurables versionadas | `policies` + `policy_category_budgets` |
 | PRD RF-6.6 + MVP §8 | Notificación (tarjeta Slack / webhook / outbox) | `notifications` |
-| MVP §7 TC-01..TC-11 | Set demo + ground truth | seed externo, no entidad operativa |
+| MVP §7 TC-01..TC-12 | Set demo + ground truth | seed externo, no entidad operativa |
 
 ---
 
@@ -358,8 +358,9 @@ erDiagram
 | TC-08 (fantasma) | `vendor_id NULL` / `tax_id` vacío → `FRENAR, ERR_INVALID_DATA` | 1 |
 | TC-10 (categoría) | `vendors.category = Diseño`, saldo `1000 − 850 (TC-02) = 150`; `950 > 150` → `ESCALAR, ALERT_BUDGET_TIGHT` | 6 |
 | TC-11 (bloqueado) | `vendors.status = BLOCKLISTED` → `FRENAR, ERR_BLACKLISTED_VENDOR` | 3 |
+| TC-12 (confianza baja) | `invoices.extraction_confidence 0.5 < min_extraction_confidence 0.7` → `ESCALAR, ALERT_LOW_CONFIDENCE`, con aprobación pendiente | 1 |
 
-**Verificado:** los 11 casos salen del mismo motor con las mismas 8 reglas, sin código especial por caso. El runner de `docs/backlog_implementacion_mvp.md` T6 es el que lo comprueba en cada corrida.
+**Verificado:** los 12 casos salen del mismo motor con las mismas 8 reglas, sin código especial por caso. El runner de `docs/backlog_implementacion_mvp.md` T6 es el que lo comprueba en cada corrida, y además afirma que el conjunto de `reason_code` que produjo es igual al enum completo: los diez tienen al menos un caso, y `ALERT_LOW_CONFIDENCE` lo tiene recién con TC-12.
 
 ---
 

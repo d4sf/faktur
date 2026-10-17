@@ -163,7 +163,7 @@ Los siete primeros vienen de `odd/tasks/faktur-mvp.md` y no se tocan. Los siguie
 | S4 | Toda factura genera AuditRecord con `reason_code` + explicación legible, y `policy_version` obligatoria. | 6 |
 | S5 | **Dedup doble sobre dos niveles:** `invoices.file_hash` UNIQUE para la factura canónica, y `UNIQUE(vendor_id, invoice_number)` para la tupla lógica. | 1, 3 |
 | S6 | Solo PAGAR final escribe `ledger_entries`; FRENAR y ESCALAR-pendiente no mueven saldo. | 3, 4 |
-| S7 | Set de 11 TC con veredictos TC-01..TC-11 según las tablas de §5. | 11 |
+| S7 | Set de 12 TC con veredictos TC-01..TC-12 según las tablas de §5. | 11 |
 | **S8** | **Ingesta:** se acepta PDF, imagen o JSON; el SHA-256 se calcula al recibir, antes de llamar al LLM; se bloquea el doble envío. | 1 |
 | **S9** | **Extracción:** LLM multimodal, `temperature=0`, salida JSON con schema estricto. Si la validación falla → FRENAR por dato crítico. | 2 |
 | **S10** | **Moneda:** el monto se normaliza a USD con la tasa vigente y se congela en la fila. Fuera de `allowed_currencies` → FRENAR. | 2, 4 |
@@ -323,7 +323,9 @@ Queda el plan B si el driver molestara: `node:sqlite` funciona sin flag en Node 
 
 #### T4 · `fixtures/TC-*.json` + `ground_truth.json`
 
-**Síntesis.** Los 11 casos de las tablas de §6.1 y §6.2, con nombres ficticios obvios, más al menos un PDF con estética de escaneo. Cada fixture declara su veredicto esperado y, cuando aplica, su pre-estado (`preEstado` de ledger para TC-10, factura previa para TC-03). `ground_truth.json` declara el veredicto esperado de cada uno.
+**Síntesis.** Los 12 casos de las tablas de §6.1 y §6.2, con nombres ficticios obvios, más al menos un PDF con estética de escaneo. Cada fixture declara su veredicto esperado y, cuando aplica, su pre-estado (`preEstado` de ledger para TC-10, factura previa para TC-03) y su `field_confidence` (TC-12). `ground_truth.json` declara el veredicto esperado de cada uno.
+
+El runner tiene que **afirmar que el conjunto de `reason_code` que produjo es igual al enum completo**. Con los doce casos eso se cumple; con once no, porque `ALERT_LOW_CONFIDENCE` quedaba sin ejercitar. Es la forma de que agregar un código nuevo sin un caso haga fallar la suite en vez de pasar desapercibido.
 
 **Por qué.** Tarea heredada de `odd/tasks/faktur-mvp.md` (S7). Es lo que mide la autonomía en vivo sin gastar un centavo de API.
 
@@ -333,7 +335,7 @@ Queda el plan B si el driver molestara: `node:sqlite` funciona sin flag en Node 
 
 **Hecho cuando** los 11 validan contra `ExtractedInvoice`; el runner da el mismo resultado en cualquier orden; cada TC dispara la regla que el caso narraría, no una anterior.
 
-**Commit.** `test(api): add TC-01..TC-11 fixtures and ground truth`
+**Commit.** `test(api): add TC-01..TC-12 fixtures and ground truth`
 
 ---
 
@@ -722,7 +724,7 @@ Las cinco preguntas del backlog quedaron respondidas. Se registran acá con su c
 
 Además, dos casos **no** tienen proveedor sembrado, a propósito: `Nuevo Redactor` (TC-05, desconocido → regla 4) y `Entidad Fantasma` (TC-08, sin `tax_id` → regla 1).
 
-### 6.2 Los 11 casos de prueba
+### 6.2 Los 12 casos de prueba
 
 | TC | Proveedor | Monto | Moneda | Dispara | Veredicto | Evidencia en el registro |
 |:--|:---|---:|:---|:--:|:---|:---|
@@ -737,6 +739,9 @@ Además, dos casos **no** tienen proveedor sembrado, a propósito: `Nuevo Redact
 | TC-09 | SaaS Tools Ltd | $120 | USD | — | 🟢 PAGAR | "Dentro de política: microgasto de $120" |
 | TC-10 | DevStudio Latam | $950 | USD | regla 6 | 🟡 ESCALAR | "Saldo de la categoría Diseño: $150; factura: $950" |
 | TC-11 | Venta Pos Duo | $200 | USD | regla 3 | 🔴 FRENAR | "El beneficiario está en la lista bloqueada (policy v1)" |
+| TC-12 | SaaS Tools Ltd | $120 | USD | regla 1 | 🟡 ESCALAR | "No se pudo leer la fecha de vencimiento con confianza (0.5 < 0.7)" |
+
+**TC-12** reutiliza un proveedor del seed y repite el monto de TC-09 a propósito: todas las reglas de dinero pasan y lo único que dispara es la confianza. Sin un caso así, `ALERT_LOW_CONFIDENCE` sería el único `reason_code` sin cubrir, y la rama escalable de la regla 1 no llegaría a ejecutarse nunca.
 
 **Verificación cruzada de las decisiones de §5 sobre los casos:** TC-04 pasa la regla 5 porque $3.500 está bajo el $4.200 que da su promedio × 1.40, así que dispara la 7 y no la 5. TC-06 pasa la regla 5 porque $5.400 está bajo los $5.600 de su promedio × 1.40, y dispara la 6 por presupuesto del periodo. TC-10 pasa las reglas 5 y 6 (periodo) y dispara la 6 contra el saldo de la categoría Diseño.
 
