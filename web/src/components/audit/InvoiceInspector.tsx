@@ -62,10 +62,10 @@ export function InvoiceInspector({ record, open, onOpenChange }: InvoiceInspecto
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="sm:max-w-lg overflow-y-auto">
+      <SheetContent className="sm:max-w-lg overflow-y-auto p-6">
         {record && (
           <div className="space-y-4">
-            <SheetHeader>
+            <SheetHeader className="p-0">
               <SheetTitle className="text-base font-bold flex items-center justify-between pr-8">
                 <span>Factura {record.invoice.invoice_number}</span>
                 <VerdictBadge verdict={record.verdict} size="md" />
@@ -171,7 +171,7 @@ export function InvoiceInspector({ record, open, onOpenChange }: InvoiceInspecto
               </div>
             )}
 
-            <SheetFooter className="pt-2">
+            <SheetFooter className="p-0 pt-2">
               <Button
                 variant="outline"
                 size="sm"
