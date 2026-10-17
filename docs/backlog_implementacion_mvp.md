@@ -361,7 +361,7 @@ El runner tiene que **afirmar que el conjunto de `reason_code` que produjo es ig
 
 ---
 
-#### [ ] T6 · Runner del motor contra `ground_truth.json`, sin LLM
+#### [x] T6 · Runner del motor contra `ground_truth.json`, sin LLM
 
 **Síntesis.** Script de test que carga los 11 fixtures, arma el contexto de cada uno (incluyendo pre-estados), corre el motor en memoria y compara contra `ground_truth.json`. Reporta el score y el primer veredicto que difiera, nombrando la regla que se Disparó. Cada `.test.ts` nuevo se agrega a mano al script `test` de `api/package.json`, que está hardcodeado a un solo archivo.
 
