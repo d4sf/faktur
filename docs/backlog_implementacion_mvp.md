@@ -579,7 +579,7 @@ El runner tiene que **afirmar que el conjunto de `reason_code` que produjo es ig
 
 ### Bloque G — Notificación (deseable, no bloqueante)
 
-#### [ ] T17 · Interfaz `Notifier` con `ConsoleNotifier`
+#### [x] T17 · Interfaz `Notifier` con `ConsoleNotifier`
 
 **Síntesis.** Interfaz `Notifier` con dos implementaciones: `ConsoleNotifier` (tarjeta estilo Slack renderizada en la propia pantalla, 0 cuentas y 0 riesgo) y `WebhookNotifier` (URL por variable de entorno, sirve para Slack, Discord o un webhook de prueba). Persiste el aviso en `notifications` como outbox.
 

@@ -9,6 +9,7 @@ import { getDecision, insertDecision } from "../repositories/decisions.js";
 import { getInvoiceRow, updateInvoiceStatus } from "../repositories/invoices.js";
 import { getBudgetState, insertLedgerEntry } from "../repositories/ledger.js";
 import { getActivePolicySpec } from "../repositories/policies.js";
+import { defaultNotifier, dispatchNotification, queueNotification } from "./notifier.js";
 
 /**
  * Corre el motor contra la política activa y persiste la decisión en una sola transacción.
@@ -70,6 +71,9 @@ export function decideInvoice(invoiceId: string, db: Database.Database): Decisio
     context,
   );
 
+  const notification = defaultNotifier();
+  let notificationId: string | undefined;
+
   const decisionId = db.transaction(() => {
     const id = insertDecision({
       invoice_id: invoiceId,
@@ -107,12 +111,26 @@ export function decideInvoice(invoiceId: string, db: Database.Database): Decisio
         null,
         0,
       );
+
+      notificationId = queueNotification({
+        invoice_id: invoiceId,
+        decision_id: id,
+        channel: notification.channel,
+        reason_code: result.reason_code,
+        explanation: result.explanation,
+        amount_usd: invoice.total_usd,
+        ...(extracted.vendor_name === undefined ? {} : { vendor_name: extracted.vendor_name }),
+      });
     } else {
       updateInvoiceStatus(invoiceId, "FRENADA", db);
     }
 
     return id;
   })();
+
+  if (notificationId !== undefined) {
+    void dispatchNotification(notificationId, notification.notifier, db);
+  }
 
   return getDecision(decisionId)!;
 }
