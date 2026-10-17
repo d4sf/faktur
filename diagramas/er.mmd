@@ -1,7 +1,10 @@
 erDiagram
-    VENDORS ||--o{ INVOICES : "emite" 
+    VENDORS ||--o{ INVOICES : "emite"
+    INVOICES ||--o{ INGEST_ATTEMPTS : "recibida-como"
+    INGEST_ATTEMPTS o|--o| INVOICES : "crea-factura"
     INVOICES ||--o{ LINE_ITEMS : "detalla"
-    INVOICES ||--|| DECISIONS : "evaluada-en"
+    INVOICES ||--o{ DECISIONS : "evaluada-en"
+    INGEST_ATTEMPTS ||--o{ DECISIONS : "duplicado-de"
     POLICIES ||--o{ DECISIONS : "rige"
     POLICIES ||--o{ POLICY_CATEGORY_BUDGETS : "tope-por-categoria"
     DECISIONS ||--o| APPROVALS : "escala-a-HITL"
@@ -15,6 +18,7 @@ erDiagram
         string id PK
         string tax_id UK
         string display_name
+        string category
         string status
         float historical_avg_usd
     }
@@ -22,6 +26,7 @@ erDiagram
         string id PK
         string vendor_id FK
         string invoice_number
+        string status
         string file_hash UK
         string currency
         float total_amount
@@ -29,6 +34,16 @@ erDiagram
         float total_usd
         float extraction_confidence
         string extraction_json
+    }
+    INGEST_ATTEMPTS {
+        string id PK
+        string invoice_id FK
+        string file_name
+        string mime_type
+        int byte_size
+        string file_hash
+        string attempt_status
+        string duplicate_of_invoice_id FK
     }
     LINE_ITEMS {
         string id PK
@@ -58,15 +73,18 @@ erDiagram
     DECISIONS {
         string id PK
         string invoice_id FK
+        string ingest_attempt_id FK
         string verdict
         string reason_code
         string explanation
         string policy_version FK
+        float amount_usd_evaluated
         string decided_by
     }
     APPROVALS {
         string id PK
         string decision_id FK
+        string invoice_id FK
         string status
         string resolved_by
         string comment
