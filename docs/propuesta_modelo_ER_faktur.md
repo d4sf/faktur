@@ -42,13 +42,21 @@
 
 ## 2. Diccionario de entidades
 
+### 2.0 `categories` — categorías de gasto (fuente de verdad)
+
+Nueva (decisión de producto Q3 + RI-12). Es la fuente de verdad de las 6 categorías que consumen presupuesto. Tanto `vendors.category` como `policy_category_budgets.category` referencian esta tabla, lo que garantiza que una categoría inventada en un proveedor o en un budget no pase la validación.
+
+- `name` — PK. Los mismos valores que el enum de T2: `Infraestructura`, `Diseno`, `Marketing`, `Legal`, `Software`, `Retail`. Sin tilde por §6.5.
+
+**Seed v1:** las 6 categorías.
+
 ### 2.1 `vendors` — proveedores / beneficiarios
 Representa la whitelist/blacklist, la categoría que gobierna el presupuesto y el promedio histórico para drift.
 
-- `id` — PK lógica (texto o entero autoincremental).
+- `id` — PK lógica (TEXT, UUID v4 generado en la capa de aplicación). `tax_id` es la clave de negocio.
 - `tax_id` — RFC / NIT / RUT / EIN normalizado en mayúsculas, sin espacios. **UNIQUE, NOT NULL.** Es la clave de negocio. `Entidad Fantasma` (TC-08) falla aquí por ausencia.
 - `display_name` — razón social (`CloudServers Inc`, `DevStudio Latam`).
-- `category` — **nuevo.** Categoría de gasto que consume presupuesto: `Infraestructura`, `Diseno`, `Marketing`, `Legal`, `Software`, `Retail`. Es lo que permite que la regla 6 evalúe el saldo por categoría (decisión de producto Q3).
+- `category` — **nuevo.** Categoría de gasto que consume presupuesto. FK → `categories.name`. Es lo que permite que la regla 6 evalúe el saldo por categoría (decisión de producto Q3).
 - `status` — `ALLOWLISTED | BLOCKLISTED`. Un proveedor desconocido **no se persiste**: su veredicto es ESCALAR por ausencia (TC-05), no por fila.
 - `historical_avg_usd` — promedio histórico para drift. Ej. `CLOUD-SERVERS-INC 420`, `FREELANCE-DESIGN 480`.
 - `first_seen_at`, `last_seen_at` — para detectar proveedor nuevo.
@@ -78,7 +86,7 @@ Una fila por **documento lógico aceptado**, no por intento de subida.
 - `file_name`, `mime_type` — `factura.pdf`, `application/pdf`.
 - `file_hash` — SHA-256 hex (64 chars). **UNIQUE, NOT NULL.** Base del anti-duplicado exacto a nivel de factura canónica.
 - `issue_date`, `due_date` — fechas ISO-8601 (`YYYY-MM-DD`).
-- `currency` — ISO 4217 (`USD`, `MXN`, `COP`, `EUR`). Debe estar en `fx_rates`, si no dispara FRENAR.
+- `currency` — ISO 4217 (`USD`, `MXN`, `COP`, `EUR`). FK → `fx_rates.currency`. Si no está en `fx_rates`, dispara FRENAR (RI-7).
 - `subtotal`, `tax_amount`, `total_amount` — montos originales.
 - `fx_rate_used` — tasa aplicada al momento de evaluar.
 - `total_usd` — `total_amount * fx_rate_used`, 2 decimales. Es lo que evalúa el motor.
@@ -129,7 +137,7 @@ Implementa "reglas configurables" del reto (MVP §4 `policy`, §13 versionado; P
 Cubre TC-10 ("deja la categoría en negativo") y la segunda mitad de la regla 6. Sin esta tabla el presupuesto global no explica sobregiros por partida.
 
 - `policy_version` — FK → `policies.version` (PK compuesta).
-- `category` — PK compuesta. Los mismos valores que `vendors.category`.
+- `category` — PK compuesta. FK → `categories.name`. Los mismos valores que `vendors.category`.
 - `budget_usd` — techo de la categoría en esa versión.
 
 **Seed v1:** `Infraestructura 1500`, `Diseno 1000`, `Marketing 4000`, `Legal 3000`, `Software 500`, `Retail 0`.
@@ -218,6 +226,8 @@ Si hay que recortar para el hackathon, se recorta esta tabla (MVP §1: el 7 es s
 
 ```mermaid
 erDiagram
+    CATEGORIES ||--o{ VENDORS : "clasifica"
+    CATEGORIES ||--o{ POLICY_CATEGORY_BUDGETS : "presupuesta"
     VENDORS ||--o{ INVOICES : "emite"
     INVOICES ||--o{ INGEST_ATTEMPTS : "recibida-como"
     INGEST_ATTEMPTS o|--|| INVOICES : "crea-factura"
@@ -233,6 +243,9 @@ erDiagram
     DECISIONS ||--o{ NOTIFICATIONS : "contexto"
     FX_RATES ||--o{ INVOICES : "convierte"
 
+    CATEGORIES {
+        string name PK
+    }
     VENDORS {
         string id PK
         string tax_id UK
@@ -324,7 +337,7 @@ erDiagram
     }
 ```
 
-**Lectura rápida:** `vendors 1—N invoices`, `ingest_attempts N—0..1 invoices`, `invoices 1—N decisions`, `decisions 0..1 approvals`, `decisions 0..1 ledger_entries`, `policies 1—N decisions`, `policies 1—N category_budgets`.
+**Lectura rápida:** `categories 1—N vendors`, `categories 1—N policy_category_budgets`, `vendors 1—N invoices`, `ingest_attempts N—0..1 invoices`, `invoices 1—N decisions`, `decisions 0..1 approvals`, `decisions 0..1 ledger_entries`, `policies 1—N decisions`, `policies 1—N category_budgets`.
 
 ---
 
@@ -341,7 +354,7 @@ erDiagram
 9. **RI-9 Tasa congelada:** `invoices.fx_rate_used` y `total_usd` no se recalculan si `fx_rates` cambia; la re-evaluación crea nueva `decision` con nueva `policy_version`.
 10. **RI-10 CSV reproducible:** toda fila del reporte debe poder reconstruirse con JOIN `ingest_attempts + invoices + vendors + decisions + approvals + policies`.
 11. **RI-11 Ancla de decisión:** `decisions` tiene exactamente uno de `invoice_id` o `ingest_attempt_id`, nunca ambos ni ninguno.
-12. **RI-12 Categoría cerrada:** `vendors.category` debe existir como clave en `policy_category_budgets` de la versión activa; una factura cuyo proveedor no tenga categoría mapeada frena antes de evaluar la regla 6.
+12. **RI-12 Categoría cerrada:** `vendors.category` y `policy_category_budgets.category` referencian `categories.name`. Una categoría inventada en un proveedor o en un budget no pasa la validación del DDL. La coherencia con la política activa (que la categoría exista en los budgets de la versión vigente) se verifica en la capa de aplicación (T5/T8).
 
 ---
 
