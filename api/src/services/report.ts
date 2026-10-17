@@ -21,6 +21,14 @@ export const REPORT_COLUMNS = [
   "timestamp",
 ] as const;
 
+/**
+ * Nombre fechado del reporte (UTC): así dos descargas de días distintos no se pisan y el
+ * archivo que ve el jurado dice cuándo se generó.
+ */
+export function reportFileName(now: Date = new Date()): string {
+  return `faktur-report-${now.toISOString().slice(0, 10)}.csv`;
+}
+
 type ReportRow = {
   decision_id: string;
   invoice_id: string | null;

@@ -6,6 +6,7 @@ import { getDb } from "../db/index.js";
 import { getAttempt, updateAttemptStatus } from "../repositories/ingest.js";
 import {
   ExtractionInvalidError,
+  ExtractionNotConfiguredError,
   ExtractionUnavailableError,
   extractInvoice,
   persistExtraction,
@@ -45,6 +46,9 @@ export async function registerIngestRoutes(app: FastifyInstance): Promise<void> 
       } catch (error) {
         if (error instanceof InvalidFileTypeError) {
           return reply.code(400).send({ error: "invalid_file_type" });
+        }
+        if (error instanceof ExtractionNotConfiguredError) {
+          return reply.code(503).send({ error: "extraction_not_configured" });
         }
         if (error instanceof ExtractionUnavailableError) {
           return reply.code(503).send({ error: "extraction_unavailable" });

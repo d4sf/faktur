@@ -1,12 +1,14 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { VerdictBadge } from "@/components/ui/VerdictBadge";
 import { InvoiceUploadDropzone } from "@/components/subir/InvoiceUploadDropzone";
+import { InvoiceFilePreview } from "@/components/subir/InvoiceFilePreview";
 import { InvoiceDetailCard } from "@/components/subir/InvoiceDetailCard";
 import { RuleEvaluationList } from "@/components/subir/RuleEvaluationList";
 import { NextStepCard } from "@/components/subir/NextStepCard";
 import { PayAgentChat } from "@/components/subir/PayAgentChat";
-import { FlowState, InvoiceData, PendingApproval, SystemRule } from "@/types/invoice";
+import { createInvoiceSubmitter, validateInvoiceFile, type SubmitStage } from "@/lib/invoiceSubmit";
+import { FlowState, InvoiceData, SystemRule } from "@/types/invoice";
 
 /**
  * Casos de demostración predefinidos para evaluar los tres posibles veredictos:
@@ -83,51 +85,104 @@ const SYSTEM_RULES: SystemRule[] = [
 ];
 
 /**
- * Determina el ID de regla (1 a 8) asociado a un código de razón.
- */
-function determineFailingRuleId(reasonCode: string): number | undefined {
-  if (reasonCode === "ERR_INVALID_DATA" || reasonCode === "ALERT_LOW_CONFIDENCE") return 1;
-  if (reasonCode === "ERR_DUPLICATE_INVOICE") return 2;
-  if (reasonCode === "ERR_BLACKLISTED_VENDOR") return 3;
-  if (reasonCode === "ALERT_NEW_VENDOR") return 4;
-  if (reasonCode === "ALERT_VENDOR_DRIFT") return 5;
-  if (reasonCode === "ALERT_BUDGET_OVERRUN" || reasonCode === "ALERT_BUDGET_TIGHT") return 6;
-  if (reasonCode === "ALERT_THRESHOLD_EXCEEDED") return 7;
-  return undefined;
-}
-
-/**
  * Página principal de Carga y Evaluación de Facturas.
- * Orquesta la extracción de datos con Gemini en el backend, la verificación determinista y la resolución interactiva.
+ * Al soltar un archivo se envía automáticamente a la API, se extraen los datos con Gemini,
+ * se evalúan las reglas deterministas y se muestra el veredicto sin recargar la página.
  */
 export default function Subir() {
   const [flowState, setFlowState] = useState<FlowState>("IDLE");
   const [currentInvoice, setCurrentInvoice] = useState<InvoiceData | null>(null);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [processingProgress, setProcessingProgress] = useState<number>(0);
   const [processingMessage, setProcessingMessage] = useState<string>("Iniciando verificación...");
   const [evaluatedRuleIndex, setEvaluatedRuleIndex] = useState<number>(-1);
+  const [error, setError] = useState<string | null>(null);
+
+  /**
+   * Identifica el envío vigente: al reiniciar, las respuestas viejas se descartan.
+   */
+  const runIdRef = useRef(0);
+  /**
+   * Etapa reportada por el submitter para el envío vigente.
+   */
+  const onStageRef = useRef<(stage: SubmitStage) => void>(() => {});
+  /**
+   * Submitter con bloqueo de doble envío (una sola instancia por montaje).
+   */
+  const submitterRef = useRef<ReturnType<typeof createInvoiceSubmitter> | null>(null);
+  if (submitterRef.current === null) {
+    submitterRef.current = createInvoiceSubmitter({
+      onStage: (stage) => onStageRef.current(stage),
+    });
+  }
+  const submitter = submitterRef.current;
+
+  /**
+   * Genera y revoca la URL de objeto para previsualizar imágenes.
+   */
+  useEffect(() => {
+    if (pendingFile === null || !pendingFile.type.startsWith("image/")) {
+      setPreviewUrl(null);
+      return;
+    }
+    if (typeof URL.createObjectURL !== "function") {
+      setPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(pendingFile);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [pendingFile]);
 
   /**
    * Dispara la simulación local para los casos de ejemplo (sin consumir Gemini ni API).
+   * Implementa cortocircuito determinista (short-circuit): se detiene inmediatamente en la regla que falla.
    */
   const startDemoProcessing = (invoice: InvoiceData) => {
+    if (submitter.isSubmitting()) return;
+    const runId = ++runIdRef.current;
+
+    setPendingFile(null);
+    setError(null);
     setCurrentInvoice(invoice);
     setFlowState("PROCESSING");
     setProcessingProgress(15);
     setProcessingMessage("Extrayendo datos estructurados (Modo demostración)...");
     setEvaluatedRuleIndex(-1);
 
-    const stages = [
-      { progress: 25, msg: "Verificando estructura y folio...", ruleIdx: 0 },
-      { progress: 40, msg: "Consultando historial de duplicados...", ruleIdx: 1 },
-      { progress: 55, msg: "Verificando listas de control...", ruleIdx: 2 },
-      { progress: 70, msg: "Validando directorio de proveedores...", ruleIdx: 3 },
-      { progress: 85, msg: "Calculando presupuestos y desvíos...", ruleIdx: 5 },
-      { progress: 100, msg: "Evaluando umbrales de política...", ruleIdx: 7 },
+    // Si la factura infringe alguna regla, determinamos el índice donde debe detenerse (0 a 7)
+    const failingIdx =
+      invoice.verdict !== "PAGAR" && invoice.failingRuleId ? invoice.failingRuleId - 1 : -1;
+
+    const allRuleStages = [
+      { progress: 25, msg: "Verificando estructura y legibilidad (Regla 1)...", ruleIdx: 0 },
+      { progress: 38, msg: "Consultando historial de duplicados (Regla 2)...", ruleIdx: 1 },
+      {
+        progress: 52,
+        msg: "Verificando listas de beneficiarios bloqueados (Regla 3)...",
+        ruleIdx: 2,
+      },
+      { progress: 66, msg: "Validando directorio de proveedores (Regla 4)...", ruleIdx: 3 },
+      { progress: 78, msg: "Analizando desvíos sobre importe acordado (Regla 5)...", ruleIdx: 4 },
+      {
+        progress: 88,
+        msg: "Comprobando presupuesto disponible en categoría (Regla 6)...",
+        ruleIdx: 5,
+      },
+      { progress: 95, msg: "Evaluando límite de aprobación autónoma (Regla 7)...", ruleIdx: 6 },
+      { progress: 100, msg: "Verificando criterio de pase directo STP (Regla 8)...", ruleIdx: 7 },
     ];
+
+    // Cortocircuito: la evaluación solo avanza hasta la regla que detiene o escala el caso
+    const stages = failingIdx !== -1 ? allRuleStages.slice(0, failingIdx + 1) : allRuleStages;
 
     let currentStage = 0;
     const interval = setInterval(() => {
+      if (runIdRef.current !== runId) {
+        clearInterval(interval);
+        return;
+      }
       if (currentStage < stages.length) {
         const stage = stages[currentStage];
         setProcessingProgress(stage.progress);
@@ -136,9 +191,17 @@ export default function Subir() {
         currentStage++;
       } else {
         clearInterval(interval);
+        setProcessingProgress(100);
+        setProcessingMessage(
+          invoice.verdict === "FRENAR"
+            ? "Evaluación detenida: Factura bloqueada por política."
+            : invoice.verdict === "ESCALAR"
+              ? "Evaluación detenida: Factura escalada para revisión humana."
+              : "Verificación completada: Factura aprobada para dispersión autónoma (STP).",
+        );
         setFlowState("COMPLETED");
       }
-    }, 380);
+    }, 450);
   };
 
   /**
@@ -151,122 +214,60 @@ export default function Subir() {
   };
 
   /**
-   * Manejador de carga de archivo real: se conecta a la API real de Fastify (POST /api/invoices)
-   * ejecutando la extracción con Gemini en vivo y la evaluación del motor en SQLite.
+   * Envía el archivo a `POST /api/invoices` y refleja el veredicto en pantalla.
+   * Un segundo envío mientras hay uno en vuelo se ignora (lo garantiza el submitter).
    */
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const startUpload = async (file: File) => {
+    const runId = ++runIdRef.current;
 
+    onStageRef.current = (stage) => {
+      if (runIdRef.current !== runId) return;
+      setProcessingProgress(stage.progress);
+      setProcessingMessage(stage.message);
+      setEvaluatedRuleIndex(stage.progress <= 20 ? 0 : 6);
+    };
+
+    setPendingFile(file);
+    setCurrentInvoice(null);
+    setError(null);
     setFlowState("PROCESSING");
-    setProcessingProgress(20);
-    setProcessingMessage("Enviando archivo y extrayendo datos con Gemini...");
+    setProcessingProgress(10);
+    setProcessingMessage("Analizando documento…");
     setEvaluatedRuleIndex(0);
 
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
+    const outcome = await submitter.submit(file);
+    if (runIdRef.current !== runId) return;
 
-      // Progreso visual intermedio
-      setTimeout(() => {
-        setProcessingProgress(50);
-        setProcessingMessage("Extrayendo campos fiscales estructurados...");
-        setEvaluatedRuleIndex(2);
-      }, 700);
+    if (outcome.status === "skipped") return;
 
-      const response = await fetch("/api/invoices", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `HTTP ${response.status}`);
-      }
-
-      const result = await response.json();
-      setProcessingProgress(85);
-      setProcessingMessage("Evaluando reglas deterministas de política...");
-      setEvaluatedRuleIndex(6);
-
-      let invoiceNumber = "INV-" + Math.floor(1000 + Math.random() * 9000);
-      let vendorName = "Proveedor identificado";
-      let vendorTaxId = "N/A";
-      let issueDate = new Date().toISOString().split("T")[0];
-      let dueDate = "-";
-      let currency = "USD";
-      let totalAmount = 0;
-      let totalUsd = 0;
-      const concept = "Servicios procesados vía IA";
-
-      // Si el backend devolvió invoice_id, consultamos el detalle extraído
-      if (result.invoice_id) {
-        try {
-          const detailRes = await fetch(`/api/invoices/${result.invoice_id}`);
-          if (detailRes.ok) {
-            const detail = await detailRes.json();
-            const rec = detail.audit_record;
-            if (rec) {
-              invoiceNumber = rec.invoice_number || invoiceNumber;
-              vendorName = detail.vendor?.display_name || rec.vendor_name || vendorName;
-              vendorTaxId = detail.vendor?.tax_id || rec.vendor_id || vendorTaxId;
-              issueDate = rec.issue_date || issueDate;
-              dueDate = rec.due_date || dueDate;
-              currency = rec.currency || currency;
-              totalAmount = rec.total_amount || totalAmount;
-              totalUsd = rec.total_usd || totalUsd;
-            }
-          }
-        } catch {
-          // Fallback a los datos del resultado
-        }
-      }
-
-      // Si es ESCALAR, vinculamos el approvalId de la bandeja
-      let approvalId: string | undefined;
-      if (result.verdict === "ESCALAR") {
-        try {
-          const appRes = await fetch("/api/approvals?status=pendiente");
-          if (appRes.ok) {
-            const approvals: PendingApproval[] = await appRes.json();
-            const found = approvals.find((a) => a.invoice_id === result.invoice_id);
-            if (found) approvalId = found.id;
-          }
-        } catch {
-          // Ignorar si no se puede obtener
-        }
-      }
-
-      const realInvoice: InvoiceData = {
-        id: result.invoice_id || result.attempt_id || `inv-${Date.now()}`,
-        fileName: file.name,
-        fileSize: `${Math.max(1, Math.round(file.size / 1024))} KB`,
-        invoice_number: invoiceNumber,
-        vendor_name: vendorName,
-        vendor_tax_id: vendorTaxId,
-        issue_date: issueDate,
-        due_date: dueDate,
-        currency,
-        total_amount: totalAmount || (result.amount_usd_evaluated ?? 0),
-        total_usd: totalUsd || (result.amount_usd_evaluated ?? 0),
-        concept,
-        verdict: result.verdict || "ESCALAR",
-        reason_code: result.reason_code || "EVALUADA",
-        reason_description: result.explanation || "Evaluación determinista completada con éxito.",
-        failingRuleId: determineFailingRuleId(result.reason_code),
-        approvalId,
-      };
-
-      setProcessingProgress(100);
-      setEvaluatedRuleIndex(7);
-      setCurrentInvoice(realInvoice);
-      setFlowState("COMPLETED");
-    } catch (err: unknown) {
-      console.error("Error al procesar archivo en el backend:", err);
-      const errMsg = err instanceof Error ? err.message : "Error de conexión";
-      alert("Error al procesar la factura con el agente: " + errMsg);
+    if (outcome.status === "error") {
       setFlowState("IDLE");
+      setPendingFile(null);
+      setCurrentInvoice(null);
+      setProcessingProgress(0);
+      setEvaluatedRuleIndex(-1);
+      setError(outcome.message);
+      return;
     }
+
+    setProcessingProgress(100);
+    setEvaluatedRuleIndex(7);
+    setCurrentInvoice(outcome.invoice);
+    setFlowState("COMPLETED");
+  };
+
+  /**
+   * Valida el archivo en cliente y arranca el análisis automáticamente.
+   */
+  const handleFileSelected = (file: File) => {
+    if (flowState === "PROCESSING" || submitter.isSubmitting()) return;
+
+    const validationError = validateInvoiceFile(file);
+    if (validationError !== null) {
+      setError(validationError);
+      return;
+    }
+    void startUpload(file);
   };
 
   /**
@@ -307,30 +308,65 @@ export default function Subir() {
    * Reinicia el estado para evaluar una nueva factura.
    */
   const handleReset = () => {
+    runIdRef.current += 1;
     setFlowState("IDLE");
     setCurrentInvoice(null);
+    setPendingFile(null);
+    setPreviewUrl(null);
     setEvaluatedRuleIndex(-1);
     setProcessingProgress(0);
+    setProcessingMessage("Iniciando verificación...");
+    setError(null);
   };
+
+  const showFlow = flowState !== "IDLE" && (pendingFile !== null || currentInvoice !== null);
+  const isProcessing = flowState === "PROCESSING";
 
   return (
     <div className="space-y-8">
       {/* Estado Inicial: Área de carga limpia */}
       {flowState === "IDLE" && (
-        <InvoiceUploadDropzone onFileUpload={handleFileUpload} onSelectDemo={handleSelectDemo} />
+        <InvoiceUploadDropzone
+          onFileSelected={handleFileSelected}
+          onSelectDemo={handleSelectDemo}
+          disabled={submitter.isSubmitting()}
+          error={error}
+        />
       )}
 
       {/* Estados Activos: Procesando o Análisis Completado */}
-      {flowState !== "IDLE" && currentInvoice && (
+      {showFlow && (
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 items-start">
-          {/* Columna Izquierda: Ficha y datos extraídos */}
-          <InvoiceDetailCard
-            invoice={currentInvoice}
-            flowState={flowState}
-            processingMessage={processingMessage}
-            processingProgress={processingProgress}
-            onReset={handleReset}
-          />
+          {/* Columna Izquierda: preview del archivo y datos extraídos */}
+          {flowState === "COMPLETED" && currentInvoice && (
+            <InvoiceDetailCard
+              invoice={currentInvoice}
+              flowState={flowState}
+              processingMessage={processingMessage}
+              processingProgress={processingProgress}
+              onReset={handleReset}
+            />
+          )}
+
+          {isProcessing && pendingFile !== null && (
+            <InvoiceFilePreview
+              file={pendingFile}
+              previewUrl={previewUrl}
+              flowState={flowState}
+              processingMessage={processingMessage}
+              processingProgress={processingProgress}
+            />
+          )}
+
+          {isProcessing && pendingFile === null && currentInvoice && (
+            <InvoiceDetailCard
+              invoice={currentInvoice}
+              flowState={flowState}
+              processingMessage={processingMessage}
+              processingProgress={processingProgress}
+              onReset={handleReset}
+            />
+          )}
 
           {/* Columna Derecha: Reglas, Veredicto, Próximo paso y Chat de revisión */}
           <div className="space-y-5 lg:col-span-5">
@@ -353,13 +389,13 @@ export default function Subir() {
 
                 {/* Sección final: Veredicto, Próximo paso y Chat interactivo */}
                 <div className="border-t border-border/60 pt-4">
-                  {flowState === "PROCESSING" && (
+                  {isProcessing && (
                     <div className="text-center py-2 text-xs text-muted-foreground font-medium animate-pulse">
                       Ejecutando motor determinista...
                     </div>
                   )}
 
-                  {flowState === "COMPLETED" && (
+                  {flowState === "COMPLETED" && currentInvoice && (
                     <div className="space-y-4">
                       {/* Veredicto del sistema: sólido, elegante y sin emojis */}
                       <div className="rounded-lg border border-border/80 bg-card p-4 space-y-2 shadow-xs">
@@ -372,6 +408,12 @@ export default function Subir() {
                         <p className="text-xs text-muted-foreground leading-relaxed">
                           {currentInvoice.reason_description}
                         </p>
+                        {currentInvoice.duplicate === true && (
+                          <p className="text-[11px] text-muted-foreground">
+                            Reenvío duplicado: el documento ya había sido recibido, por eso se frena
+                            en lugar de pagarse.
+                          </p>
+                        )}
                       </div>
 
                       {/* Orientación clara sobre el próximo paso sin tecnicismos bancarios */}

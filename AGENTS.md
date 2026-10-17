@@ -33,11 +33,15 @@ van en inglés**.
 
 ## Tests
 
-- `npm test` del root = `npm run test -w api` = `tsx --test src/app.test.ts`.
-  Solo hay tests de API y el archivo está **hardcodeado en el script**: al crear
-  un test nuevo hay que añadirlo a `test` en `api/package.json`.
-- `web` no tiene tests. Para correr un test puntual: `just shell` y
-  `npx tsx --test src/<archivo>.test.ts` dentro del contenedor.
+- `npm test` del root = `npm run test -w api && npm run test -w web`.
+  Los archivos están **hardcodeados en el script** de cada workspace: al crear
+  un test nuevo hay que añadirlo al `test` correspondiente (`api/package.json`
+  o `web/package.json`).
+- Los tests de web usan `node:test` + `tsx` (mismo runner que la API, sin DOM):
+  lógica en `web/src/lib/*.test.ts` y markup con `react-dom/server` en
+  `*.test.tsx`. `web/tsconfig.json` incluye `"node"` en `types` para eso.
+- Para correr un test puntual: `just shell`, luego
+  `npx tsx --test src/<archivo>.test.ts` (desde `/app/web` o `/app/api`).
 - `api/tsconfig.build.json` excluye `*.test.ts`, así que los tests no llegan a
   `dist`.
 

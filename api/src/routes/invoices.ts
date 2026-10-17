@@ -9,11 +9,13 @@ import { getAuditRecord, listAuditRecords } from "../repositories/invoices.js";
 import { decideInvoice } from "../services/decide.js";
 import {
   ExtractionInvalidError,
+  ExtractionNotConfiguredError,
   ExtractionUnavailableError,
   extractInvoice,
   persistExtraction,
 } from "../services/extract.js";
 import { CurrencyNotAllowedError } from "../services/fx.js";
+import { notifyApprovalChange } from "../services/approvalEvents.js";
 import {
   InvalidFileTypeError,
   ingestFile,
@@ -32,6 +34,9 @@ function body(result: IngestResult): Record<string, unknown> {
 
 function errorReply(error: unknown): { status: number; code: string } | null {
   if (error instanceof InvalidFileTypeError) return { status: 400, code: "invalid_file_type" };
+  if (error instanceof ExtractionNotConfiguredError) {
+    return { status: 503, code: "extraction_not_configured" };
+  }
   if (error instanceof ExtractionUnavailableError) {
     return { status: 503, code: "extraction_unavailable" };
   }
@@ -126,6 +131,9 @@ export async function registerInvoiceRoutes(app: FastifyInstance): Promise<void>
         });
       }
       const decision = decideInvoice(persisted.invoice_id, getDb());
+      if (decision.verdict === "ESCALAR") {
+        notifyApprovalChange({ type: "NEW_APPROVAL", id: persisted.invoice_id });
+      }
 
       return reply.code(201).send({
         attempt_id: attempt.id,

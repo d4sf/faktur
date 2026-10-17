@@ -223,3 +223,29 @@ test("una moneda fuera de allowed_currencies se decide FRENAR, no 422", async ()
     await app.close();
   }
 });
+
+test("un PDF sin GEMINI_API_KEY responde 503 extraction_not_configured", async () => {
+  const app = await buildApp({ logLevel: "silent" });
+  const previous = process.env.GEMINI_API_KEY;
+  delete process.env.GEMINI_API_KEY;
+
+  try {
+    const pdf = multipart(Buffer.from("%PDF-1.4"), {
+      filename: "factura.pdf",
+      mimeType: "application/pdf",
+    });
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/invoices",
+      headers: { "content-type": pdf.contentType },
+      payload: pdf.body,
+    });
+
+    assert.equal(res.statusCode, 503, res.body);
+    assert.deepEqual(res.json(), { error: "extraction_not_configured" });
+  } finally {
+    if (previous === undefined) delete process.env.GEMINI_API_KEY;
+    else process.env.GEMINI_API_KEY = previous;
+    await app.close();
+  }
+});

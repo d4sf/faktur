@@ -233,7 +233,7 @@ El cierre es atómico: ledger + aprobación + factura + auditoría en una transa
 
 Cada tarea lleva: qué hace, por qué, traza, dependencias y criterio de "hecho". El commit va en inglés, Conventional Commits.
 
-El prefijo `[x]` / `[ ]` marca si la tarea está implementada y mergeada. Las tareas hechas hasta la fecha: T1, T2, T3, T4, T5, T26 (y el scaffold de CI en una rama aparte).
+El prefijo `[x]` / `[ ]` marca si la tarea está implementada y mergeada. Las tareas hechas hasta la fecha: T1–T19, T22 y T24–T26 (y el scaffold de CI en una rama aparte).
 
 ### Bloque A — Cimientos
 
@@ -599,7 +599,7 @@ El runner tiene que **afirmar que el conjunto de `reason_code` que produjo es ig
 
 > El MVP §14 pone la UI en el bloque 2. Solo arranca cuando la ruta completa ya funciona.
 
-#### [ ] T18 · Dropzone con estado de carga
+#### [x] T18 · Dropzone con estado de carga
 
 **Síntesis.** Zona de arrastrar y soltar que acepta PDF, imagen y JSON mock, con preview, mensaje "Analizando documento…" y bloqueo de doble envío. Muestra el badge 🟢/🔴/🟡 al terminar. Un reenvío duplicado muestra el FRENAR con su motivo, no un error.
 
@@ -615,7 +615,7 @@ El runner tiene que **afirmar que el conjunto de `reason_code` que produjo es ig
 
 ---
 
-#### [ ] T19 · Tabla de decisiones, detalle de factura y card de ROI
+#### [x] T19 · Tabla de decisiones, detalle de factura y card de ROI
 
 **Síntesis.** Tabla de auditoría con ID/emisor, monto original, monto USD, estado con badge (ícono + texto, no solo color), `reason_code` + explicación legible y acción "Revisar" solo si está en aprobación. Orden LIFO. Vista de detalle con la línea de tiempo de la factura, como inspector lateral. Card Health & ROI con touchless rate, presupuesto restante y total procesadas.
 
@@ -663,7 +663,7 @@ El runner tiene que **afirmar que el conjunto de `reason_code` que produjo es ig
 
 ---
 
-#### [ ] T22 · Descarga del CSV
+#### [x] T22 · Descarga del CSV
 
 **Síntesis.** Botón que baja el reporte de T8, con los 14 campos del MVP §7 y el `motivo_legible` en lenguaje natural.
 

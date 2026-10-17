@@ -81,6 +81,7 @@ export default function Bandeja() {
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [selectedApproval, setSelectedApproval] = useState<PendingApproval | null>(null);
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceData | null>(null);
+  const [justUpdated, setJustUpdated] = useState<boolean>(false);
   const [notification, setNotification] = useState<{
     type: "success" | "error";
     text: string;
@@ -109,23 +110,50 @@ export default function Bandeja() {
   };
 
   /**
-   * Smart Polling: consulta periódica pausada si la pestaña está oculta,
-   * y revalidación inmediata al reenfocar la ventana.
+   * Actualización manual con feedback visual garantizado (mínimo 450ms de giro y estado de confirmación).
+   */
+  const handleManualRefresh = async () => {
+    setLoading(true);
+    setJustUpdated(false);
+    const minDelay = new Promise((resolve) => setTimeout(resolve, 500));
+    await Promise.all([fetchApprovals(true), minDelay]);
+    setLoading(false);
+    setJustUpdated(true);
+    setTimeout(() => {
+      setJustUpdated(false);
+    }, 2000);
+  };
+
+  /**
+   * Conexión en tiempo real con Server-Sent Events (SSE).
+   * El servidor emite eventos push solo cuando una factura escala o se resuelve. Cero polling.
    */
   useEffect(() => {
     fetchApprovals(false);
 
-    const intervalId = setInterval(() => {
-      if (!document.hidden) {
-        fetchApprovals(true);
-      }
-    }, 8000);
+    let eventSource: EventSource | null = null;
+    try {
+      eventSource = new EventSource("/api/approvals/stream");
+
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === "NEW_APPROVAL" || data.type === "APPROVAL_RESOLVED") {
+            fetchApprovals(true);
+          }
+        } catch {
+          // Ignorar pings iniciales
+        }
+      };
+    } catch {
+      // Fallback si SSE no está disponible
+    }
 
     const handleFocus = () => fetchApprovals(true);
     window.addEventListener("focus", handleFocus);
 
     return () => {
-      clearInterval(intervalId);
+      eventSource?.close();
       window.removeEventListener("focus", handleFocus);
     };
   }, []);
@@ -237,9 +265,10 @@ export default function Bandeja() {
                 <h2 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
                   Bandeja de revisión
                 </h2>
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 border border-amber-500/20 px-2.5 py-0.5 text-xs font-semibold text-amber-700 dark:text-amber-400">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400 select-none">
                   <span className="size-1.5 rounded-full bg-amber-500 animate-pulse" />
-                  <span>{approvals.length} pendientes</span>
+                  <span className="font-semibold">{approvals.length}</span>
+                  <span>pendientes</span>
                 </span>
               </div>
               <p className="text-xs text-muted-foreground mt-1">
@@ -249,20 +278,38 @@ export default function Bandeja() {
             </div>
 
             <div className="flex items-center gap-2.5">
-              <div className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-muted/40 px-2.5 py-1 text-[11px] text-muted-foreground">
+              <div className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-muted/40 px-2.5 py-1 text-[11px] text-muted-foreground transition-all">
                 <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span>Actualización inteligente</span>
+                <span>Canal push en vivo (SSE)</span>
               </div>
 
               <Button
-                variant="outline"
+                variant={justUpdated ? "default" : "outline"}
                 size="sm"
-                onClick={() => fetchApprovals(false)}
+                onClick={handleManualRefresh}
                 disabled={loading}
-                className="h-9 gap-1.5 text-xs"
+                className={`h-9 gap-1.5 text-xs transition-all ${
+                  justUpdated
+                    ? "border-transparent bg-emerald-600 text-white hover:bg-emerald-600 dark:bg-emerald-600 dark:text-white shadow-xs"
+                    : ""
+                }`}
               >
-                <RefreshCw className={`size-3.5 ${loading ? "animate-spin" : ""}`} />
-                <span>Actualizar</span>
+                {justUpdated ? (
+                  <>
+                    <Check className="size-3.5 text-white stroke-[2.5] animate-in zoom-in-75 duration-200" />
+                    <span className="font-semibold text-white">Actualizado</span>
+                  </>
+                ) : loading ? (
+                  <>
+                    <RefreshCw className="size-3.5 animate-spin text-primary" />
+                    <span>Comprobando...</span>
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="size-3.5" />
+                    <span>Actualizar</span>
+                  </>
+                )}
               </Button>
               <Button asChild size="sm" className="h-9 text-xs font-semibold gap-1.5 shadow-xs">
                 <Link to="/subir">Subir factura</Link>

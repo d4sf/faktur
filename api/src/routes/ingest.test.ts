@@ -85,7 +85,7 @@ test("extrae un JSON mock y persiste la factura EXTRAIDA en el upload", async ()
   }
 });
 
-test("un PDF sin API key responde 503 extraction_unavailable", async () => {
+test("un PDF sin API key responde 503 extraction_not_configured", async () => {
   const app = await buildApp({ logLevel: "silent" });
 
   try {
@@ -95,7 +95,7 @@ test("un PDF sin API key responde 503 extraction_unavailable", async () => {
     });
 
     assert.equal(res.statusCode, 503);
-    assert.deepEqual(res.json(), { error: "extraction_unavailable" });
+    assert.deepEqual(res.json(), { error: "extraction_not_configured" });
     const attempts = db.prepare("SELECT attempt_status FROM ingest_attempts").all() as Array<{
       attempt_status: string;
     }>;
