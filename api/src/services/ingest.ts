@@ -127,3 +127,7 @@ export function decisionForAttempt(attemptId: string): EvaluationResult | undefi
 export function attemptExists(attemptId: string): boolean {
   return getAttempt(attemptId) !== null;
 }
+
+export function storedUploadPath(hash: string): string {
+  return join(uploadsDir(), hash);
+}

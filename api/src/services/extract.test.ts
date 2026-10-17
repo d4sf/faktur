@@ -2,10 +2,13 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
+import { closeDb, loadDb } from "../db/index.js";
+import { createAttempt } from "../repositories/ingest.js";
 import {
   ExtractionInvalidError,
   ExtractionUnavailableError,
   extractInvoice,
+  persistExtraction,
   type GeminiCaller,
 } from "./extract.js";
 
@@ -84,4 +87,54 @@ test("un JSON mock valida localmente sin red ni API key", async () => {
 
   assert.equal(result.invoice_number, "INV-9022");
   assert.equal(result.total_amount, 420);
+});
+
+test("persiste una extraccion sin vendor_tax_id con line_items e intento enlazado", async () => {
+  const db = loadDb(":memory:");
+
+  try {
+    const extracted = await extractInvoice({
+      buffer: readFileSync(new URL("../../../fixtures/TC-08.json", import.meta.url)),
+      mimeType: "application/json",
+    });
+    const attemptId = createAttempt({
+      invoice_id: null,
+      file_name: "TC-08.json",
+      mime_type: "application/json",
+      byte_size: 10,
+      file_hash: "f".repeat(64),
+      attempt_status: "RECIBIDA",
+      duplicate_of_invoice_id: null,
+    });
+
+    const { invoice_id } = persistExtraction(attemptId, extracted, db);
+
+    const invoice = db
+      .prepare(
+        "SELECT status, vendor_id, total_usd, extraction_confidence, extraction_json FROM invoices WHERE id = ?",
+      )
+      .get(invoice_id) as {
+      status: string;
+      vendor_id: string | null;
+      total_usd: number;
+      extraction_confidence: number | null;
+      extraction_json: string;
+    };
+    const attempt = db
+      .prepare("SELECT invoice_id FROM ingest_attempts WHERE id = ?")
+      .get(attemptId) as { invoice_id: string | null };
+    const items = db
+      .prepare("SELECT COUNT(*) AS n FROM line_items WHERE invoice_id = ?")
+      .get(invoice_id) as { n: number };
+
+    assert.equal(invoice.status, "EXTRAIDA");
+    assert.equal(invoice.vendor_id, null, "Entidad Fantasma no está en vendors");
+    assert.equal(invoice.total_usd, 900);
+    assert.equal(invoice.extraction_confidence, null);
+    assert.match(invoice.extraction_json, /INV-EF-900/);
+    assert.equal(attempt.invoice_id, invoice_id);
+    assert.equal(items.n, 1);
+  } finally {
+    closeDb();
+  }
 });

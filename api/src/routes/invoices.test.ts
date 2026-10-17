@@ -45,7 +45,7 @@ function multipart(
   return { body, contentType: `multipart/form-data; boundary=${boundary}` };
 }
 
-test("dos uploads del mismo archivo: segundo 200 FRENAR, 2 intentos y 0 facturas", async () => {
+test("dos uploads del mismo archivo: segundo 200 FRENAR, 2 intentos y 1 factura", async () => {
   const app = await buildApp({ logLevel: "silent" });
   const first = multipart(PAYLOAD);
   const second = multipart(PAYLOAD, { filename: "tc-01-copia.json" });
@@ -64,8 +64,9 @@ test("dos uploads del mismo archivo: segundo 200 FRENAR, 2 intentos y 0 facturas
       payload: second.body,
     });
 
-    assert.equal(a.statusCode, 202);
-    assert.equal(a.json().status, "RECIBIDA");
+    assert.equal(a.statusCode, 201, a.body);
+    assert.equal(a.json().verdict, "PAGAR");
+    assert.ok(a.json().invoice_id);
     assert.equal(b.statusCode, 200, `no debe ser 500 por UNIQUE: ${b.body}`);
     assert.equal(b.json().verdict, "FRENAR");
     assert.equal(b.json().reason_code, "ERR_DUPLICATE_INVOICE");
@@ -74,7 +75,7 @@ test("dos uploads del mismo archivo: segundo 200 FRENAR, 2 intentos y 0 facturas
       (db.prepare("SELECT COUNT(*) AS n FROM ingest_attempts").get() as { n: number }).n,
       2,
     );
-    assert.equal((db.prepare("SELECT COUNT(*) AS n FROM invoices").get() as { n: number }).n, 0);
+    assert.equal((db.prepare("SELECT COUNT(*) AS n FROM invoices").get() as { n: number }).n, 1);
   } finally {
     await app.close();
   }
@@ -94,6 +95,52 @@ test("MIME no permitido responde 400 invalid_file_type", async () => {
 
     assert.equal(res.statusCode, 400);
     assert.deepEqual(res.json(), { error: "invalid_file_type" });
+  } finally {
+    await app.close();
+  }
+});
+
+test("POST /api/invoices/:id/decide responde el veredicto y 409 si ya no está EXTRAIDA", async () => {
+  const app = await buildApp({ logLevel: "silent" });
+  const form = multipart(PAYLOAD);
+
+  try {
+    const uploaded = await app.inject({
+      method: "POST",
+      url: "/api/invoices",
+      headers: { "content-type": form.contentType },
+      payload: form.body,
+    });
+    const invoiceId = uploaded.json().invoice_id as string;
+    db.prepare("UPDATE invoices SET status = 'EXTRAIDA' WHERE id = ?").run(invoiceId);
+
+    const decided = await app.inject({
+      method: "POST",
+      url: `/api/invoices/${invoiceId}/decide`,
+    });
+    assert.equal(decided.statusCode, 200);
+    assert.equal(decided.json().verdict, "PAGAR");
+    assert.equal(decided.json().policy_version, "v1");
+    assert.ok(decided.json().decision_id);
+
+    const again = await app.inject({
+      method: "POST",
+      url: `/api/invoices/${invoiceId}/decide`,
+    });
+    assert.equal(again.statusCode, 409);
+    assert.deepEqual(again.json(), { error: "status_transition_invalid" });
+  } finally {
+    await app.close();
+  }
+});
+
+test("POST /api/invoices/:id/decide responde 404 si la factura no existe", async () => {
+  const app = await buildApp({ logLevel: "silent" });
+
+  try {
+    const res = await app.inject({ method: "POST", url: "/api/invoices/no-existe/decide" });
+    assert.equal(res.statusCode, 404);
+    assert.deepEqual(res.json(), { error: "not_found" });
   } finally {
     await app.close();
   }
