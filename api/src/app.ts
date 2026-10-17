@@ -4,6 +4,8 @@ import { resolve } from "node:path";
 import fastifyStatic from "@fastify/static";
 import Fastify, { type FastifyInstance } from "fastify";
 
+import { registerReportRoutes } from "./routes/report.js";
+
 export interface BuildAppOptions {
   webDist?: string;
   logLevel?: string;
@@ -18,6 +20,8 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   const app = Fastify({ logger: { level: options.logLevel ?? "info" } });
 
   app.get("/api/health", async () => ({ status: "ok" }));
+
+  await app.register(registerReportRoutes);
 
   const webDist = options.webDist ?? resolve(process.cwd(), "web/dist");
   if (existsSync(webDist)) {

@@ -393,7 +393,7 @@ El runner tiene que **afirmar que el conjunto de `reason_code` que produjo es ig
 
 ---
 
-#### [ ] T8 · Reporte CSV reproducible y su ruta HTTP
+#### [x] T8 · Reporte CSV reproducible y su ruta HTTP
 
 **Síntesis.** Genera el CSV con las columnas exactas del MVP §7: `invoice_id, archivo, proveedor, beneficiario_id, monto, moneda, fecha_vencimiento, estado, regla_disparada, motivo_legible, requirio_humano, decidido_por, policy_version, timestamp`. Sale de un JOIN de `invoices + ingest_attempts + vendors + decisions + approvals + policies` (RI-10), con `estado` colapsando a PAGADA | FRENADA | ESCALADA | PENDIENTE desde `invoices.status`. **Una fila por decisión**, así que el reenvío duplicado aporta la suya con la fecha del registro original en el motivo. Se expone en `GET /api/report.csv`, generado al vuelo.
 
