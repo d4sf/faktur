@@ -527,7 +527,7 @@ El runner tiene que **afirmar que el conjunto de `reason_code` que produjo es ig
 
 ---
 
-#### [ ] T25 · Métricas: `GET /api/audit-trail` y touchless rate
+#### [x] T25 · Métricas: `GET /api/audit-trail` y touchless rate
 
 **Síntesis.** Endpoint que devuelve `{ metrics: { budget_remaining, threshold_limit, total_processed, touchless_rate }, records[] }`. `touchless_rate = PAGAR / total * 100` a un decimal, 0 si está vacío. Alimenta la card Health & ROI del tablero.
 

@@ -6,6 +6,7 @@ import multipart from "@fastify/multipart";
 import Fastify, { type FastifyInstance } from "fastify";
 
 import { registerApprovalRoutes } from "./routes/approvals.js";
+import { registerAuditRoutes } from "./routes/audit.js";
 import { registerIngestRoutes } from "./routes/ingest.js";
 import { registerInvoiceRoutes } from "./routes/invoices.js";
 import { registerReportRoutes } from "./routes/report.js";
@@ -31,6 +32,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   await app.register(registerInvoiceRoutes);
   await app.register(registerIngestRoutes);
   await app.register(registerApprovalRoutes);
+  await app.register(registerAuditRoutes);
 
   const webDist = options.webDist ?? resolve(process.cwd(), "web/dist");
   if (existsSync(webDist)) {
