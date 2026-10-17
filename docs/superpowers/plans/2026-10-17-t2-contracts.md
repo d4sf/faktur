@@ -265,7 +265,7 @@ git commit -m "feat(api): add verdict and audit contracts"
   export const CURRENCIES = ["USD", "MXN", "COP", "EUR"] as const;
   export const Currency = z.string().trim().toUpperCase().pipe(z.enum(CURRENCIES));
 
-  export const LINE_ITEM_FIELDS = ["invoice_number", "vendor_tax_id",
+  export const CONFIDENCE_FIELDS = ["invoice_number", "vendor_tax_id",
     "total_amount", "currency", "due_date"] as const;
   export const FieldConfidence = z.object({
     invoice_number: Confidence, vendor_tax_id: Confidence,
@@ -355,7 +355,7 @@ test("sin tax_id valida: TC-08 lo frena el motor, no el parser", () => {
 });
 
 test("field_confidence exige los cinco campos", () => {
-  for (const key of LINE_ITEM_FIELDS) {
+  for (const key of CONFIDENCE_FIELDS) {
     const fc = { ...full.field_confidence };
     delete fc[key];
     assert.equal(ExtractedInvoice.safeParse({ ...full, field_confidence: fc }).success, false, key);
@@ -401,7 +401,7 @@ Expected: FAIL con `Cannot find module './extraction.js'`.
 - `Currency`: `z.string().trim().toUpperCase().pipe(z.enum(CURRENCIES))`. El `.pipe` **después** de la transformación es lo que hace que `"usd"` sea válido y `"BTC"` no.
 - Fechas: `z.iso.date()` en `issue_date` y `due_date`.
 - Montos: `z.number().nonnegative()`.
-- `field_confidence`: los cinco campos **requeridos**, cada uno `z.number().min(0).max(1)`. `LINE_ITEM_FIELDS` es el `as const` del bloque Interfaces y el schema se construye con un `reduce` sobre él, para que agregar un campo al confidence no pueda olvidarse de agregarlo al tipo.
+- `field_confidence`: los cinco campos **requeridos**, cada uno `z.number().min(0).max(1)`. `CONFIDENCE_FIELDS` es el `as const` del bloque Interfaces y el schema se construye con un `reduce` sobre él, para que agregar un campo al confidence no pueda olvidarse de agregarlo al tipo.
 - `globalConfidence(f)`: si `f` es `undefined` devuelve `undefined`; si no, `Math.min(...Object.values(f))`.
 - Todos los strings de texto con `.trim()`.
 

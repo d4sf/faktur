@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { Approval, ApprovalStatus } from "./audit.js";
+import { Approval, ApprovalStatus, AuditRecord } from "./audit.js";
+import { Decision } from "./decision.js";
+import { ExtractedInvoice } from "./extraction.js";
 
 test("una aprobacion empieza PENDIENTE", () => {
   assert.equal(ApprovalStatus.parse("PENDIENTE"), "PENDIENTE");
@@ -52,4 +54,98 @@ test("una aprobacion PENDIENTE es valida con los tres en null", () => {
     }).success,
     true,
   );
+});
+
+const factura = ExtractedInvoice.parse({
+  invoice_number: "INV-9022",
+  vendor_name: "CloudServers Inc",
+  vendor_tax_id: "CLOUD-SERVERS-INC",
+  due_date: "2026-10-15",
+  currency: "usd",
+  total_amount: 420,
+});
+
+const decision = Decision.parse({
+  invoice_id: "i1",
+  ingest_attempt_id: null,
+  verdict: "ESCALAR",
+  reason_code: "ALERT_VENDOR_DRIFT",
+  explanation: "el monto triplica el promedio historico del beneficiario",
+  policy_version: "v1",
+  amount_usd_evaluated: 1260,
+  decided_by: "AGENTE",
+});
+
+test("AuditRecord monta una Decision sin reinterpretar nada", () => {
+  const r = AuditRecord.parse({
+    id: "d1",
+    invoice: factura,
+    document_hash: "c".repeat(64),
+    amount_usd: 1260,
+    verdict: decision.verdict,
+    reason_code: decision.reason_code,
+    explanation: decision.explanation,
+    created_at: "2026-10-17T04:00:00Z",
+    human_approved: null,
+  });
+
+  // La proyeccion pega la factura a la decision. Si alguno de estos tres difiere del `Decision`
+  // de origen, la traza esta contando una historia que no fue la que se decidio.
+  assert.equal(r.verdict, "ESCALAR");
+  assert.equal(r.reason_code, "ALERT_VENDOR_DRIFT");
+  assert.equal(r.explanation, "el monto triplica el promedio historico del beneficiario");
+
+  // Y la factura sale normalizada, no como el modelo la emitio.
+  assert.equal(r.invoice.currency, "USD");
+  assert.deepEqual(r.invoice.vendor_tax_id, "CLOUD-SERVERS-INC");
+});
+
+test("un AuditRecord no acepta un veredicto fuera del enum", () => {
+  const base = {
+    id: "d2",
+    invoice: factura,
+    document_hash: "c".repeat(64),
+    amount_usd: 1260,
+    reason_code: "ALERT_VENDOR_DRIFT",
+    explanation: "motivo",
+    created_at: "2026-10-17T04:00:00Z",
+    human_approved: null,
+  };
+  assert.equal(AuditRecord.safeParse({ ...base, verdict: "PAGAR" }).success, true);
+  assert.equal(AuditRecord.safeParse({ ...base, verdict: "APROBADO" }).success, false);
+});
+
+test("human_approved es tri-estado: null antes de que un humano responda", () => {
+  const base = {
+    id: "d3",
+    invoice: factura,
+    document_hash: "c".repeat(64),
+    amount_usd: 1260,
+    verdict: "ESCALAR",
+    reason_code: "ALERT_VENDOR_DRIFT",
+    explanation: "motivo",
+    created_at: "2026-10-17T04:00:00Z",
+  };
+  for (const v of [null, true, false]) {
+    assert.equal(AuditRecord.safeParse({ ...base, human_approved: v }).success, true, String(v));
+  }
+  // Sin la clave tiene que fallar: "nadie respondio" y "no se consulto el campo" no son lo
+  // mismo, y un `.default(null)` taparia la diferencia.
+  assert.equal(AuditRecord.safeParse(base).success, false);
+});
+
+test("el hash de documento se exige en sha-256 hex", () => {
+  const base = {
+    id: "d4",
+    invoice: factura,
+    amount_usd: 1260,
+    verdict: "ESCALAR",
+    reason_code: "ALERT_VENDOR_DRIFT",
+    explanation: "motivo",
+    created_at: "2026-10-17T04:00:00Z",
+    human_approved: null,
+  };
+  assert.equal(AuditRecord.safeParse({ ...base, document_hash: "f".repeat(64) }).success, true);
+  assert.equal(AuditRecord.safeParse({ ...base, document_hash: "no-es-un-hash" }).success, false);
+  assert.equal(AuditRecord.safeParse({ ...base, document_hash: "F".repeat(64) }).success, false);
 });
