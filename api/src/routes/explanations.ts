@@ -22,11 +22,13 @@ export async function registerExplanationRoutes(app: FastifyInstance): Promise<v
         });
         return reply.code(result.cached ? 200 : 201).send(result);
       } catch (error) {
+        request.log.error({ err: error }, "ai explanation failed");
         if (error instanceof ExplanationNotConfiguredError) {
           return reply.code(503).send({ error: "explanation_not_configured" });
         }
         if (error instanceof ExplanationUnavailableError) {
-          return reply.code(503).send({ error: "explanation_unavailable" });
+          const detail = (error as Error).message.slice(0, 300);
+          return reply.code(503).send({ error: "explanation_unavailable", detail });
         }
         if (error instanceof ExplanationInvalidError) {
           return reply.code(422).send({ error: "explanation_invalid" });
