@@ -1,0 +1,29 @@
+sequenceDiagram
+    autonumber
+    participant UI
+    participant API
+    participant PolicyStore
+    participant RuleEngine
+    participant InvoiceStore
+    participant Auditoría
+
+    UI->>API: PUT /policy (nueva definición)
+    API->>PolicyStore: validar definición de política
+
+    alt Definición inválida
+        PolicyStore-->>API: errores de validación
+        API-->>UI: 422 (no se crea versión)
+    else Definición válida
+        API->>PolicyStore: crear versión N+1 (inmutable)
+        PolicyStore-->>API: vN+1 vigente, vN intacta
+        API->>InvoiceStore: congelar pendientes de aprobación en su policy_version (vN)
+        InvoiceStore-->>API: pendientes congeladas
+        API->>Auditoría: registrar vN+1 + congelamiento de pendientes
+        API-->>UI: 200 {policy_version: N+1}
+
+        Note over RuleEngine,InvoiceStore: Facturas ya decididas: no se tocan. Pendientes de aprobación: congeladas en la versión con la que se escalaron (no se re-evalúan).
+        Note over RuleEngine,InvoiceStore: Decisión posterior (otra factura)
+        RuleEngine->>PolicyStore: GET /policy (vigente)
+        PolicyStore-->>RuleEngine: vN+1
+        RuleEngine->>InvoiceStore: persistir decisión con policy_version = N+1
+    end

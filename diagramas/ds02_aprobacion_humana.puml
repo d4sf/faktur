@@ -1,0 +1,62 @@
+@startuml DS-02 Aprobación humana
+title DS-02 — Escalado y aprobación humana (asíncrono)
+autonumber
+
+participant RuleEngine
+participant ApprovalStore
+participant Notifier
+participant Humano
+participant API
+participant Ledger
+participant Auditoría
+participant InvoiceStore
+
+RuleEngine -> ApprovalStore : alta de approval pendiente (invoice_id, motivo, policy_version)
+ApprovalStore --> RuleEngine : approval_id (estado pendiente)
+RuleEngine -> Notifier : notificar approval pendiente (approval_id, motivo)
+Notifier -> Humano : notificación (factura, monto, motivo)
+RuleEngine -> Auditoría : registrar ESCALAR + approval pendiente
+
+note over Humano, API : Espera asíncrona: el humano no participa de la transacción de decisión
+
+Humano -> API : POST /approvals/{id} (aprobar | negar, actor, motivo)
+API -> ApprovalStore : leer approval {id}
+ApprovalStore --> API : estado (pendiente | cerrado)
+API -> InvoiceStore : leer estado de la factura
+
+alt Approval ya cerrado (evento duplicado o doble clic)
+    API -> Auditoría : registrar evento idempotente (sin cambios)
+    API --> Humano : 200 (resultado ya aplicado, sin duplicar pago)
+else Factura FRENADA
+    API -> Auditoría : registrar rechazo 409 (actor, motivo, factura frenada)
+    API --> Humano : 409 (una factura FRENADA no se aprueba)
+else Approval pendiente y factura no frenada
+    note over API, InvoiceStore : Cierre atómico: Ledger + ApprovalStore + InvoiceStore + Auditoría en una transacción
+
+    alt Aprobado
+        API -> RuleEngine : validar regla de excepción (re-chequear reglas 1-3, policy_version del caso)
+        RuleEngine -> InvoiceStore : verificar datos críticos, duplicado y lista bloqueada
+        InvoiceStore --> RuleEngine : sin frenos duros
+
+        alt Regla de excepción no permitida
+            RuleEngine --> API : excepción rechazada
+            API -> Auditoría : registrar rechazo 409 (freno duro)
+            API --> Humano : 409 (la excepción no habilita PAGAR)
+        else Regla de excepción permitida
+            RuleEngine --> API : excepción permitida
+            API -> Ledger : asentar compromiso (invoice_id, monto) idempotente
+            Ledger --> API : compromiso asentado
+            API -> ApprovalStore : cerrar approval (aprobada, actor, timestamp, motivo)
+            API -> InvoiceStore : actualizar estado aprobada
+            API -> Auditoría : registrar cierre (aprobada, actor, timestamp, motivo, PAGAR)
+            API --> Humano : 200 PAGAR
+        end
+    else Negado
+        API -> ApprovalStore : cerrar approval (negada, actor, timestamp, motivo)
+        API -> InvoiceStore : actualizar estado negada (veredicto FRENAR)
+        API -> Auditoría : registrar cierre (negada, actor, timestamp, motivo, FRENAR)
+        API --> Humano : 200 FRENAR
+    end
+end
+
+@enduml

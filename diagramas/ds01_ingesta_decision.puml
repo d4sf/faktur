@@ -1,0 +1,73 @@
+@startuml DS-01 Ingesta, extracción y decisión
+title DS-01 — Ingesta, extracción y decisión
+autonumber
+
+participant UI
+participant API
+participant Extractor
+participant RuleEngine
+participant PolicyStore
+participant InvoiceStore
+participant Ledger
+participant Auditoría
+
+UI -> API : POST /invoices (archivo)
+API -> InvoiceStore : guardar factura (estado recibida, hash)
+API -> Auditoría : registrar ingesta
+API --> UI : 201 {invoice_id}
+
+UI -> API : POST /invoices/{id}/extract
+API -> Extractor : extraer documento
+Extractor --> API : JSON tipado + confianza por campo
+API -> Extractor : validar esquema (campos críticos obligatorios)
+Extractor --> API : esquema válido / inválido + campos ausentes
+
+API -> PolicyStore : GET /policy
+PolicyStore --> API : política vigente vN
+
+alt Esquema inválido o campo crítico ausente o ilegible
+    API -> RuleEngine : POST /invoices/{id}/decide (regla 1, vN)
+    RuleEngine -> InvoiceStore : persistir decisión FRENAR (regla 1, motivo, vN)
+    RuleEngine -> Auditoría : registrar FRENAR (regla 1, vN)
+    API --> UI : FRENAR (datos críticos)
+else Esquema válido y confianza baja
+    API -> RuleEngine : POST /invoices/{id}/decide (confianza < umbral, vN)
+    RuleEngine -> InvoiceStore : persistir decisión ESCALAR (confianza baja, motivo, vN)
+    RuleEngine -> Auditoría : registrar ESCALAR (confianza baja, vN)
+    API --> UI : ESCALAR (confianza baja)
+else Esquema válido y confianza suficiente
+    API -> InvoiceStore : guardar extracción validada (estado extraída)
+    API -> RuleEngine : POST /invoices/{id}/decide (datos, vN)
+    RuleEngine -> InvoiceStore : consultar hash y (proveedor, nro_factura)
+    InvoiceStore --> RuleEngine : duplicado / sin duplicado
+
+    alt Duplicado detectado
+        RuleEngine -> InvoiceStore : persistir decisión FRENAR (regla 2, motivo, vN)
+        RuleEngine -> Auditoría : registrar FRENAR (regla 2, vN)
+        note over RuleEngine, InvoiceStore : Sin notificación: no se crea approval y no se avisa a nadie
+        API --> UI : FRENAR (duplicado)
+    else Sin duplicado
+        RuleEngine -> PolicyStore : leer reglas de vN (beneficiarios, acuerdos, umbrales)
+        PolicyStore --> RuleEngine : reglas vN
+        RuleEngine -> Ledger : consultar comprometido del periodo
+        Ledger --> RuleEngine : saldo del periodo
+
+        alt Regla 3 (beneficiario bloqueado)
+            RuleEngine -> InvoiceStore : persistir decisión FRENAR (regla 3, motivo, vN)
+            RuleEngine -> Auditoría : registrar FRENAR (regla 3, vN)
+            API --> UI : FRENAR (beneficiario bloqueado)
+        else Regla 4, 5, 6 o 7 dispara
+            RuleEngine -> InvoiceStore : persistir decisión ESCALAR (regla disparada, motivo, vN)
+            RuleEngine -> Auditoría : registrar ESCALAR (regla disparada, vN)
+            API --> UI : ESCALAR (motivo)
+        else Todo conforme
+            RuleEngine -> Ledger : asentar compromiso (invoice_id, monto, periodo)
+            Ledger --> RuleEngine : compromiso asentado
+            RuleEngine -> InvoiceStore : persistir decisión PAGAR (regla 8, motivo, vN)
+            RuleEngine -> Auditoría : registrar PAGAR (regla 8, vN)
+            API --> UI : PAGAR (motivo)
+        end
+    end
+end
+
+@enduml

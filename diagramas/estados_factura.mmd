@@ -1,0 +1,30 @@
+stateDiagram-v2
+    state "recibida" as recibida
+    state "extraída" as extraida
+    state "decidida" as decidida
+    state "pendiente_aprobación" as pendiente_aprobacion
+    state "aprobada" as aprobada
+    state "negada" as negada
+    state "frenada" as frenada
+
+    [*] --> recibida : POST /invoices
+    recibida --> extraida : POST /invoices/{id}/extract (válida)
+    recibida --> frenada : extract inválido / dato crítico ausente
+    extraida --> decidida : POST /invoices/{id}/decide → PAGAR
+    extraida --> frenada : decide → FRENAR (reglas 1-3)
+    extraida --> pendiente_aprobacion : decide → ESCALAR (reglas 4-7)
+    decidida --> [*] : PAGAR (compromiso en Ledger)
+    pendiente_aprobacion --> aprobada : POST /approvals/{id} aprobado + regla de excepción permitida
+    pendiente_aprobacion --> negada : POST /approvals/{id} negado
+    pendiente_aprobacion --> frenada : regla de excepción no permitida (409)
+    aprobada --> [*]
+    negada --> [*]
+    frenada --> [*]
+
+    note right of frenada
+        Transiciones prohibidas:
+        frenada → aprobada (responde 409 y se audita)
+        negada → aprobada
+        aprobada → frenada
+        decidida → pendiente_aprobación
+    end note
