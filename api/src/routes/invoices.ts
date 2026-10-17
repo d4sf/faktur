@@ -9,6 +9,7 @@ import { getAuditRecord, listAuditRecords } from "../repositories/invoices.js";
 import { decideInvoice } from "../services/decide.js";
 import {
   ExtractionInvalidError,
+  ExtractionNotConfiguredError,
   ExtractionUnavailableError,
   extractInvoice,
   persistExtraction,
@@ -33,6 +34,9 @@ function body(result: IngestResult): Record<string, unknown> {
 
 function errorReply(error: unknown): { status: number; code: string } | null {
   if (error instanceof InvalidFileTypeError) return { status: 400, code: "invalid_file_type" };
+  if (error instanceof ExtractionNotConfiguredError) {
+    return { status: 503, code: "extraction_not_configured" };
+  }
   if (error instanceof ExtractionUnavailableError) {
     return { status: 503, code: "extraction_unavailable" };
   }

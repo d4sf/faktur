@@ -6,7 +6,7 @@ import { closeDb, loadDb } from "../db/index.js";
 import { createAttempt } from "../repositories/ingest.js";
 import {
   ExtractionInvalidError,
-  ExtractionUnavailableError,
+  ExtractionNotConfiguredError,
   extractInvoice,
   persistExtraction,
   type GeminiCaller,
@@ -66,14 +66,14 @@ test("una respuesta invalida no se reintenta ni se adivina", async () => {
   );
 });
 
-test("sin API key y sin caller responde extraction_unavailable, no un 500 opaco", async () => {
+test("sin API key y sin caller responde extraction_not_configured, no un 500 opaco", async () => {
   const previous = process.env.GEMINI_API_KEY;
   delete process.env.GEMINI_API_KEY;
 
   try {
     await assert.rejects(
       extractInvoice({ buffer: PDF, mimeType: "application/pdf" }),
-      ExtractionUnavailableError,
+      ExtractionNotConfiguredError,
     );
   } finally {
     if (previous !== undefined) process.env.GEMINI_API_KEY = previous;

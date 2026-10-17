@@ -24,6 +24,18 @@ export class ExtractionUnavailableError extends Error {
   }
 }
 
+/**
+ * Error específico de configuración: falta `GEMINI_API_KEY`. Se distingue del 503
+ * genérico para que la UI pueda decir qué hacer (editar `.env`) en vez de
+ * "servicio no disponible".
+ */
+export class ExtractionNotConfiguredError extends ExtractionUnavailableError {
+  constructor() {
+    super("missing_api_key");
+    this.name = "ExtractionNotConfiguredError";
+  }
+}
+
 export class ExtractionInvalidError extends Error {
   constructor(detail: string) {
     super(`extraction_invalid: ${detail}`);
@@ -61,7 +73,7 @@ async function defaultCaller(request: {
 }): Promise<unknown> {
   const apiKey = loadEnv().GEMINI_API_KEY;
   if (apiKey === undefined) {
-    throw new ExtractionUnavailableError("missing_api_key");
+    throw new ExtractionNotConfiguredError();
   }
 
   const { GoogleGenAI } = await import("@google/genai");
