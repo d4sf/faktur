@@ -109,6 +109,7 @@ export default function Subir() {
 
   /**
    * Dispara la simulación local para los casos de ejemplo (sin consumir Gemini ni API).
+   * Implementa cortocircuito determinista (short-circuit): se detiene inmediatamente en la regla que falla.
    */
   const startDemoProcessing = (invoice: InvoiceData) => {
     setCurrentInvoice(invoice);
@@ -117,14 +118,31 @@ export default function Subir() {
     setProcessingMessage("Extrayendo datos estructurados (Modo demostración)...");
     setEvaluatedRuleIndex(-1);
 
-    const stages = [
-      { progress: 25, msg: "Verificando estructura y folio...", ruleIdx: 0 },
-      { progress: 40, msg: "Consultando historial de duplicados...", ruleIdx: 1 },
-      { progress: 55, msg: "Verificando listas de control...", ruleIdx: 2 },
-      { progress: 70, msg: "Validando directorio de proveedores...", ruleIdx: 3 },
-      { progress: 85, msg: "Calculando presupuestos y desvíos...", ruleIdx: 5 },
-      { progress: 100, msg: "Evaluando umbrales de política...", ruleIdx: 7 },
+    // Si la factura infringe alguna regla, determinamos el índice donde debe detenerse (0 a 7)
+    const failingIdx =
+      invoice.verdict !== "PAGAR" && invoice.failingRuleId ? invoice.failingRuleId - 1 : -1;
+
+    const allRuleStages = [
+      { progress: 25, msg: "Verificando estructura y legibilidad (Regla 1)...", ruleIdx: 0 },
+      { progress: 38, msg: "Consultando historial de duplicados (Regla 2)...", ruleIdx: 1 },
+      {
+        progress: 52,
+        msg: "Verificando listas de beneficiarios bloqueados (Regla 3)...",
+        ruleIdx: 2,
+      },
+      { progress: 66, msg: "Validando directorio de proveedores (Regla 4)...", ruleIdx: 3 },
+      { progress: 78, msg: "Analizando desvíos sobre importe acordado (Regla 5)...", ruleIdx: 4 },
+      {
+        progress: 88,
+        msg: "Comprobando presupuesto disponible en categoría (Regla 6)...",
+        ruleIdx: 5,
+      },
+      { progress: 95, msg: "Evaluando límite de aprobación autónoma (Regla 7)...", ruleIdx: 6 },
+      { progress: 100, msg: "Verificando criterio de pase directo STP (Regla 8)...", ruleIdx: 7 },
     ];
+
+    // Cortocircuito: la evaluación solo avanza hasta la regla que detiene o escala el caso
+    const stages = failingIdx !== -1 ? allRuleStages.slice(0, failingIdx + 1) : allRuleStages;
 
     let currentStage = 0;
     const interval = setInterval(() => {
@@ -136,9 +154,17 @@ export default function Subir() {
         currentStage++;
       } else {
         clearInterval(interval);
+        setProcessingProgress(100);
+        setProcessingMessage(
+          invoice.verdict === "FRENAR"
+            ? "Evaluación detenida: Factura bloqueada por política."
+            : invoice.verdict === "ESCALAR"
+              ? "Evaluación detenida: Factura escalada para revisión humana."
+              : "Verificación completada: Factura aprobada para dispersión autónoma (STP).",
+        );
         setFlowState("COMPLETED");
       }
-    }, 380);
+    }, 450);
   };
 
   /**
@@ -160,18 +186,17 @@ export default function Subir() {
 
     setFlowState("PROCESSING");
     setProcessingProgress(20);
-    setProcessingMessage("Enviando archivo y extrayendo datos con Gemini...");
-    setEvaluatedRuleIndex(0);
+    setProcessingMessage("Enviando archivo y extrayendo campos fiscales con IA...");
+    setEvaluatedRuleIndex(-1);
 
     try {
       const formData = new FormData();
       formData.append("file", file);
 
-      // Progreso visual intermedio
+      // Progreso visual intermedio mientras responde Gemini
       setTimeout(() => {
         setProcessingProgress(50);
         setProcessingMessage("Extrayendo campos fiscales estructurados...");
-        setEvaluatedRuleIndex(2);
       }, 700);
 
       const response = await fetch("/api/invoices", {
@@ -185,9 +210,8 @@ export default function Subir() {
       }
 
       const result = await response.json();
-      setProcessingProgress(85);
+      setProcessingProgress(65);
       setProcessingMessage("Evaluando reglas deterministas de política...");
-      setEvaluatedRuleIndex(6);
 
       let invoiceNumber = "INV-" + Math.floor(1000 + Math.random() * 9000);
       let vendorName = "Proveedor identificado";
@@ -237,6 +261,9 @@ export default function Subir() {
         }
       }
 
+      const failingRuleId = determineFailingRuleId(result.reason_code);
+      const failingIdx = result.verdict !== "PAGAR" && failingRuleId ? failingRuleId - 1 : -1;
+
       const realInvoice: InvoiceData = {
         id: result.invoice_id || result.attempt_id || `inv-${Date.now()}`,
         fileName: file.name,
@@ -253,14 +280,36 @@ export default function Subir() {
         verdict: result.verdict || "ESCALAR",
         reason_code: result.reason_code || "EVALUADA",
         reason_description: result.explanation || "Evaluación determinista completada con éxito.",
-        failingRuleId: determineFailingRuleId(result.reason_code),
+        failingRuleId,
         approvalId,
       };
 
-      setProcessingProgress(100);
-      setEvaluatedRuleIndex(7);
       setCurrentInvoice(realInvoice);
-      setFlowState("COMPLETED");
+
+      // Reproducción secuencial de la evaluación con cortocircuito
+      const targetMaxIdx = failingIdx !== -1 ? failingIdx : 7;
+      let stepIdx = 0;
+      const stepInterval = setInterval(() => {
+        if (stepIdx <= targetMaxIdx) {
+          setEvaluatedRuleIndex(stepIdx);
+          setProcessingProgress(
+            Math.min(95, 65 + Math.round(((stepIdx + 1) / (targetMaxIdx + 1)) * 30)),
+          );
+          setProcessingMessage(`Evaluando políticas: Regla ${stepIdx + 1} de 8...`);
+          stepIdx++;
+        } else {
+          clearInterval(stepInterval);
+          setProcessingProgress(100);
+          setProcessingMessage(
+            realInvoice.verdict === "FRENAR"
+              ? "Evaluación detenida: Factura bloqueada por política."
+              : realInvoice.verdict === "ESCALAR"
+                ? "Evaluación detenida: Factura escalada para revisión humana."
+                : "Verificación completada: Factura aprobada para dispersión autónoma (STP).",
+          );
+          setFlowState("COMPLETED");
+        }
+      }, 250);
     } catch (err: unknown) {
       console.error("Error al procesar archivo en el backend:", err);
       const errMsg = err instanceof Error ? err.message : "Error de conexión";
