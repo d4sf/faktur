@@ -2,9 +2,12 @@ import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 
 import fastifyStatic from "@fastify/static";
+import multipart from "@fastify/multipart";
 import Fastify, { type FastifyInstance } from "fastify";
 
+import { registerInvoiceRoutes } from "./routes/invoices.js";
 import { registerReportRoutes } from "./routes/report.js";
+import { MAX_UPLOAD_BYTES } from "./services/ingest.js";
 
 export interface BuildAppOptions {
   webDist?: string;
@@ -21,7 +24,9 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
 
   app.get("/api/health", async () => ({ status: "ok" }));
 
+  await app.register(multipart, { limits: { fileSize: MAX_UPLOAD_BYTES, files: 1 } });
   await app.register(registerReportRoutes);
+  await app.register(registerInvoiceRoutes);
 
   const webDist = options.webDist ?? resolve(process.cwd(), "web/dist");
   if (existsSync(webDist)) {

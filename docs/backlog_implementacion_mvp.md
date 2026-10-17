@@ -411,7 +411,7 @@ El runner tiene que **afirmar que el conjunto de `reason_code` que produjo es ig
 
 ### Bloque D — Ingesta y extracción
 
-#### [ ] T9 · Upload multipart + SHA-256 + intentos de ingesta
+#### [x] T9 · Upload multipart + SHA-256 + intentos de ingesta
 
 **Síntesis.** `POST /api/invoices` acepta uno o varios archivos (PDF, imagen, JSON mock), calcula el SHA-256 del buffer al recibirlo **antes** de cualquier llamada al LLM, y siempre escribe una fila en `ingest_attempts`. Si el hash no existe, crea la factura canónica en `invoices` y enlaza el intento. Si ya existe, **no** crea factura: marca el intento como `DUPLICADA`, lo enlaza a la canónica, produce la decisión FRENAR anclada al intento y responde con el veredicto, no con un error. Límite de tamaño y validación de MIME.
 
