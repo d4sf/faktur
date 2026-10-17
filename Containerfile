@@ -43,6 +43,7 @@ COPY --from=build --chown=app:app /app/package.json ./package.json
 COPY --from=build --chown=app:app /app/node_modules ./node_modules
 COPY --from=build --chown=app:app /app/api/package.json ./api/package.json
 COPY --from=build --chown=app:app /app/api/dist ./api/dist
+COPY --from=build --chown=app:app /app/specs ./specs
 COPY --from=build --chown=app:app /app/web/dist ./web/dist
 COPY --chmod=755 scripts/entrypoint.sh /app/scripts/entrypoint.sh
 
