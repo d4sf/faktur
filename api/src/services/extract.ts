@@ -1,6 +1,12 @@
+import { randomUUID } from "node:crypto";
+
+import type Database from "better-sqlite3";
+
 import { loadEnv } from "../config/env.js";
-import { ExtractedInvoice } from "../domain/extraction.js";
+import { ExtractedInvoice, globalConfidence } from "../domain/extraction.js";
 import { toGeminiResponseSchema } from "../domain/geminiSchema.js";
+import { getAttempt, linkAttemptToInvoice } from "../repositories/ingest.js";
+import { round2, toUsd } from "./fx.js";
 import { InvalidFileTypeError } from "./ingest.js";
 
 export type GeminiCaller = (request: {
@@ -119,4 +125,73 @@ export async function extractInvoice(
     throw new ExtractionInvalidError(result.error.issues.map((i) => i.message).join("; "));
   }
   return result.data;
+}
+
+/**
+ * Persiste la extracción completa en una transacción: la factura nace en `EXTRAIDA` con la
+ * tasa congelada, sus `line_items` y el intento enlazado. `invoices` exige todos los NOT NULL,
+ * así que una fila parcial no puede existir.
+ */
+export function persistExtraction(
+  attemptId: string,
+  extracted: ExtractedInvoice,
+  db: Database.Database,
+): { invoice_id: string } {
+  return db.transaction(() => {
+    const attempt = getAttempt(attemptId);
+    if (attempt === null) throw new Error("attempt_not_found");
+    if (attempt.invoice_id !== null) throw new Error("already_processed");
+
+    const vendor = db
+      .prepare("SELECT id FROM vendors WHERE tax_id = ?")
+      .get(extracted.vendor_tax_id ?? "") as { id: string } | undefined;
+
+    const { total_usd, fx_rate_used } = toUsd(extracted.total_amount, extracted.currency, db);
+    const invoiceId = randomUUID();
+    const confidence = globalConfidence(extracted.field_confidence);
+
+    db.prepare(
+      `INSERT INTO invoices (id, vendor_id, invoice_number, status, file_name, mime_type,
+        file_hash, issue_date, due_date, currency, subtotal, tax_amount, total_amount,
+        fx_rate_used, total_usd, extraction_confidence, extraction_json, ingested_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+    ).run(
+      invoiceId,
+      vendor?.id ?? null,
+      extracted.invoice_number,
+      "EXTRAIDA",
+      attempt.file_name,
+      attempt.mime_type,
+      attempt.file_hash,
+      extracted.issue_date ?? null,
+      extracted.due_date ?? null,
+      extracted.currency,
+      extracted.subtotal === undefined ? null : round2(extracted.subtotal),
+      extracted.tax_amount === undefined ? null : round2(extracted.tax_amount),
+      round2(extracted.total_amount),
+      fx_rate_used,
+      total_usd,
+      confidence ?? null,
+      JSON.stringify(extracted),
+      new Date().toISOString(),
+    );
+
+    const insertItem = db.prepare(
+      `INSERT INTO line_items (id, invoice_id, description, quantity, unit_price, total)
+       VALUES (?,?,?,?,?,?)`,
+    );
+    for (const item of extracted.line_items ?? []) {
+      insertItem.run(
+        randomUUID(),
+        invoiceId,
+        item.description,
+        item.quantity,
+        round2(item.unit_price),
+        round2(item.total),
+      );
+    }
+
+    linkAttemptToInvoice(attemptId, invoiceId);
+    return { invoice_id: invoiceId };
+  })();
 }

@@ -5,6 +5,7 @@ import fastifyStatic from "@fastify/static";
 import multipart from "@fastify/multipart";
 import Fastify, { type FastifyInstance } from "fastify";
 
+import { registerIngestRoutes } from "./routes/ingest.js";
 import { registerInvoiceRoutes } from "./routes/invoices.js";
 import { registerReportRoutes } from "./routes/report.js";
 import { MAX_UPLOAD_BYTES } from "./services/ingest.js";
@@ -27,6 +28,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   await app.register(multipart, { limits: { fileSize: MAX_UPLOAD_BYTES, files: 1 } });
   await app.register(registerReportRoutes);
   await app.register(registerInvoiceRoutes);
+  await app.register(registerIngestRoutes);
 
   const webDist = options.webDist ?? resolve(process.cwd(), "web/dist");
   if (existsSync(webDist)) {

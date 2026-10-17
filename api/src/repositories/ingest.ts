@@ -70,3 +70,9 @@ export function getAttempt(id: string): IngestAttemptRow | null {
   const row = getDb().prepare(`SELECT ${COLUMNS} FROM ingest_attempts WHERE id = ?`).get(id);
   return (row as IngestAttemptRow | undefined) ?? null;
 }
+
+export function updateAttemptStatus(attemptId: string, status: AttemptStatus): void {
+  getDb()
+    .prepare("UPDATE ingest_attempts SET attempt_status = ? WHERE id = ?")
+    .run(status, attemptId);
+}

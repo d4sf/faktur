@@ -429,7 +429,7 @@ El runner tiene que **afirmar que el conjunto de `reason_code` que produjo es ig
 
 ---
 
-#### [ ] T10 · Cliente Gemini con salida estructurada
+#### [x] T10 · Cliente Gemini con salida estructurada
 
 **Síntesis.** `POST /api/invoices/{id}/extract` manda el archivo a `gemini-3.8-flash` con salida JSON por schema, `temperature=0` y prompt que normaliza fechas a `YYYY-MM-DD`. Traduce el schema de Zod de T2 al dialecto `response_schema` de esa generación con `z.toJSONSchema` (T2 lo expone listo en `geminiSchema.ts`, sin `$schema`, `$defs` ni `$ref` de reutilización, que la API no acepta). Valida la respuesta con Zod. Si la validación falla, no reintenta a ciegas: la factura queda frenada. Calcula `extraction_confidence` y guarda el JSON crudo para re-auditar sin volver a llamar al modelo. Fallback a JSON manual en pantalla si el PDF no se extrae.
 
@@ -445,7 +445,7 @@ El runner tiene que **afirmar que el conjunto de `reason_code` que produjo es ig
 
 ---
 
-#### [ ] T11 · Normalización de moneda a USD y persistencia
+#### [x] T11 · Normalización de moneda a USD y persistencia
 
 **Síntesis.** Aplica `fx_rates` (USD 1.0, MXN 0.055, COP 0.00024, EUR 1.08) para calcular `total_usd` a 2 decimales, congela `fx_rate_used` en la fila y escribe los `line_items`. Si la moneda no está en la tabla o no está en `allowed_currencies`, FRENAR (RI-7).
 
