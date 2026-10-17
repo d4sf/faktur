@@ -233,9 +233,11 @@ El cierre es atómico: ledger + aprobación + factura + auditoría en una transa
 
 Cada tarea lleva: qué hace, por qué, traza, dependencias y criterio de "hecho". El commit va en inglés, Conventional Commits.
 
+El prefijo `[x]` / `[ ]` marca si la tarea está implementada y mergeada. Las tareas hechas hasta la fecha: T1, T2, T3, T4, T5, T26 (y el scaffold de CI en una rama aparte).
+
 ### Bloque A — Cimientos
 
-#### T1 · Dependencias, variables de entorno y persistencia de datos
+#### [x] T1 · Dependencias, variables de entorno y persistencia de datos
 
 **Síntesis.** Agrega al workspace: `zod` (el Pydantic del PRD), `@google/genai`, `@fastify/multipart` y `better-sqlite3`. **`@fastify/cors` queda fuera**: en este stack nunca hay cross-origin, porque Vite proxea `/api` en dev y Fastify sirve el SPA del mismo origen en producción. Crea solo `api/src/config/`; `domain/`, `db/`, `llm/` y `routes/` aparecen en la tarea que los llena, porque git no trackea directorios vacíos y `.gitkeep` sería andamiaje muerto. Centraliza env en un módulo tipado que valida con Zod y falla al arrancar nombrando **todas** las variables malas en un solo mensaje: `GEMINI_API_KEY`, `GEMINI_MODEL`, `DATA_DIR`, `PORT`, `WEB_DIST`, `NOTIFIER_WEBHOOK_URL`. Resuelve el almacenamiento con bind mount a `./data` en `compose.prod.yml` y un `scripts/entrypoint.sh` que arregla el owner de `/app/data` y baja de root a `app` con `su-exec`.
 
@@ -258,7 +260,7 @@ Cada tarea lleva: qué hace, por qué, traza, dependencias y criterio de "hecho"
 
 ---
 
-#### T2 · Esquemas Zod y `specs/policy.spec.json` v1 congelado
+#### [x] T2 · Esquemas Zod y `specs/policy.spec.json` v1 congelado
 
 **Síntesis.** Escribe el contrato de datos con Zod: `ExtractedInvoice` (PRD RF-2.2), `Verdict`, `ReasonCode` (diez, ver §5), `AuditRecord`, `Policy`, `Approval`, `InvoiceStatus`, `IngestAttempt`. Congela `specs/policy.spec.json` v1 con los defaults del PRD RF-4 (umbral `1000.0`, presupuesto `5000.0`, drift `1.40`, monedas `USD/MXN/COP/EUR`, budgets por categoría) y **la tabla de precedencia de §5 escrita como datos**, no como prosa.
 
@@ -274,7 +276,7 @@ Cada tarea lleva: qué hace, por qué, traza, dependencias y criterio de "hecho"
 
 ---
 
-#### T3 · SQLite: DDL, reglas de integridad, 8 proveedores y budgets
+#### [x] T3 · SQLite: DDL, reglas de integridad, 8 proveedores y budgets
 
 **Síntesis.** Traduce el ER a `CREATE TABLE` y suma `ingest_attempts` y `categories`: `categories`, `vendors`, `invoices`, `line_items`, `policies`, `policy_category_budgets`, `fx_rates`, `decisions`, `approvals`, `ledger_entries`, `notifications`, `ingest_attempts`. `categories` es fuente de verdad de las 6 categorías (RI-12); tanto `vendors.category` como `policy_category_budgets.category` la referencian. Con `PRAGMA foreign_keys=ON`, `CHECK` sobre los enumerados, los `UNIQUE` de S5, y los índices del ER §7. `invoices.status` usa el enum de siete estados de S17. `vendors` suma `category` (S20). `decisions` suma `ingest_attempt_id` nullable para anclar la decisión de un reenvío duplicado. Seed de los 8 proveedores de §6.1, `policies v1` con sus budgets por categoría, y 4 `fx_rates`.
 
@@ -303,7 +305,7 @@ Queda el plan B si el driver molestara: `node:sqlite` funciona sin flag en Node 
 
 ---
 
-#### T26 · Scaffold web: Tailwind, Shadcn, router y Bento Grid
+#### [x] T26 · Scaffold web: Tailwind, Shadcn, router y Bento Grid
 
 **Síntesis.** Monta la base de UI que el PRD §5 exige: Tailwind, Shadcn/ui, un router con las rutas del mapa de navegación (tablero, subir, factura, reglas, bandeja, aprobación, reporte) y el layout Bento Grid responsive de 1 a 4 columnas, en dark theme neutro. Badges con ícono + texto, nunca solo color.
 
@@ -321,7 +323,7 @@ Queda el plan B si el driver molestara: `node:sqlite` funciona sin flag en Node 
 
 ### Bloque B — Fixtures
 
-#### T4 · `fixtures/TC-*.json` + `ground_truth.json`
+#### [x] T4 · `fixtures/TC-*.json` + `ground_truth.json`
 
 **Síntesis.** Los 12 casos de las tablas de §6.1 y §6.2, con nombres ficticios obvios, más al menos un PDF con estética de escaneo. Cada fixture declara su veredicto esperado y, cuando aplica, su pre-estado (`preEstado` de ledger para TC-10, factura previa para TC-03) y su `field_confidence` (TC-12). `ground_truth.json` declara el veredicto esperado de cada uno.
 
@@ -343,7 +345,7 @@ El runner tiene que **afirmar que el conjunto de `reason_code` que produjo es ig
 
 > Bloque ya abierto en `odd/tasks/faktur-mvp.md` como `T1..T4`. Las tareas conservan su alcance; la numeración se renumera para meterlas en el backlog completo.
 
-#### T5 · Motor de reglas como función pura
+#### [x] T5 · Motor de reglas como función pura
 
 **Síntesis.** Implementa la tabla de precedencia de §5 como `evaluate(invoice, policy, context) → { verdict, reason_code, explanation }`. Se evalúa de arriba hacia abajo y **el primero que dispara gana**. El `explanation` se redacta en lenguaje natural con los números concretos ("Acordado $480, facturado $1,200 (+150%)"), nunca como código de error. Sin I/O, sin base, sin red.
 
@@ -359,7 +361,7 @@ El runner tiene que **afirmar que el conjunto de `reason_code` que produjo es ig
 
 ---
 
-#### T6 · Runner del motor contra `ground_truth.json`, sin LLM
+#### [ ] T6 · Runner del motor contra `ground_truth.json`, sin LLM
 
 **Síntesis.** Script de test que carga los 11 fixtures, arma el contexto de cada uno (incluyendo pre-estados), corre el motor en memoria y compara contra `ground_truth.json`. Reporta el score y el primer veredicto que difiera, nombrando la regla que se Disparó. Cada `.test.ts` nuevo se agrega a mano al script `test` de `api/package.json`, que está hardcodeado a un solo archivo.
 
@@ -375,7 +377,7 @@ El runner tiene que **afirmar que el conjunto de `reason_code` que produjo es ig
 
 ---
 
-#### T7 · `policy_version` congelada en cada decisión
+#### [ ] T7 · `policy_version` congelada en cada decisión
 
 **Síntesis.** Al escribir una decisión se guarda la versión de política usada, el monto evaluado, `decided_by` y timestamp. Cambiar la política no reescribe las decisiones viejas: una re-evaluación crea una fila nueva con la versión nueva.
 
@@ -391,7 +393,7 @@ El runner tiene que **afirmar que el conjunto de `reason_code` que produjo es ig
 
 ---
 
-#### T8 · Reporte CSV reproducible y su ruta HTTP
+#### [ ] T8 · Reporte CSV reproducible y su ruta HTTP
 
 **Síntesis.** Genera el CSV con las columnas exactas del MVP §7: `invoice_id, archivo, proveedor, beneficiario_id, monto, moneda, fecha_vencimiento, estado, regla_disparada, motivo_legible, requirio_humano, decidido_por, policy_version, timestamp`. Sale de un JOIN de `invoices + ingest_attempts + vendors + decisions + approvals + policies` (RI-10), con `estado` colapsando a PAGADA | FRENADA | ESCALADA | PENDIENTE desde `invoices.status`. **Una fila por decisión**, así que el reenvío duplicado aporta la suya con la fecha del registro original en el motivo. Se expone en `GET /api/report.csv`, generado al vuelo.
 
@@ -409,7 +411,7 @@ El runner tiene que **afirmar que el conjunto de `reason_code` que produjo es ig
 
 ### Bloque D — Ingesta y extracción
 
-#### T9 · Upload multipart + SHA-256 + intentos de ingesta
+#### [ ] T9 · Upload multipart + SHA-256 + intentos de ingesta
 
 **Síntesis.** `POST /api/invoices` acepta uno o varios archivos (PDF, imagen, JSON mock), calcula el SHA-256 del buffer al recibirlo **antes** de cualquier llamada al LLM, y siempre escribe una fila en `ingest_attempts`. Si el hash no existe, crea la factura canónica en `invoices` y enlaza el intento. Si ya existe, **no** crea factura: marca el intento como `DUPLICADA`, lo enlaza a la canónica, produce la decisión FRENAR anclada al intento y responde con el veredicto, no con un error. Límite de tamaño y validación de MIME.
 
@@ -427,7 +429,7 @@ El runner tiene que **afirmar que el conjunto de `reason_code` que produjo es ig
 
 ---
 
-#### T10 · Cliente Gemini con salida estructurada
+#### [ ] T10 · Cliente Gemini con salida estructurada
 
 **Síntesis.** `POST /api/invoices/{id}/extract` manda el archivo a `gemini-3.8-flash` con salida JSON por schema, `temperature=0` y prompt que normaliza fechas a `YYYY-MM-DD`. Traduce el schema de Zod de T2 al dialecto `response_schema` de esa generación con `z.toJSONSchema` (T2 lo expone listo en `geminiSchema.ts`, sin `$schema`, `$defs` ni `$ref` de reutilización, que la API no acepta). Valida la respuesta con Zod. Si la validación falla, no reintenta a ciegas: la factura queda frenada. Calcula `extraction_confidence` y guarda el JSON crudo para re-auditar sin volver a llamar al modelo. Fallback a JSON manual en pantalla si el PDF no se extrae.
 
@@ -443,7 +445,7 @@ El runner tiene que **afirmar que el conjunto de `reason_code` que produjo es ig
 
 ---
 
-#### T11 · Normalización de moneda a USD y persistencia
+#### [ ] T11 · Normalización de moneda a USD y persistencia
 
 **Síntesis.** Aplica `fx_rates` (USD 1.0, MXN 0.055, COP 0.00024, EUR 1.08) para calcular `total_usd` a 2 decimales, congela `fx_rate_used` en la fila y escribe los `line_items`. Si la moneda no está en la tabla o no está en `allowed_currencies`, FRENAR (RI-7).
 
@@ -461,7 +463,7 @@ El runner tiene que **afirmar que el conjunto de `reason_code` que produjo es ig
 
 ### Bloque E — API de decisión
 
-#### T12 · `POST /api/invoices`, `/extract`, `/decide`
+#### [ ] T12 · `POST /api/invoices`, `/extract`, `/decide`
 
 **Síntesis.** Los tres endpoints del MVP §3: subida (estado `recibida`), extracción tipada con confianza por campo, y decisión. `/decide` corre T5 contra la política activa, persiste la decisión con su `policy_version`, mueve `invoices.status` según el veredicto y, si es ESCALAR, abre la fila en `approvals`.
 
@@ -477,7 +479,7 @@ El runner tiene que **afirmar que el conjunto de `reason_code` que produjo es ig
 
 ---
 
-#### T13 · `GET /api/invoices` y detalle
+#### [ ] T13 · `GET /api/invoices` y detalle
 
 **Síntesis.** Listado con estado, monto original y USD, regla disparada y motivo, para alimentar la tabla y el export. Filtros por estado y paginación simple. Más un detalle por factura con su línea de tiempo de auditoría: ingesta, extracción, decisión y resolución humana.
 
@@ -493,7 +495,7 @@ El runner tiene que **afirmar que el conjunto de `reason_code` que produjo es ig
 
 ---
 
-#### T14 · `GET /api/policy`, `PUT /api/policy` y preview
+#### [ ] T14 · `GET /api/policy`, `PUT /api/policy` y preview
 
 **Síntesis.** Lee la política vigente con sus budgets por categoría. Un `PUT` valida la definición: si es inválida responde 422 sin crear versión; si es válida crea la N+1 inmutable, desactiva la anterior, guarda `created_by` y `comment`, y **congela las aprobaciones pendientes en la versión con la que se escalaron**. Un `POST /api/policy/preview` evalúa una política hipotética contra las facturas existentes **sin persistir nada**, para la simulación en vivo.
 
@@ -509,7 +511,7 @@ El runner tiene que **afirmar que el conjunto de `reason_code` que produjo es ig
 
 ---
 
-#### T24 · Seed del set demo en la base
+#### [ ] T24 · Seed del set demo en la base
 
 **Síntesis.** Script que carga los 11 fixtures del Bloque B contra una base limpia, con los 8 proveedores, `policies v1` con budgets por categoría y `fx_rates`, y deja la base en un estado coherente para la demo y para el cierre.
 
@@ -525,7 +527,7 @@ El runner tiene que **afirmar que el conjunto de `reason_code` que produjo es ig
 
 ---
 
-#### T25 · Métricas: `GET /api/audit-trail` y touchless rate
+#### [ ] T25 · Métricas: `GET /api/audit-trail` y touchless rate
 
 **Síntesis.** Endpoint que devuelve `{ metrics: { budget_remaining, threshold_limit, total_processed, touchless_rate }, records[] }`. `touchless_rate = PAGAR / total * 100` a un decimal, 0 si está vacío. Alimenta la card Health & ROI del tablero.
 
@@ -543,7 +545,7 @@ El runner tiene que **afirmar que el conjunto de `reason_code` que produjo es ig
 
 ### Bloque F — Human-in-the-loop
 
-#### T16 · Ledger: solo PAGAR imputa
+#### [ ] T16 · Ledger: solo PAGAR imputa
 
 **Síntesis.** `ledger_entries` recibe una fila únicamente cuando el veredicto final es PAGAR, con `amount_usd` positivo, `policy_version` copiada y `entry_type = COMPROMISO_PAGAR`. FRENAR y ESCALAR-pendiente no mueven saldo. El asiento es idempotente y ocurre dentro de la transacción que cierra la aprobación.
 
@@ -559,7 +561,7 @@ El runner tiene que **afirmar que el conjunto de `reason_code` que produjo es ig
 
 ---
 
-#### T15 · Bandeja de aprobaciones y regla de excepción
+#### [ ] T15 · Bandeja de aprobaciones y regla de excepción
 
 **Síntesis.** `GET /api/approvals?status=pendiente` lista los ESCALAR con emisor, monto, regla disparada y explicación. `POST /api/approvals/{id}` resuelve: al aprobar, re-chequea las reglas 1-3 con la `policy_version` del caso; si alguna dispara, responde 409 y no habilita PAGAR. Aprobado con excepción permitida → PAGAR; negado → la factura queda frenada. Aprobación ya cerrada → 200 idempotente sin duplicar el pago. Factura frenada → 409. Todo el cierre atómico.
 
@@ -577,7 +579,7 @@ El runner tiene que **afirmar que el conjunto de `reason_code` que produjo es ig
 
 ### Bloque G — Notificación (deseable, no bloqueante)
 
-#### T17 · Interfaz `Notifier` con `ConsoleNotifier`
+#### [ ] T17 · Interfaz `Notifier` con `ConsoleNotifier`
 
 **Síntesis.** Interfaz `Notifier` con dos implementaciones: `ConsoleNotifier` (tarjeta estilo Slack renderizada en la propia pantalla, 0 cuentas y 0 riesgo) y `WebhookNotifier` (URL por variable de entorno, sirve para Slack, Discord o un webhook de prueba). Persiste el aviso en `notifications` como outbox.
 
@@ -597,7 +599,7 @@ El runner tiene que **afirmar que el conjunto de `reason_code` que produjo es ig
 
 > El MVP §14 pone la UI en el bloque 2. Solo arranca cuando la ruta completa ya funciona.
 
-#### T18 · Dropzone con estado de carga
+#### [ ] T18 · Dropzone con estado de carga
 
 **Síntesis.** Zona de arrastrar y soltar que acepta PDF, imagen y JSON mock, con preview, mensaje "Analizando documento…" y bloqueo de doble envío. Muestra el badge 🟢/🔴/🟡 al terminar. Un reenvío duplicado muestra el FRENAR con su motivo, no un error.
 
@@ -613,7 +615,7 @@ El runner tiene que **afirmar que el conjunto de `reason_code` que produjo es ig
 
 ---
 
-#### T19 · Tabla de decisiones, detalle de factura y card de ROI
+#### [ ] T19 · Tabla de decisiones, detalle de factura y card de ROI
 
 **Síntesis.** Tabla de auditoría con ID/emisor, monto original, monto USD, estado con badge (ícono + texto, no solo color), `reason_code` + explicación legible y acción "Revisar" solo si está en aprobación. Orden LIFO. Vista de detalle con la línea de tiempo de la factura, como inspector lateral. Card Health & ROI con touchless rate, presupuesto restante y total procesadas.
 
@@ -629,7 +631,7 @@ El runner tiene que **afirmar que el conjunto de `reason_code` que produjo es ig
 
 ---
 
-#### T20 · Editor de reglas con simulación en vivo
+#### [ ] T20 · Editor de reglas con simulación en vivo
 
 **Síntesis.** Panel Bento para mover umbral, presupuesto y budgets por categoría, con simulación previa contra `POST /api/policy/preview`: al bajar el slider, las facturas que antes eran PAGAR se muestran como ESCALAR **en la simulación**, sin tocar las decisiones ya tomadas. Botón para volver a la versión base.
 
@@ -645,7 +647,7 @@ El runner tiene que **afirmar que el conjunto de `reason_code` que produjo es ig
 
 ---
 
-#### T21 · Bandeja HITL
+#### [ ] T21 · Bandeja HITL
 
 **Síntesis.** Vista de pendientes con emisor, importe USD, regla disparada y explicación, y los botones `[Autorizar Pago]` y `[Rechazar]` con comentario. Al resolver, la fila sale de la bandeja y la tabla refleja el estado. Doble clic deshabilitado, y el 409 de la regla de excepción se muestra como tal.
 
@@ -661,7 +663,7 @@ El runner tiene que **afirmar que el conjunto de `reason_code` que produjo es ig
 
 ---
 
-#### T22 · Descarga del CSV
+#### [ ] T22 · Descarga del CSV
 
 **Síntesis.** Botón que baja el reporte de T8, con los 14 campos del MVP §7 y el `motivo_legible` en lenguaje natural.
 
@@ -679,7 +681,7 @@ El runner tiene que **afirmar que el conjunto de `reason_code` que produjo es ig
 
 ### Bloque I — Cierre
 
-#### T23 · Smoke end-to-end y fail-closed verificado
+#### [ ] T23 · Smoke end-to-end y fail-closed verificado
 
 **Síntesis.** Recorre los 6 puntos del checklist de aceptación del MVP §12 con evidencia: subir → decisión sin tocar nada; mover el umbral y ver PAGAR convertirse en ESCALAR; duplicado FRENADO con motivo legible; escalada aprobada y registrada; factura con datos faltantes que **no** se paga; CSV con motivo en cada fila. Corre contra `DATA_DIR` temporal, no contra la base de demo.
 
