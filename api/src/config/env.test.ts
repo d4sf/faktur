@@ -59,3 +59,20 @@ test("requireGeminiKey lanza nombrando la variable", () => {
 test("requireGeminiKey devuelve la llave cuando está", () => {
   assert.equal(requireGeminiKey(loadEnv({ GEMINI_API_KEY: "k" })), "k");
 });
+
+test("ALLOW_DB_RESET apagado por default y parsea true/false", () => {
+  assert.equal(loadEnv({}).ALLOW_DB_RESET, false);
+  assert.equal(loadEnv({ ALLOW_DB_RESET: "true" }).ALLOW_DB_RESET, true);
+  assert.equal(loadEnv({ ALLOW_DB_RESET: "false" }).ALLOW_DB_RESET, false);
+});
+
+test("ALLOW_DB_RESET fuera del enum lanza", () => {
+  assert.throws(() => loadEnv({ ALLOW_DB_RESET: "si" }), /ALLOW_DB_RESET/);
+});
+
+test("ADMIN_TOKEN definido se conserva y vacío queda undefined", () => {
+  assert.equal(loadEnv({ ADMIN_TOKEN: "s3cret" }).ADMIN_TOKEN, "s3cret");
+  assert.equal(loadEnv({ ADMIN_TOKEN: "" }).ADMIN_TOKEN, undefined);
+  assert.equal(loadEnv({ ADMIN_TOKEN: "   " }).ADMIN_TOKEN, undefined);
+  assert.equal(loadEnv({}).ADMIN_TOKEN, undefined);
+});

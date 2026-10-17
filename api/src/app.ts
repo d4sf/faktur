@@ -6,6 +6,7 @@ import multipart from "@fastify/multipart";
 import Fastify, { type FastifyInstance } from "fastify";
 
 import { registerApprovalRoutes } from "./routes/approvals.js";
+import { registerAdminRoutes } from "./routes/admin.js";
 import { registerAuditRoutes } from "./routes/audit.js";
 import { registerIngestRoutes } from "./routes/ingest.js";
 import { registerInvoiceRoutes } from "./routes/invoices.js";
@@ -16,6 +17,7 @@ import { MAX_UPLOAD_BYTES } from "./services/ingest.js";
 export interface BuildAppOptions {
   webDist?: string;
   logLevel?: string;
+  admin?: { enabled: boolean; token?: string; production: boolean };
 }
 
 /**
@@ -47,6 +49,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   await app.register(registerApprovalRoutes);
   await app.register(registerAuditRoutes);
   await app.register(registerPolicyRoutes);
+  await app.register(registerAdminRoutes, options.admin ?? { enabled: false, production: false });
 
   const webDist = options.webDist ?? resolve(process.cwd(), "web/dist");
   const hasWebDist = existsSync(webDist);

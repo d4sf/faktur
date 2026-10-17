@@ -9,7 +9,7 @@ import { z } from "zod";
  * vacía y `.url()` revienta el arranque por una variable que el usuario cree
  * apagada.
  */
-const BLANK_IS_UNDEFINED = ["GEMINI_API_KEY", "NOTIFIER_WEBHOOK_URL"] as const;
+const BLANK_IS_UNDEFINED = ["GEMINI_API_KEY", "NOTIFIER_WEBHOOK_URL", "ADMIN_TOKEN"] as const;
 
 const schema = z.object({
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
@@ -20,6 +20,11 @@ const schema = z.object({
   GEMINI_MODEL: z.string().min(1).default("gemini-3.8-flash"),
   GEMINI_API_KEY: z.string().min(1).optional(),
   NOTIFIER_WEBHOOK_URL: z.string().url().optional(),
+  ALLOW_DB_RESET: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((value) => value === "true"),
+  ADMIN_TOKEN: z.string().min(1).optional(),
 });
 
 export type Env = z.infer<typeof schema>;

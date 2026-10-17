@@ -10,7 +10,15 @@ const env = loadEnv();
 ensureDataDir(env.DATA_DIR);
 loadDb(join(env.DATA_DIR, "faktur.db"));
 
-const app = await buildApp({ webDist: env.WEB_DIST, logLevel: env.LOG_LEVEL });
+const app = await buildApp({
+  webDist: env.WEB_DIST,
+  logLevel: env.LOG_LEVEL,
+  admin: {
+    enabled: env.ALLOW_DB_RESET,
+    token: env.ADMIN_TOKEN,
+    production: env.NODE_ENV === "production",
+  },
+});
 
 async function shutdown(): Promise<void> {
   await app.close();
