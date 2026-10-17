@@ -36,7 +36,7 @@
 | MVP §4 `ledger` | Saldo del periodo | `ledger_entries` |
 | MVP §4 `policy` + PRD RF-6.2 | Reglas configurables versionadas | `policies` + `policy_category_budgets` |
 | PRD RF-6.6 + MVP §8 | Notificación (tarjeta Slack / webhook / outbox) | `notifications` |
-| MVP §7 TC-01..TC-11 | Set demo + ground truth | seed externo, no entidad operativa |
+| MVP §7 TC-01..TC-12 | Set demo + ground truth | seed externo, no entidad operativa |
 
 ---
 
@@ -48,7 +48,7 @@ Representa la whitelist/blacklist, la categoría que gobierna el presupuesto y e
 - `id` — PK lógica (texto o entero autoincremental).
 - `tax_id` — RFC / NIT / RUT / EIN normalizado en mayúsculas, sin espacios. **UNIQUE, NOT NULL.** Es la clave de negocio. `Entidad Fantasma` (TC-08) falla aquí por ausencia.
 - `display_name` — razón social (`CloudServers Inc`, `DevStudio Latam`).
-- `category` — **nuevo.** Categoría de gasto que consume presupuesto: `Infraestructura`, `Diseño`, `Marketing`, `Legal`, `Software`, `Retail`. Es lo que permite que la regla 6 evalúe el saldo por categoría (decisión de producto Q3).
+- `category` — **nuevo.** Categoría de gasto que consume presupuesto: `Infraestructura`, `Diseno`, `Marketing`, `Legal`, `Software`, `Retail`. Es lo que permite que la regla 6 evalúe el saldo por categoría (decisión de producto Q3).
 - `status` — `ALLOWLISTED | BLOCKLISTED`. Un proveedor desconocido **no se persiste**: su veredicto es ESCALAR por ausencia (TC-05), no por fila.
 - `historical_avg_usd` — promedio histórico para drift. Ej. `CLOUD-SERVERS-INC 420`, `FREELANCE-DESIGN 480`.
 - `first_seen_at`, `last_seen_at` — para detectar proveedor nuevo.
@@ -58,10 +58,10 @@ Representa la whitelist/blacklist, la categoría que gobierna el presupuesto y e
 | `tax_id` | `display_name` | `category` | `status` | `historical_avg_usd` | Casos |
 |:---|:---|:---|:---|---:|:---|
 | `CLOUD-SERVERS-INC` | CloudServers Inc | Infraestructura | ALLOWLISTED | 420 | TC-01, TC-03 |
-| `DEVSTUDIO-LATAM` | DevStudio Latam | Diseño | ALLOWLISTED | 850 | TC-02, TC-10 |
+| `DEVSTUDIO-LATAM` | DevStudio Latam | Diseno | ALLOWLISTED | 850 | TC-02, TC-10 |
 | `GROWTH-AGENCY` | Growth Agency | Marketing | ALLOWLISTED | 3000 | TC-04 |
 | `LEGAL-GLOBAL` | Legal Global | Legal | ALLOWLISTED | 4000 | TC-06 |
-| `FREELANCE-DESIGN` | Freelance Design | Diseño | ALLOWLISTED | 480 | TC-07 |
+| `FREELANCE-DESIGN` | Freelance Design | Diseno | ALLOWLISTED | 480 | TC-07 |
 | `SAAS-TOOLS-LTD` | SaaS Tools Ltd | Software | ALLOWLISTED | 120 | TC-09 |
 | `AWS-AMAZON` | AWS Amazon | Infraestructura | ALLOWLISTED | 350 | sin caso propio |
 | `VENTA-POS-DUO` | Venta Pos Duo | Retail | **BLOCKLISTED** | 0 | TC-11 |
@@ -132,7 +132,7 @@ Cubre TC-10 ("deja la categoría en negativo") y la segunda mitad de la regla 6.
 - `category` — PK compuesta. Los mismos valores que `vendors.category`.
 - `budget_usd` — techo de la categoría en esa versión.
 
-**Seed v1:** `Infraestructura 1500`, `Diseño 1000`, `Marketing 2500`, `Legal 3000`, `Software 500`, `Retail 0`.
+**Seed v1:** `Infraestructura 1500`, `Diseno 1000`, `Marketing 4000`, `Legal 3000`, `Software 500`, `Retail 0`.
 
 ### 2.7 `fx_rates` — tasas de conversión
 Hace explícita la tabla que el blueprint tenía en memoria. Evita magia en código.
@@ -356,10 +356,11 @@ erDiagram
 | TC-06 (EUR + presupuesto) | `fx_rates(EUR 1.08)` → `total_usd 5400`; `5400 > 5000` → `decisions(ESCALAR, ALERT_BUDGET_OVERRUN)` | 6 |
 | TC-07 (drift) | `total_usd 1200 > historical_avg_usd 480 * 1.40` → `ESCALAR, ALERT_VENDOR_DRIFT` | 5 |
 | TC-08 (fantasma) | `vendor_id NULL` / `tax_id` vacío → `FRENAR, ERR_INVALID_DATA` | 1 |
-| TC-10 (categoría) | `vendors.category = Diseño`, saldo `1000 − 850 (TC-02) = 150`; `950 > 150` → `ESCALAR, ALERT_BUDGET_TIGHT` | 6 |
+| TC-10 (categoría) | `vendors.category = Diseno`, saldo `1000 − 850 (TC-02) = 150`; `950 > 150` → `ESCALAR, ALERT_BUDGET_TIGHT` | 6 |
 | TC-11 (bloqueado) | `vendors.status = BLOCKLISTED` → `FRENAR, ERR_BLACKLISTED_VENDOR` | 3 |
+| TC-12 (confianza baja) | `invoices.extraction_confidence 0.5 < min_extraction_confidence 0.7` → `ESCALAR, ALERT_LOW_CONFIDENCE`, con aprobación pendiente | 1 |
 
-**Verificado:** los 11 casos salen del mismo motor con las mismas 8 reglas, sin código especial por caso. El runner de `docs/backlog_implementacion_mvp.md` T6 es el que lo comprueba en cada corrida.
+**Verificado:** los 12 casos salen del mismo motor con las mismas 8 reglas, sin código especial por caso. El runner de `docs/backlog_implementacion_mvp.md` T6 es el que lo comprueba en cada corrida, y además afirma que el conjunto de `reason_code` que produjo es igual al enum completo: los diez tienen al menos un caso, y `ALERT_LOW_CONFIDENCE` lo tiene recién con TC-12.
 
 ---
 

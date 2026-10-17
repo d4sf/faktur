@@ -1,0 +1,19 @@
+{
+  "version": "v1",
+  "created_at": "2026-10-17",
+  "created_by": "KAY/O",
+  "comment": "Version 1 congelada del MVP. Cambiar un default es una version nueva, no un edit.",
+  "auto_approval_threshold_usd": 1000,
+  "monthly_budget_usd": 5000,
+  "vendor_drift_factor": 1.4,
+  "min_extraction_confidence": 0.7,
+  "allowed_currencies": ["USD", "MXN", "COP", "EUR"],
+  "category_budgets": {
+    "Infraestructura": 1500,
+    "Diseno": 1000,
+    "Marketing": 4000,
+    "Legal": 3000,
+    "Software": 500,
+    "Retail": 0
+  }
+}
