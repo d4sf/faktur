@@ -1,0 +1,12 @@
+{
+  "invoice_number": "INV-VPD-200",
+  "vendor_name": "Venta Pos Duo",
+  "vendor_tax_id": "VENTA-POS-DUO",
+  "issue_date": "2026-10-10",
+  "due_date": "2026-10-26",
+  "currency": "USD",
+  "subtotal": 190,
+  "tax_amount": 10,
+  "total_amount": 200,
+  "line_items": [{ "description": "POS terminal", "quantity": 1, "unit_price": 190, "total": 190 }]
+}

@@ -1,0 +1,14 @@
+{
+  "invoice_number": "INV-ST-120",
+  "vendor_name": "SaaS Tools Ltd",
+  "vendor_tax_id": "SAAS-TOOLS-LTD",
+  "issue_date": "2026-10-08",
+  "due_date": "2026-10-23",
+  "currency": "USD",
+  "subtotal": 110,
+  "tax_amount": 10,
+  "total_amount": 120,
+  "line_items": [
+    { "description": "SaaS subscription", "quantity": 1, "unit_price": 110, "total": 110 }
+  ]
+}

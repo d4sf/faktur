@@ -1,0 +1,14 @@
+{
+  "invoice_number": "INV-2024-089",
+  "vendor_name": "DevStudio Latam",
+  "vendor_tax_id": "DEVSTUDIO-LATAM",
+  "issue_date": "2026-10-02",
+  "due_date": "2026-10-20",
+  "currency": "USD",
+  "subtotal": 800,
+  "tax_amount": 50,
+  "total_amount": 850,
+  "line_items": [
+    { "description": "UI/UX design services", "quantity": 1, "unit_price": 800, "total": 800 }
+  ]
+}

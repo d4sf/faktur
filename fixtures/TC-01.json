@@ -1,0 +1,14 @@
+{
+  "invoice_number": "INV-9022",
+  "vendor_name": "CloudServers Inc",
+  "vendor_tax_id": "CLOUD-SERVERS-INC",
+  "issue_date": "2026-10-01",
+  "due_date": "2026-10-15",
+  "currency": "USD",
+  "subtotal": 400,
+  "tax_amount": 20,
+  "total_amount": 420,
+  "line_items": [
+    { "description": "Cloud server hosting", "quantity": 1, "unit_price": 400, "total": 400 }
+  ]
+}
