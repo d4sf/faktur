@@ -1,11 +1,15 @@
 // Database Markup Language (DBML) Definition
 // Sincronizado con docs/propuesta_modelo_ER_faktur.md y diagramas/er.mmd
 
+Table CATEGORIES {
+  name varchar [pk, note: 'Infraestructura | Diseno | Marketing | Legal | Software | Retail']
+}
+
 Table VENDORS {
   id varchar [pk]
   tax_id varchar [unique, not null, note: 'UPPER, TRIM']
   display_name varchar
-  category varchar [note: 'Infraestructura | Diseno | Marketing | Legal | Software | Retail']
+  category varchar [ref: > CATEGORIES.name, note: 'FK a categories']
   status varchar [note: 'ALLOWLISTED | BLOCKLISTED']
   historical_avg_usd float [note: 'para drift x1.40']
 }
@@ -16,7 +20,7 @@ Table INVOICES {
   invoice_number varchar [note: 'folio']
   status varchar [note: 'recibida | extraida | decidida | pendiente_aprobacion | aprobada | negada | frenada']
   file_hash varchar [unique, not null, note: 'SHA-256, UNIQUE a nivel factura canonica (RI-1)']
-  currency varchar [note: 'FK logica a FX_RATES']
+  currency varchar [ref: > FX_RATES.currency, note: 'FK a fx_rates (RI-7)']
   total_amount float [note: 'original']
   fx_rate_used float [note: 'congelada']
   total_usd float [note: 'evaluada']
@@ -60,7 +64,7 @@ Table POLICIES {
 
 Table POLICY_CATEGORY_BUDGETS {
   policy_version varchar [ref: > POLICIES.version]
-  category varchar [note: 'mismo dominio que VENDORS.category']
+  category varchar [ref: > CATEGORIES.name, note: 'FK a categories']
   budget_usd float
 
   indexes {

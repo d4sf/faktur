@@ -276,7 +276,7 @@ Cada tarea lleva: qué hace, por qué, traza, dependencias y criterio de "hecho"
 
 #### T3 · SQLite: DDL, reglas de integridad, 8 proveedores y budgets
 
-**Síntesis.** Traduce el ER a `CREATE TABLE` y suma `ingest_attempts`: `vendors`, `invoices`, `line_items`, `policies`, `policy_category_budgets`, `fx_rates`, `decisions`, `approvals`, `ledger_entries`, `notifications`, `ingest_attempts`. Con `PRAGMA foreign_keys=ON`, `CHECK` sobre los enumerados, los `UNIQUE` de S5, y los índices del ER §7. `invoices.status` usa el enum de siete estados de S17. `vendors` suma `category` (S20). `decisions` suma `ingest_attempt_id` nullable para anclar la decisión de un reenvío duplicado. Seed de los 8 proveedores de §6.1, `policies v1` con sus budgets por categoría, y 4 `fx_rates`.
+**Síntesis.** Traduce el ER a `CREATE TABLE` y suma `ingest_attempts` y `categories`: `categories`, `vendors`, `invoices`, `line_items`, `policies`, `policy_category_budgets`, `fx_rates`, `decisions`, `approvals`, `ledger_entries`, `notifications`, `ingest_attempts`. `categories` es fuente de verdad de las 6 categorías (RI-12); tanto `vendors.category` como `policy_category_budgets.category` la referencian. Con `PRAGMA foreign_keys=ON`, `CHECK` sobre los enumerados, los `UNIQUE` de S5, y los índices del ER §7. `invoices.status` usa el enum de siete estados de S17. `vendors` suma `category` (S20). `decisions` suma `ingest_attempt_id` nullable para anclar la decisión de un reenvío duplicado. Seed de los 8 proveedores de §6.1, `policies v1` con sus budgets por categoría, y 4 `fx_rates`.
 
 **Estructura del dedup (decisión de producto, §7 Q1):**
 

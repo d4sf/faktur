@@ -1,4 +1,6 @@
 erDiagram
+    CATEGORIES ||--o{ VENDORS : "clasifica"
+    CATEGORIES ||--o{ POLICY_CATEGORY_BUDGETS : "presupuesta"
     VENDORS ||--o{ INVOICES : "emite"
     INVOICES ||--o{ INGEST_ATTEMPTS : "recibida-como"
     INGEST_ATTEMPTS o|--o| INVOICES : "crea-factura"
@@ -14,6 +16,9 @@ erDiagram
     DECISIONS ||--o{ NOTIFICATIONS : "contexto"
     FX_RATES ||--o{ INVOICES : "convierte"
 
+    CATEGORIES {
+        string name PK
+    }
     VENDORS {
         string id PK
         string tax_id UK
