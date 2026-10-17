@@ -35,6 +35,26 @@ dentro del contenedor.
 | `just build-prod`      | Construye la imagen de producción        |
 | `just prod`            | Levanta producción en `:3000`            |
 
+## Documentación
+
+El plan de trabajo y las decisiones de producto están en
+[`docs/backlog_implementacion_mvp.md`](docs/backlog_implementacion_mvp.md):
+26 tareas, 20 specs, grafo de dependencias y un apartado §7 con las decisiones
+tomadas y por qué.
+
+El resto:
+
+| Documento                                     | Qué es                                            |
+| --------------------------------------------- | ------------------------------------------------- |
+| `docs/decisiones/0001-stack-ts-node-react.md` | Por qué TS/Node + React y no Python               |
+| `docs/propuesta_modelo_ER_faktur.md`          | Modelo de datos: entidades, integridad, casos     |
+| `diagramas/`                                  | ER, secuencia, estados y flujo de decisión        |
+| `docs/PRD_Faktur.md`                          | Requisitos del producto (propuesto el 17/10/2026) |
+| `docs/planteamiento_mvp_reto_blinka.md`       | El camino más corto a un agente funcionando       |
+
+Los dos últimos son registros de lo que se propuso: llevan arriba una tabla con
+lo que se decidió después y su texto original no se edita.
+
 ## Imágenes
 
 - `Containerfile.dev`: Node 22 + dependencias, hot reload; el código se monta

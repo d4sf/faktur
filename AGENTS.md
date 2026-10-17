@@ -36,8 +36,8 @@ van en inglés**.
 - `npm test` del root = `npm run test -w api` = `tsx --test src/app.test.ts`.
   Solo hay tests de API y el archivo está **hardcodeado en el script**: al crear
   un test nuevo hay que añadirlo a `test` en `api/package.json`.
-- `web` no tiene tests. Para correr un test puntual, `just shell` y `npx tsx
-  --test src/<archivo>.test.ts` dentro del contenedor.
+- `web` no tiene tests. Para correr un test puntual: `just shell` y
+  `npx tsx --test src/<archivo>.test.ts` dentro del contenedor.
 - `api/tsconfig.build.json` excluye `*.test.ts`, así que los tests no llegan a
   `dist`.
 
@@ -66,16 +66,27 @@ van en inglés**.
 
 ## Docs
 
-- `docs/decisiones/0001-stack-ts-node-react.md` es el stack **aceptado**
-  (TS/Node + React, dos imágenes, `just` como interfaz).
-- `docs/faktur_master_technical_blueprint_execution_plan.md` y el resto de
-  `docs/` son material de referencia del reto; varios excerpts están en
-  Python/FastAPI y **no** corresponden a este repo: no los copies.
-- `planteamiento_mvp_reto_blinka.md` está duplicado en la raíz y en `docs/`
-  (idénticos): editá el de `docs/`.
-- `specs/` y `fixtures/` están vacíos, pero son el destino previsto de
-  `policy.spec.json` y `fixtures/TC-*.json` + `ground_truth.json`
-  (ver `odd/tasks/faktur-mvp.md`).
+Orden de precedencia cuando dos documentos se contradigan:
+
+1. `docs/backlog_implementacion_mvp.md` — **fuente de verdad de qué se
+   construye.** 26 tareas, 20 specs, grafo de dependencias y las 6 decisiones
+   de producto en su §7.
+2. `docs/decisiones/0001-stack-ts-node-react.md` — stack **aceptado**
+   (TS/Node + React, dos imágenes, `just` como interfaz).
+3. `docs/propuesta_modelo_ER_faktur.md` y `diagramas/` — modelo de datos.
+   `diagramas/ds01_ingesta_decision.mmd` manda en la tabla de precedencia.
+4. `docs/PRD_Faktur.md` y `docs/planteamiento_mvp_reto_blinka.md` — registros
+   de lo que se propuso el 17/10/2026. **No se editan**: cada uno lleva arriba
+   una tabla con lo que se decidió después y en qué sección del backlog está.
+5. `docs/faktur_master_technical_blueprint_execution_plan.md` — material de
+   referencia del reto; varios excerpts están en Python/FastAPI y **no**
+   corresponden a este repo: no los copies.
+
+- `specs/` y `fixtures/` están vacíos. Son el destino de
+  `policy.spec.json` (tarea T2) y de `fixtures/TC-*.json` +
+  `ground_truth.json` (tarea T4). El set son **11 casos**, no 10.
+- La extracción usa `gemini-3.8-flash`. El PRD dice `gemini-1.5-flash`, que
+  está apagado: si tocás esa parte, no lo copies.
 
 ## Commits: Conventional Commits, mensajes en inglés
 

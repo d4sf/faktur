@@ -1,21 +1,25 @@
 # Propuesta de Modelo ER — Faktur / Blinka PayAgent
 ### Diseño lógico SDD orientado a SQLite (sin DDL específico de motor)
 
-> **Fuentes:** `docs/PRD_Faktur.md` + `docs/planteamiento_mvp_reto_blinka.md`
+> **Fuentes:** `docs/PRD_Faktur.md` + `docs/planteamiento_mvp_reto_blinka.md` + `diagramas/*.mmd`
 > **Objetivo:** persistir ingesta, extracción, decisión determinista, HITL y auditoría reproducible.
-> **Alcance:** modelo conceptual + lógico + reglas de integridad. La implementación precisa en SQLite (DDL, índices, migraciones) queda **fuera de este scope**.
+> **Alcance:** modelo conceptual + lógico + reglas de integridad. La implementación precisa en SQLite (DDL, índices, migraciones) queda **fuera de este scope** y es la tarea T3 de `docs/backlog_implementacion_mvp.md`.
 > **Metodología:** SDD — cada entidad traza a un requerimiento (RF-x del PRD o § del MVP).
+>
+> **Actualizado el 16/10/2026** para incorporar las decisiones de producto de `docs/backlog_implementacion_mvp.md` §7: tabla de intentos de ingesta, categoría en el proveedor, y 11 casos de prueba. El modelo anterior (10 entidades, RI-1 en un solo nivel, seed de 3 proveedores) queda superado.
 
 ---
 
 ## 0. Principios de diseño (decisiones SDD)
 
-1. **El LLM no decide dinero.** Solo `invoices.datos_extraidos` guarda lo que el LLM percibió. La decisión vive en `decisions` y la toma código puro (PRD RF-2, RF-4; MVP §5).
+1. **El LLM no decide dinero.** Solo `invoices.extraction_json` guarda lo que el LLM percibió. La decisión vive en `decisions` y la toma código puro (PRD RF-2, RF-4; MVP §5).
 2. **Fail-closed por defecto.** Si falta dato crítico o hay duplicado, el camino termina en `FRENAR`, nunca en `PAGAR` (MVP §2, §5).
-3. **FRENAR ≠ ESCALAR.** `FRENAR` es inválido no-aprobable. `ESCALAR` es válido-pendiente de humano. Una aprobación humana **jamás** puede revertir un `FRENAR` (MVP §5).
-4. **Auditoría reproducible.** Toda `decision` guarda `policy_version` usada. Cambiar reglas no reescribe historia (MVP §4).
-5. **Dedup doble.** `invoices.file_hash UNIQUE` + `UNIQUE(vendor_id, invoice_number)` cubren archivo idéntico y tupla lógica (PRD RF-1, RF-4 orden 1).
-6. **Presupuesto no se descuenta dos veces.** Solo `PAGAR` (autónomo o HITL-aprobado) genera movimiento en `ledger_entries`. `FRENAR` y `ESCALAR-pendiente` no mueven saldo (PRD RF-4).
+3. **FRENAR ≠ ESCALAR.** `FRENAR` es inválido no-aprobable. `ESCALAR` es válido-pendiente de humano. Una aprobación humana **jamás** puede revertir un `FRENAR` (MVP §5; `diagramas/ds02`).
+4. **Auditoría reproducible.** Toda `decision` guarda la `policy_version` usada. Cambiar reglas no reescribe historia (MVP §4).
+5. **Dedup en dos niveles.** `invoices.file_hash` UNIQUE para la factura canónica, y `ingest_attempts` conserva todo intento de subida, incluidos los duplicados rechazados. El duplicado queda **auditable**, no descartado (decisión de producto Q1).
+6. **Presupuesto no se descuenta dos veces.** Solo `PAGAR` (autónomo o HITL-aprobado) genera movimiento en `ledger_entries`. `FRENAR` y `ESCALAR`-pendiente no mueven saldo (PRD RF-4).
+7. **La categoría es del proveedor, no de la factura.** `vendors.category` gobierna el presupuesto por categoría; una factura sin proveedor frena antes de llegar a esa regla (decisión de producto Q3).
+8. **`decisions` es append-only.** El veredicto original nunca se muta. El estado actual vive en `invoices.status`, y la resolución humana es una fila nueva en `approvals` más un evento de auditoría.
 
 ---
 
@@ -23,7 +27,7 @@
 
 | Spec origen | Contenido | Entidades que lo cubren |
 |---|---|---|
-| PRD RF-1 + MVP §4 `invoices` | Ingesta, SHA-256, archivo original | `invoices` |
+| PRD RF-1 + MVP §4 `invoices` | Ingesta, SHA-256, archivo original | `invoices` + `ingest_attempts` |
 | PRD RF-2 + MVP §3 `/extract` | JSON tipado, validación, confianza | `invoices` + `line_items` |
 | PRD RF-3 | Normalización a USD, tasa usada | `invoices.total_usd`, `invoices.fx_rate_used`, `fx_rates` |
 | PRD RF-4 + MVP §5 | Motor 8 reglas, orden de precedencia | `decisions` + `policies` + `policy_category_budgets` + `vendors` |
@@ -31,37 +35,54 @@
 | PRD RF-7 + MVP §4 `approvals` | Bandeja HITL, aprueba/niega | `approvals` |
 | MVP §4 `ledger` | Saldo del periodo | `ledger_entries` |
 | MVP §4 `policy` + PRD RF-6.2 | Reglas configurables versionadas | `policies` + `policy_category_budgets` |
-| PRD RF-6.6 + MVP §8 | Notificación (tarjeta Slack / webhook / outbox) | `notifications` (outbox, opcional pero barata) |
-| PRD §7 TC-01..TC-10 | Set demo + ground truth | `demo_fixtures` (solo seed, no runtime) o fuera de DB |
+| PRD RF-6.6 + MVP §8 | Notificación (tarjeta Slack / webhook / outbox) | `notifications` |
+| MVP §7 TC-01..TC-11 | Set demo + ground truth | seed externo, no entidad operativa |
 
 ---
 
 ## 2. Diccionario de entidades
 
 ### 2.1 `vendors` — proveedores / beneficiarios
-Representa la whitelist/blacklist y el historial para vendor drift (PRD RF-4 reglas 4 y 6; MVP reglas 3-4).
+Representa la whitelist/blacklist, la categoría que gobierna el presupuesto y el promedio histórico para drift.
 
-- `id` — identificador interno (PK lógica, texto o entero autoincremental).
+- `id` — PK lógica (texto o entero autoincremental).
 - `tax_id` — RFC / NIT / RUT / EIN normalizado en mayúsculas, sin espacios. **UNIQUE, NOT NULL.** Es la clave de negocio. `Entidad Fantasma` (TC-08) falla aquí por ausencia.
 - `display_name` — razón social (`CloudServers Inc`, `DevStudio Latam`).
-- `status` — `ALLOWLISTED | BLOCKLISTED | UNLISTED`. `UNLISTED` no se persiste (todo no-listado es ESCALAR por ausencia); se usa para el seed inicial.
-- `historical_avg_usd` — promedio histórico para drift. Ej. `CLOUD-SERVERS-INC 420`, `DEVSTUDIO-LATAM 850`.
-- `first_seen_at`, `last_seen_at` — para detectar proveedor nuevo (TC-05).
+- `category` — **nuevo.** Categoría de gasto que consume presupuesto: `Infraestructura`, `Diseño`, `Marketing`, `Legal`, `Software`, `Retail`. Es lo que permite que la regla 6 evalúe el saldo por categoría (decisión de producto Q3).
+- `status` — `ALLOWLISTED | BLOCKLISTED`. Un proveedor desconocido **no se persiste**: su veredicto es ESCALAR por ausencia (TC-05), no por fila.
+- `historical_avg_usd` — promedio histórico para drift. Ej. `CLOUD-SERVERS-INC 420`, `FREELANCE-DESIGN 480`.
+- `first_seen_at`, `last_seen_at` — para detectar proveedor nuevo.
 
-### 2.2 `invoices` — factura ingresada + extracción
-Una fila por documento subido (MVP `invoices`; PRD `ExtractedInvoice` + `AuditRecord.invoice`).
+**Seed v1: 8 proveedores** (decisión de producto Q2), derivados del set de casos:
 
-- `id` — PK lógica (ej. `uuid8` del blueprint).
+| `tax_id` | `display_name` | `category` | `status` | `historical_avg_usd` | Casos |
+|:---|:---|:---|:---|---:|:---|
+| `CLOUD-SERVERS-INC` | CloudServers Inc | Infraestructura | ALLOWLISTED | 420 | TC-01, TC-03 |
+| `DEVSTUDIO-LATAM` | DevStudio Latam | Diseño | ALLOWLISTED | 850 | TC-02, TC-10 |
+| `GROWTH-AGENCY` | Growth Agency | Marketing | ALLOWLISTED | 3000 | TC-04 |
+| `LEGAL-GLOBAL` | Legal Global | Legal | ALLOWLISTED | 4000 | TC-06 |
+| `FREELANCE-DESIGN` | Freelance Design | Diseño | ALLOWLISTED | 480 | TC-07 |
+| `SAAS-TOOLS-LTD` | SaaS Tools Ltd | Software | ALLOWLISTED | 120 | TC-09 |
+| `AWS-AMAZON` | AWS Amazon | Infraestructura | ALLOWLISTED | 350 | sin caso propio |
+| `VENTA-POS-DUO` | Venta Pos Duo | Retail | **BLOCKLISTED** | 0 | TC-11 |
+
+La whitelist de 3 proveedores del PRD RF-4 **no alcanza**: TC-04, TC-07, TC-09 y TC-10 nombran proveedores que no están en ella, y entonces la regla 4 (proveedor nuevo) dispararía antes que la regla que el caso narraría.
+
+### 2.2 `invoices` — factura canónica + extracción
+Una fila por **documento lógico aceptado**, no por intento de subida.
+
+- `id` — PK lógica.
 - `vendor_id` — FK → `vendors.id`, nulable (si no se pudo extraer proveedor, queda NULL y dispara FRENAR por dato crítico).
-- `invoice_number` — folio (`INV-9022`). NOT NULL si extracción válida; combinado con `vendor_id` forma UNIQUE de negocio.
+- `invoice_number` — folio (`INV-9022`). Combinado con `vendor_id` forma UNIQUE de negocio.
+- `status` — ciclo de vida de 7 estados, según `diagramas/estados_factura`: `recibida | extraida | decidida | pendiente_aprobacion | aprobada | negada | frenada`. Es el estado **actual**; el veredicto original inmutable vive en `decisions.verdict`.
 - `file_name`, `mime_type` — `factura.pdf`, `application/pdf`.
-- `file_hash` — SHA-256 hex (64 chars). **UNIQUE, NOT NULL.** Base del anti-duplicado exacto.
+- `file_hash` — SHA-256 hex (64 chars). **UNIQUE, NOT NULL.** Base del anti-duplicado exacto a nivel de factura canónica.
 - `issue_date`, `due_date` — fechas ISO-8601 (`YYYY-MM-DD`).
-- `currency` — ISO 4217 (`USD`, `MXN`, `COP`, `EUR`). Debe estar en `fx_rates` o dispara FRENAR.
+- `currency` — ISO 4217 (`USD`, `MXN`, `COP`, `EUR`). Debe estar en `fx_rates`, si no dispara FRENAR.
 - `subtotal`, `tax_amount`, `total_amount` — montos originales.
 - `fx_rate_used` — tasa aplicada al momento de evaluar.
 - `total_usd` — `total_amount * fx_rate_used`, 2 decimales. Es lo que evalúa el motor.
-- `extraction_confidence` — 0..1 promedio o mínimo por campo (MVP §3, §13). Baja confianza ⇒ ESCALAR.
+- `extraction_confidence` — 0..1. Bajo el umbral dispara ESCALAR por la regla 1.
 - `extraction_json` — JSON crudo validado (para re-auditar sin re-llamar al LLM).
 - `ingested_at` — timestamp de subida.
 
@@ -69,90 +90,123 @@ Una fila por documento subido (MVP `invoices`; PRD `ExtractedInvoice` + `AuditRe
 - `UNIQUE(file_hash)`.
 - `UNIQUE(vendor_id, invoice_number)` donde ambos no nulos (cubre TC-03 aunque cambie el nombre del archivo).
 - `total_usd` siempre se calcula con la tasa vigente al evaluar, y se congela en la fila.
+- Toda transición prohibida del diagrama de estados responde 409: `frenada → aprobada`, `negada → aprobada`, `aprobada → frenada`, `decidida → pendiente_aprobacion`.
 
-### 2.3 `line_items` — detalle de conceptos
-Hija de `invoices` (PRD `LineItem[]`). No decide, pero sostiene explicabilidad y futura conciliación vs. OC.
-
-- `id` — PK.
-- `invoice_id` — FK → `invoices.id` (1:N, borrado en cascada lógica).
-- `description`, `quantity`, `unit_price`, `total`.
-
-### 2.4 `policies` — versión de política vigente al decidir
-Implementa "reglas configurables" del reto (MVP §4 `policy`, §13 versionado; PRD RF-6.2).
-
-- `version` — PK lógica (`v1`, `v2`, … o entero incremental). Cada `decision` la referencia.
-- `auto_approval_threshold_usd` — default `1000.0` (PRD RF-4, TC-04).
-- `monthly_budget_usd` — default `5000.0` (techo global demo).
-- `vendor_drift_factor` — default `1.40` (TC-07).
-- `allowed_currencies` — lista (`["USD","MXN","COP","EUR"]`). Moneda fuera ⇒ FRENAR.
-- `is_active` — solo una activa a la vez (para el Policy Controller). El historial se conserva.
-- `created_at`, `created_by`, `comment` — quién movió el slider y por qué (auditoría de la regla misma).
-
-### 2.5 `policy_category_budgets` — presupuesto por categoría
-Cubre TC-10 ("deja la categoría en negativo") y MVP regla 6. Sin esta tabla el presupuesto global no explica sobregiros por partida.
-
-- `policy_version` — FK → `policies.version` (PK compuesta).
-- `category` — PK compuesta (`Infraestructura`, `Nómina`, `Marketing`…).
-- `budget_usd` — techo de la categoría en esa versión.
-
-### 2.6 `fx_rates` — tasas de conversión
-Hace explícita la tabla que el blueprint tenía en memoria (`exchange_rates`). Evita magia en código.
-
-- `currency` — PK (`USD`, `MXN`, `COP`, `EUR`).
-- `rate_to_usd` — `MXN 0.055, COP 0.00024, EUR 1.08, USD 1.0`.
-- `as_of` — vigencia (v1: tasa fija seed; futuro: timestamp de API FX).
-
-### 2.7 `decisions` — veredicto determinista (corazón auditable)
-Equivale a `AuditRecord` (PRD RF-5) + MVP `decisions`. **Una factura tiene N decisiones en historia, pero una sola vigente.** Para v1 se recomienda `UNIQUE(invoice_id)` + nueva fila solo si se re-evalúa con otra `policy_version` (re-juego demo); la app lee la última.
+### 2.3 `ingest_attempts` — todo intento de subida
+**Nueva** (decisión de producto Q1). Hace auditable el reenvío duplicado sin romper el `UNIQUE` de `invoices.file_hash`.
 
 - `id` — PK.
-- `invoice_id` — FK → `invoices.id`, UNIQUE (v1).
-- `verdict` — `PAGAR | FRENAR | ESCALAR`.
-- `reason_code` — `SUCCESS_TOUCHLESS_STP | ERR_DUPLICATE_INVOICE | ERR_BUDGET_OVERRUN | ERR_INVALID_DATA | ERR_BLACKLISTED_VENDOR | ALERT_NEW_VENDOR | ALERT_THRESHOLD_EXCEEDED | ALERT_VENDOR_DRIFT | ALERT_BUDGET_TIGHT`.
-- `explanation` — motivo legible no-técnico (la columna que gana explicabilidad).
-- `policy_version` — FK → `policies.version`. **Obligatoria.** Permite reproducir por qué se decidió así aunque el slider se haya movido después.
-- `amount_usd_evaluated` — copia congelada del `total_usd` evaluado.
-- `decided_by` — `AGENTE | HUMANO` (las HITL-resueltas marcan `HUMANO`).
-- `decided_at` — timestamp.
-
-**Orden de precedencia** (no es entidad, es constraint de aplicación, MVP §5): 1 duplicado → 2 tupla → 3 blacklist/inválido → 4 no-listado → 5 sin OC/desviación → 6 presupuesto → 7 umbral → 8 PAGAR. El primero que dispara gana y define `reason_code`.
-
-### 2.8 `approvals` — bandeja HITL
-Solo existe si `decisions.verdict = ESCALAR` (MVP `approvals`; PRD RF-7).
-
-- `id` — PK.
-- `decision_id` — FK → `decisions.id`, UNIQUE (un ESCALAR, una bandeja).
-- `invoice_id` — FK desnormalizada para consulta rápida de bandeja (`GET /approvals?status=pendiente`).
-- `status` — `PENDIENTE | APROBADA | NEGADA`.
-- `requested_at` — cuando escaló.
-- `resolved_by`, `resolved_at`, `comment` — quién y por qué (`"Autorizada con sobrecupo"`, `"Rechazada: monto no acordado"`).
-- `override_with_overbudget` — booleano (para la acción `[Autorizar con Sobrecupo]` del PRD RF-6.6).
+- `invoice_id` — FK → `invoices.id`, nulable. Se llena solo si este intento creó la factura canónica.
+- `file_name`, `mime_type`, `byte_size` — lo recibido.
+- `file_hash` — SHA-256. **Indexado, NO único**: el mismo archivo puede tener muchos intentos.
+- `attempt_status` — `RECIBIDA | DUPLICADA | RECHAZADA`.
+- `duplicate_of_invoice_id` — FK → `invoices.id`, nulable. Apunta a la factura canónica cuando `attempt_status = DUPLICADA`.
+- `submitted_at` — timestamp de la subida.
 
 **Invariantes:**
-- No se puede crear `approval` sobre `FRENAR`. Intentarlo es error de aplicación.
-- Transición única: `PENDIENTE → APROBADA | NEGADA`. `APROBADA` muta su `decision` a `PAGAR`; `NEGADA` la muta a `FRENAR` con sufijo manual. Segunda resolución ⇒ rechazo (`already_resolved`, PRD RF-7.3).
-- Solo `APROBADA` genera movimiento en `ledger_entries`.
+- Un `file_hash` repetido **no** crea fila en `invoices`: crea un intento `DUPLICADA` con su decisión FRENAR.
+- Todo intento que llega a decisión tiene exactamente una fila en `decisions`, anclada por `ingest_attempt_id`.
 
-### 2.9 `ledger_entries` — compromisos del periodo (no dinero real)
-Libro de saldos para calcular `budget_remaining` sin recalcular toda la historia (MVP `ledger`).
+### 2.4 `line_items` — detalle de conceptos
+Hija de `invoices`. No decide, pero sostiene explicabilidad y futura conciliación contra orden de compra.
 
 - `id` — PK.
 - `invoice_id` — FK → `invoices.id`.
-- `decision_id` — FK → `decisions.id` (trazabilidad pago ↔ veredicto).
+- `description`, `quantity`, `unit_price`, `total`.
+
+### 2.5 `policies` — versión de política vigente al decidir
+Implementa "reglas configurables" del reto (MVP §4 `policy`, §13 versionado; PRD RF-6.2).
+
+- `version` — PK lógica (`v1`, `v2`, …). Cada `decision` y cada `approval` la referencia.
+- `auto_approval_threshold_usd` — default `1000.0` (TC-04).
+- `monthly_budget_usd` — default `5000.0` (techo global demo).
+- `vendor_drift_factor` — default `1.40` (TC-07).
+- `allowed_currencies` — lista (`["USD","MXN","COP","EUR"]`). Moneda fuera ⇒ FRENAR.
+- `is_active` — solo una activa a la vez. El historial se conserva.
+- `created_at`, `created_by`, `comment` — quién movió el slider y por qué.
+
+### 2.6 `policy_category_budgets` — presupuesto por categoría
+Cubre TC-10 ("deja la categoría en negativo") y la segunda mitad de la regla 6. Sin esta tabla el presupuesto global no explica sobregiros por partida.
+
+- `policy_version` — FK → `policies.version` (PK compuesta).
+- `category` — PK compuesta. Los mismos valores que `vendors.category`.
+- `budget_usd` — techo de la categoría en esa versión.
+
+**Seed v1:** `Infraestructura 1500`, `Diseño 1000`, `Marketing 2500`, `Legal 3000`, `Software 500`, `Retail 0`.
+
+### 2.7 `fx_rates` — tasas de conversión
+Hace explícita la tabla que el blueprint tenía en memoria. Evita magia en código.
+
+- `currency` — PK.
+- `rate_to_usd` — `USD 1.0`, `MXN 0.055`, `COP 0.00024`, `EUR 1.08`.
+- `as_of` — vigencia (v1: tasa fija seed; futuro: timestamp de API FX).
+
+### 2.8 `decisions` — veredicto determinista (corazón auditable)
+Equivale a `AuditRecord` (PRD RF-5). **Append-only** (RI-8).
+
+- `id` — PK.
+- `invoice_id` — FK → `invoices.id`, **nulable**.
+- `ingest_attempt_id` — FK → `ingest_attempts.id`, **nulable**. Mutuamente excluyente con `invoice_id`: las decisiones de un reenvío duplicado se anclan al intento para no crear una factura fantasma.
+- `verdict` — `PAGAR | FRENAR | ESCALAR`.
+- `reason_code` — uno de los **diez** del §2.8.1.
+- `explanation` — motivo legible no-técnico, redactado en lenguaje natural con los números concretos. La columna que gana explicabilidad.
+- `policy_version` — FK → `policies.version`. **Obligatoria.** Permite reproducir por qué se decidió así aunque el slider se haya movido después.
+- `amount_usd_evaluated` — copia congelada del `total_usd` evaluado.
+- `decided_by` — `AGENTE | HUMANO`.
+- `decided_at` — timestamp.
+
+> **Cambio respecto de la versión anterior de este documento:** la v1 decía a la vez `UNIQUE(invoice_id)` (1:1) y "N decisiones, nueva fila si se re-evalúa", lo que era una contradicción. Ahora queda resuelto: **no hay `UNIQUE`**, una factura puede tener varias decisiones a lo largo del tiempo, y la app lee la última. La resolución humana **no** muta `decisions`: escribe una fila nueva en `approvals` y mueve `invoices.status`. Así `explanation` de un registro inmutable nunca se reescribe.
+
+#### 2.8.1 `reason_code` canónicos (diez)
+
+| Regla | Condición | Veredicto | `reason_code` |
+|:--|:---|:---|:---|
+| 1 | Datos críticos ilegibles o incompletos | FRENAR | `ERR_INVALID_DATA` |
+| 1 | Datos completos, confianza bajo el umbral | ESCALAR | `ALERT_LOW_CONFIDENCE` |
+| 2 | Duplicado: hash o `(vendor, numero_factura)` | FRENAR | `ERR_DUPLICATE_INVOICE` |
+| 3 | Beneficiario bloqueado | FRENAR | `ERR_BLACKLISTED_VENDOR` |
+| 4 | Beneficiario no listado | ESCALAR | `ALERT_NEW_VENDOR` |
+| 5 | No cuadra con lo acordado (drift) | ESCALAR | `ALERT_VENDOR_DRIFT` |
+| 6 | Presupuesto del periodo insuficiente | ESCALAR | `ALERT_BUDGET_OVERRUN` |
+| 6 | Presupuesto de categoría insuficiente | ESCALAR | `ALERT_BUDGET_TIGHT` |
+| 7 | Supera el umbral de aprobación autónoma | ESCALAR | `ALERT_THRESHOLD_EXCEEDED` |
+| 8 | Pasa todo lo anterior | PAGAR | `SUCCESS_TOUCHLESS_STP` |
+
+El `ERR_BUDGET_OVERRUN` del PRD Apéndice A **queda sin uso**: ese veredicto FRENAR contradice `diagramas/estados_factura`, donde la regla 6 es escalable. Lo reemplaza `ALERT_BUDGET_OVERRUN`, y `ALERT_LOW_CONFIDENCE` cubre la rama de confianza baja de la regla 1, que ningún código del Apéndice A representaba.
+
+### 2.9 `approvals` — bandeja HITL
+Solo existe si `decisions.verdict = ESCALAR`.
+
+- `id` — PK.
+- `decision_id` — FK → `decisions.id`, UNIQUE (un ESCALAR, una bandeja).
+- `invoice_id` — FK desnormalizada para consulta rápida de bandeja.
+- `status` — `PENDIENTE | APROBADA | NEGADA`.
+- `requested_at` — cuándo escaló.
+- `resolved_by`, `resolved_at`, `comment` — quién y por qué.
+- `override_with_overbudget` — booleano para la acción "Autorizar con Sobrecupo" (v1 puede ser visual).
+
+**Invariantes:**
+- No se puede crear `approval` sobre `FRENAR`.
+- Transición única: `PENDIENTE → APROBADA | NEGADA`. Segunda resolución ⇒ **200 idempotente** sin cambios y sin duplicar el pago (`diagramas/ds02`).
+- Aprobar re-chequea las reglas 1-3 con la `policy_version` del caso; si alguna dispara, responde 409.
+- Solo `APROBADA` genera movimiento en `ledger_entries`.
+
+### 2.10 `ledger_entries` — compromisos del periodo (no dinero real)
+- `id` — PK.
+- `invoice_id` — FK → `invoices.id`.
+- `decision_id` — FK → `decisions.id`.
 - `policy_version` — copia de la versión que autorizó el compromiso.
-- `amount_usd` — positivo (compromiso). V1 sin reversos; un reembolso futuro sería fila negativa.
-- `entry_type` — `COMPROMISO_PAGAR` (v1 único valor; deja puerta a `AJUSTE`/`REVERSO`).
+- `amount_usd` — positivo. V1 sin reversos.
+- `entry_type` — `COMPROMISO_PAGAR` (v1 único valor).
 - `created_at` — para corte mensual.
 
 `budget_remaining = policies.monthly_budget_usd − SUM(ledger_entries.amount_usd del periodo)`. Nunca se inserta si el veredicto final no es `PAGAR`.
 
-### 2.10 `notifications` — outbox de avisos (opcional v1, recomendada)
-Concreta la interfaz `Notifier` del MVP §8 sin atar la demo a Slack.
-
+### 2.11 `notifications` — outbox de avisos
 - `id` — PK.
 - `invoice_id`, `decision_id` — contexto.
 - `channel` — `SLACK_CARD | WEBHOOK | CONSOLE | EMAIL_LOCAL`.
-- `payload_json` — lo que se mostraría (tarjeta estilo Slack).
+- `payload_json` — lo que se mostraría.
 - `status` — `PENDIENTE | ENVIADA | FALLIDA`.
 - `created_at`.
 
@@ -164,9 +218,12 @@ Si hay que recortar para el hackathon, se recorta esta tabla (MVP §1: el 7 es s
 
 ```mermaid
 erDiagram
-    VENDORS ||--o{ INVOICES : "emite" 
+    VENDORS ||--o{ INVOICES : "emite"
+    INVOICES ||--o{ INGEST_ATTEMPTS : "recibida-como"
+    INGEST_ATTEMPTS o|--|| INVOICES : "crea-factura"
     INVOICES ||--o{ LINE_ITEMS : "detalla"
-    INVOICES ||--|| DECISIONS : "evaluada-en"
+    INVOICES ||--o{ DECISIONS : "evaluada-en"
+    INGEST_ATTEMPTS ||--o{ DECISIONS : "duplicado-de"
     POLICIES ||--o{ DECISIONS : "rige"
     POLICIES ||--o{ POLICY_CATEGORY_BUDGETS : "tope-por-categoria"
     DECISIONS ||--o| APPROVALS : "escala-a-HITL"
@@ -180,6 +237,7 @@ erDiagram
         string id PK
         string tax_id UK
         string display_name
+        string category
         string status
         float historical_avg_usd
     }
@@ -187,6 +245,7 @@ erDiagram
         string id PK
         string vendor_id FK
         string invoice_number
+        string status
         string file_hash UK
         string currency
         float total_amount
@@ -194,6 +253,16 @@ erDiagram
         float total_usd
         float extraction_confidence
         string extraction_json
+    }
+    INGEST_ATTEMPTS {
+        string id PK
+        string invoice_id FK
+        string file_name
+        string mime_type
+        int byte_size
+        string file_hash
+        string attempt_status
+        string duplicate_of_invoice_id FK
     }
     LINE_ITEMS {
         string id PK
@@ -223,15 +292,18 @@ erDiagram
     DECISIONS {
         string id PK
         string invoice_id FK
+        string ingest_attempt_id FK
         string verdict
         string reason_code
         string explanation
         string policy_version FK
+        float amount_usd_evaluated
         string decided_by
     }
     APPROVALS {
         string id PK
         string decision_id FK
+        string invoice_id FK
         string status
         string resolved_by
         string comment
@@ -252,56 +324,55 @@ erDiagram
     }
 ```
 
-**Lectura rápida:** `vendors 1—N invoices 1—1 decisions 0..1 approvals`, `decisions 0..1 ledger_entries`, `policies 1—N decisions` (por versión), `policies 1—N category_budgets`.
+**Lectura rápida:** `vendors 1—N invoices`, `ingest_attempts N—0..1 invoices`, `invoices 1—N decisions`, `decisions 0..1 approvals`, `decisions 0..1 ledger_entries`, `policies 1—N decisions`, `policies 1—N category_budgets`.
 
 ---
 
-## 4. Reglas de integridad (para implementar después en SQLite)
+## 4. Reglas de integridad
 
-Sin sintaxis de motor (fuera de scope), en lenguaje de especificación:
-
-1. **RI-1 Unicidad anti-doble-pago:** `invoices.file_hash UNIQUE`; `UNIQUE(vendor_id, invoice_number)` cuando ambos no nulos.
+1. **RI-1 Unicidad anti-doble-pago, en dos niveles:** `invoices.file_hash UNIQUE` + `UNIQUE(vendor_id, invoice_number)` sobre `invoices`; y `ingest_attempts.file_hash` **indexado pero no único**, de modo que un reenvío se registre y se frene en vez de rechazarse en silencio.
 2. **RI-2 Decisión versionada obligatoria:** `decisions.policy_version NOT NULL` + FK a `policies.version`.
 3. **RI-3 HITL solo sobre ESCALAR:** constraint de aplicación — `approvals` exige `decisions.verdict = ESCALAR` al crear; `FRENAR` nunca abre bandeja.
-4. **RI-4 Transición única HITL:** `approvals.status` solo `PENDIENTE → APROBADA|NEGADA`; `decision_id UNIQUE` en `approvals`; segunda resolución rechazada.
-5. **RI-5 Ledger solo PAGAR:** `ledger_entries` exige `decisions.verdict final = PAGAR` (autónomo o `APROBADA`). Prohibido insertar desde `FRENAR` o `PENDIENTE`.
-6. **RI-6 Presupuesto coherente:** `monthly_budget_usd` y `policy_category_budgets.budget_usd` ≥ 0; `total_usd`, `amount_usd` ≥ 0.
-7. **RI-7 Moneda cerrada:** `invoices.currency` debe existir en `fx_rates` y en `policies.allowed_currencies` de la versión activa; si no, FRENAR (no ESCALAR).
-8. **RI-8 Inmutabilidad práctica:** `decisions` y `ledger_entries` son append-only; solo se permite `ESCALAR → PAGAR|FRENAR` vía `approvals` con `decided_by=HUMANO` y sufijo en `explanation`.
-9. **RI-9 Tasa congelada:** `invoices.fx_rate_used` y `total_usd` no se recalculan si `fx_rates` cambia después; la re-evaluación crea nueva `decision` con nueva `policy_version`.
-10. **RI-10 CSV reproducible:** toda fila del reporte (`invoice_id, proveedor, montos, estado, regla, motivo, requirió_humano, decidido_por, policy_version, timestamp`) debe poder reconstruirse con JOIN `invoices + vendors + decisions + approvals + policies`.
+4. **RI-4 Transición única HITL:** `approvals.status` solo `PENDIENTE → APROBADA|NEGADA`; `decision_id UNIQUE` en `approvals`; segunda resolución devuelve 200 idempotente sin cambios.
+5. **RI-5 Ledger solo PAGAR:** `ledger_entries` exige veredicto final `PAGAR` (autónomo o `APROBADA`). Prohibido insertar desde `FRENAR` o `PENDIENTE`.
+6. **RI-6 Presupuesto coherente:** montos `>= 0`; `monthly_budget_usd` y `policy_category_budgets.budget_usd` `>= 0`.
+7. **RI-7 Moneda cerrada:** `invoices.currency` debe existir en `fx_rates` y en `policies.allowed_currencies` de la versión activa; si no, FRENAR.
+8. **RI-8 Inmutabilidad práctica:** `decisions` y `ledger_entries` son append-only. La resolución humana no muta `decisions.explanation`: escribe en `approvals` y mueve `invoices.status`.
+9. **RI-9 Tasa congelada:** `invoices.fx_rate_used` y `total_usd` no se recalculan si `fx_rates` cambia; la re-evaluación crea nueva `decision` con nueva `policy_version`.
+10. **RI-10 CSV reproducible:** toda fila del reporte debe poder reconstruirse con JOIN `ingest_attempts + invoices + vendors + decisions + approvals + policies`.
+11. **RI-11 Ancla de decisión:** `decisions` tiene exactamente uno de `invoice_id` o `ingest_attempt_id`, nunca ambos ni ninguno.
+12. **RI-12 Categoría cerrada:** `vendors.category` debe existir como clave en `policy_category_budgets` de la versión activa; una factura cuyo proveedor no tenga categoría mapeada frena antes de evaluar la regla 6.
 
 ---
 
-## 5. Cobertura de los 10 TC del PRD con este modelo
+## 5. Cobertura de los 11 TC con este modelo
 
-| TC | Cómo se representa |
-|---|---|
-| TC-01, TC-02, TC-09 (PAGAR) | `invoices` + `vendors` allowlisted + `decisions(PAGAR, SUCCESS_TOUCHLESS_STP, policy vX)` + `ledger_entries(COMPROMISO)` |
-| TC-03 (duplicado) | Viola RI-1: mismo `file_hash` o misma tupla `(vendor_id, invoice_number)` → `decisions(FRENAR, ERR_DUPLICATE_INVOICE)` sin ledger |
-| TC-04 (umbral) | `total_usd 3500 > policies.auto_approval_threshold_usd 1000` → `decisions(ESCALAR, ALERT_THRESHOLD_EXCEEDED)` + `approvals(PENDIENTE)` |
-| TC-05 (nuevo) | `tax_id` sin fila en `vendors` → `decisions(ESCALAR, ALERT_NEW_VENDOR)` |
-| TC-06 (EUR+presupuesto) | `fx_rates(EUR 1.08)` → `total_usd 5400`; si `> monthly_budget` → `FRENAR ERR_BUDGET_OVERRUN`, si no → `ESCALAR ALERT_*` |
-| TC-07 (drift) | `total_usd 1200 > historical_avg_usd 480 * 1.40` → `ESCALAR ALERT_VENDOR_DRIFT` |
-| TC-08 (fantasma) | `vendor_id NULL` / `tax_id` vacío → `FRENAR ERR_INVALID_DATA` (+ `BLOCKLISTED` si aplica) |
-| TC-10 (categoría) | JOIN con `policy_category_budgets` insuficiente → `ESCALAR ALERT_BUDGET_TIGHT` |
+| TC | Cómo se representa | Regla |
+|:--|:---|:--:|
+| TC-01, TC-02, TC-09 (PAGAR) | `invoices` + `vendors` allowlisted + `decisions(PAGAR, SUCCESS_TOUCHLESS_STP, v1)` + `ledger_entries` | 8 |
+| TC-03 (duplicado) | `ingest_attempts(DUPLICADA, duplicate_of_invoice_id → TC-01)` + `decisions(FRENAR, ERR_DUPLICATE_INVOICE)` anclada al intento. **Sin** fila nueva en `invoices`, **sin** ledger | 2 |
+| TC-04 (umbral) | `total_usd 3500 > auto_approval_threshold_usd 1000` → `decisions(ESCALAR, ALERT_THRESHOLD_EXCEEDED)` + `approvals(PENDIENTE)` | 7 |
+| TC-05 (nuevo) | `tax_id` sin fila en `vendors` → `decisions(ESCALAR, ALERT_NEW_VENDOR)`, sin proveedor creado | 4 |
+| TC-06 (EUR + presupuesto) | `fx_rates(EUR 1.08)` → `total_usd 5400`; `5400 > 5000` → `decisions(ESCALAR, ALERT_BUDGET_OVERRUN)` | 6 |
+| TC-07 (drift) | `total_usd 1200 > historical_avg_usd 480 * 1.40` → `ESCALAR, ALERT_VENDOR_DRIFT` | 5 |
+| TC-08 (fantasma) | `vendor_id NULL` / `tax_id` vacío → `FRENAR, ERR_INVALID_DATA` | 1 |
+| TC-10 (categoría) | `vendors.category = Diseño`, saldo `1000 − 850 (TC-02) = 150`; `950 > 150` → `ESCALAR, ALERT_BUDGET_TIGHT` | 6 |
+| TC-11 (bloqueado) | `vendors.status = BLOCKLISTED` → `FRENAR, ERR_BLACKLISTED_VENDOR` | 3 |
+
+**Verificado:** los 11 casos salen del mismo motor con las mismas 8 reglas, sin código especial por caso. El runner de `docs/backlog_implementacion_mvp.md` T6 es el que lo comprueba en cada corrida.
 
 ---
 
 ## 6. Qué se deja fuera a propósito (y por qué)
 
 - **Sin tabla `users` / RBAC / SSO.** V1 es demo local sin auth (MVP §9). `approvals.resolved_by` es texto libre (`"CFO-demo"`).
-- **Sin `purchase_orders`.** MVP regla 5 ("no cuadra con lo acordado") se cubre en v1 con `vendors.historical_avg_usd` (drift), no con OC formal. OC real es fase 2.
-- **Sin movimientos bancarios.** `ledger_entries` son compromisos, no pagos. Respeta "no mueve dinero real".
-- **Sin `demo_fixtures` como tabla runtime.** El `ground_truth.json` vive como seed externo, no como entidad operativa.
-- **Sin índices/SQLite DDL.** Fuera de scope por consigna; el modelo lógico ya deja las UK/FK listas para traducir a `UNIQUE`, `FOREIGN KEY`, `CHECK` cuando toque.
+- **Sin `purchase_orders`.** La regla 5 ("no cuadra con lo acordado") se cubre en v1 con `vendors.historical_avg_usd` (drift), no con OC formal. OC real es fase 2.
+- **Sin movimientos bancarios.** `ledger_entries` son compromisos, no pagos.
+- **Sin `demo_fixtures` como tabla runtime.** El `ground_truth.json` vive como seed externo.
+- **Sin `notifications` si hay que recortar.** Es lo primero sacrificable del MVP §1.
 
 ---
 
-## 7. Siguiente paso sugerido (no implementado aquí)
+## 7. Siguiente paso
 
-1. Traducir §2 a 10 `CREATE TABLE` SQLite con `PRAGMA foreign_keys=ON`, `CHECK(verdict IN (...))`, e índices sobre `file_hash`, `(vendor_id, invoice_number)`, `decisions(invoice_id)`, `approvals(status)`.
-2. Seed: 3 vendors + `policies v1` + 4 `fx_rates` + 10 fixtures TC.
-3. Test SDD: insertar TC-03 duplicado debe fallar por RI-1; crear `approval` sobre `FRENAR` debe fallar por RI-3; doble-resolución debe fallar por RI-4.
-
-*Risk: none — artefacto de diseño, sin cambios de código ni de datos.*
+La traducción a DDL es la tarea **T3** de `docs/backlog_implementacion_mvp.md`, junto con el seed de los 8 proveedores, `policies v1` con budgets por categoría, y 4 `fx_rates`. El diagrama en `diagramas/er.mmd` y `diagramas/er.dbml` está sincronizado con este documento.

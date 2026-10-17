@@ -10,6 +10,27 @@
 
 ---
 
+## 0. Decisiones posteriores a este documento
+
+> **Este PRD queda como registro de lo que se propuso el 17/10/2026.** Su texto no se editó. Para lo que se va a construir la fuente de verdad es `docs/backlog_implementacion_mvp.md`, y para el modelo de datos `docs/propuesta_modelo_ER_faktur.md`.
+>
+> Al aterrizar el backlog se tomaron decisiones que contradicen este documento. La tabla las lista para que nadie las lea como errores del backlog.
+
+| § de este PRD | Qué dice acá | Qué se decidió | Dónde |
+|:--|:---|:---|:---|
+| Cabecera, §3.1 | Stack objetivo Python (FastAPI / Pydantic) | **TypeScript/Node** con Fastify 5 y React 19. El ADR `0001` ya lo había decidido antes de que este documento se escribiera; el MVP §9 recomienda Python, pero no aplica. | `docs/decisiones/0001-stack-ts-node-react.md` |
+| RF-2.1 | `gemini-1.5-flash` | **`gemini-3.8-flash`.** La familia 1.5 está apagada: no figura ni como histórico en la [página oficial de deprecaciones](https://ai.google.dev/gemini-api/docs/deprecations). | Backlog §8, T10 |
+| RF-4 | Precedencia con el presupuesto en la regla 2 como FRENAR | **La tabla de `diagramas/ds01`.** Las reglas 1-3 son frenos duros y las 4-7 escalables, así que el sobregiro de presupuesto **se escala** con un humano. Este PRD era el único documento que se contradecía. | Backlog §5 |
+| RF-4 | Defaults con whitelist de 3 proveedores | **8 proveedores**, derivados del set de casos. Con 3, la regla 4 dispara antes que la regla que cada caso narraría. | ER §2.1, backlog §6.1 |
+| RF-1 + RI-1 | `file_hash UNIQUE` y a la vez un veredicto FRENAR persistido para el duplicado | **Tabla `ingest_attempts`**: la factura canónica queda `UNIQUE` y todo reenvío se registra y se frena, en vez de rechazarse en silencio. | ER §2.3, backlog §7 Q1 |
+| RF-4, §7 | Presupuesto mensual único, presupuesto por categoría implícito | **La categoría vive en `vendors.category`** y gobierna la segunda mitad de la regla 6 contra `policy_category_budgets`. | ER §2.1, backlog §7 Q3 |
+| RF-5, Apéndice A | 9 `reason_code`, con `ERR_BUDGET_OVERRUN` como FRENAR | **10 `reason_code`.** `ERR_BUDGET_OVERRUN` queda sin uso; entran `ALERT_BUDGET_OVERRUN` y `ALERT_LOW_CONFIDENCE`. | ER §2.8.1 |
+| §7 | 10 casos de prueba | **11 casos.** Se agrega TC-11 (beneficiario bloqueado), que no tenía caso y por lo tanto dejaba la regla 3 sin demostrar. | Backlog §6.2 |
+| §10 | `schemas.py`, `policy_engine.py`, `main.py` | Equivalentes TS: `api/src/domain/schemas.ts`, `api/src/domain/ruleEngine.ts`, `api/src/server.ts`. | Backlog T1, T2, T5 |
+| §11 | 5 preguntas abiertas al dueño del producto | **3 respondidas:** si el presupuesto frena duro o escala (→ escala, §11.3), si es mensual o por categoría (→ ambos, §11.1), y si el umbral es por empresa o categoría (→ por empresa, con categoría debajo, §11.1). Siguen abiertas la blacklist real (§11.2), el envío real de "Solicitar Corrección" (§11.4) y el destino del piloto (§11.5). | Backlog §5 y §7 |
+
+---
+
 ## 1. Resumen del producto
 
 ### 1.1 Problema
