@@ -24,7 +24,7 @@ El frontend hoy es un `App.tsx` de 20 líneas que solo comprueba el health de la
 - **No se implementa ninguna pantalla real.** T18-T22 construyen sobre este scaffold. Acá solo cajas vacías con el nombre de la ruta.
 - **No se conecta la API.** El health check actual se mantiene como está o se mueve a una ruta; no se añaden llamadas a `/api/invoices/*`.
 - **No se añaden tests al web.** El web no tiene tests hoy; añadirlos es una tarea aparte (y el `just check` del web no los corre).
-- **No se publica ni se despliega.** El `Containerfile` ya construye el web; este scaffold solo asegura que el build siga funcionando.
+- **No se publica ni se despliega.** El `Dockerfile` ya construye el web; este scaffold solo asegura que el build siga funcionando.
 - **No se añade estado global** (Zustand, Redux, etc.). El toggle de tema vive en un context/hook mínimo; el resto de estado es local por ruta.
 
 ## 4. Constraints

@@ -6,7 +6,7 @@
 
 ## 1. Intent y por qué
 
-El MVP necesita un entorno accesible (demo o piloto) sin depender de localhost. Render ofrece despliegue con Docker, disco persistente y health checks, que encajan con el `Containerfile` multi-stage que ya tenemos y que CI ya verifica. La alternativa (build nativo de Node) duplicaría los pasos de build y no aprovecharía el entrypoint que arregla permisos de `data/`.
+El MVP necesita un entorno accesible (demo o piloto) sin depender de localhost. Render ofrece despliegue con Docker, disco persistente y health checks, que encajan con el `Dockerfile` multi-stage que ya tenemos y que CI ya verifica. La alternativa (build nativo de Node) duplicaría los pasos de build y no aprovecharía el entrypoint que arregla permisos de `data/`.
 
 ## 2. Goals
 
@@ -16,7 +16,7 @@ El MVP necesita un entorno accesible (demo o piloto) sin depender de localhost. 
 - Variables de entorno configuradas: `GEMINI_API_KEY`, `GEMINI_MODEL`, `LOG_LEVEL`, `NOTIFIER_WEBHOOK_URL`.
 - Auto-deploy en push a `main` (Render construye automáticamente).
 - Archivo `render.yaml` en la raíz del repo (Infrastructure as Code).
-- Renombrar `Containerfile` a `Dockerfile` (Render lo auto-detecta; también beneficia a CI y a cualquier desarrollador).
+- Renombrar `Dockerfile` a `Dockerfile` (Render lo auto-detecta; también beneficia a CI y a cualquier desarrollador).
 
 ## 3. Non-goals (explícito)
 
@@ -41,7 +41,7 @@ El MVP necesita un entorno accesible (demo o piloto) sin depender de localhost. 
 |:---|:---|:---|
 | Despliegue | Docker (Dockerfile existente) | Ya probado en CI; entrypoint arregla permisos; build unificado |
 | `render.yaml` | Sí, IaC en la raíz del repo | Reproducible; Render lo lee automáticamente |
-| Renombrar `Containerfile` → `Dockerfile` | Sí | Render auto-detecta; estándar de la industria; beneficia a CI y desarrolladores |
+| Renombrar `Dockerfile` → `Dockerfile` | Sí | Render auto-detecta; estándar de la industria; beneficia a CI y desarrolladores |
 | Disco persistente | Sí, en `/app/data` (paid plan) | SQLite necesita persistencia; documentar limitación del free tier |
 | Health check | `/api/health` | Ya existe en Fastify (T1) |
 | Auto-deploy | En push a `main` | Render construye automáticamente; CI ya verifica tests |
@@ -51,14 +51,14 @@ El MVP necesita un entorno accesible (demo o piloto) sin depender de localhost. 
 
 | Archivo | Acción | Responsabilidad |
 |:---|:---|:---|
-| `Dockerfile` | Renombrar desde `Containerfile` | Build de producción (deps → build → runtime) |
+| `Dockerfile` | Renombrar desde `Dockerfile` | Build de producción (deps → build → runtime) |
 | `render.yaml` | Crear | Configuración de Render (servicio, disco, env vars, health check) |
-| `compose.prod.yml` | Modificar | `dockerfile: Containerfile` → `dockerfile: Dockerfile` |
-| `.github/workflows/ci.yml` | Modificar | `docker build -f Containerfile` → `docker build` (default busca Dockerfile) |
-| `Containerfile` | Eliminar | Renombrado a Dockerfile |
-| `AGENTS.md` | Modificar | Actualizar referencias a `Containerfile` |
-| `README.md` | Modificar | Actualizar referencias a `Containerfile` |
-| `docs/backlog_implementacion_mvp.md` | Modificar | Actualizar referencias a `Containerfile` |
+| `compose.prod.yml` | Modificar | `dockerfile: Dockerfile` → `dockerfile: Dockerfile` |
+| `.github/workflows/ci.yml` | Modificar | `docker build -f Dockerfile` → `docker build` (default busca Dockerfile) |
+| `Dockerfile` | Eliminar | Renombrado a Dockerfile |
+| `AGENTS.md` | Modificar | Actualizar referencias a `Dockerfile` |
+| `README.md` | Modificar | Actualizar referencias a `Dockerfile` |
+| `docs/backlog_implementacion_mvp.md` | Modificar | Actualizar referencias a `Dockerfile` |
 
 ## 7. `render.yaml`
 
@@ -129,12 +129,12 @@ deploy:
 - Decidir el tamaño del disco (1 GB es suficiente para SQLite en demo/piloto).
 - Decidir si se quiere auto-deploy en `main` o manual (el `render.yaml` default es auto-deploy).
 - Verificar que el entrypoint funciona en Render (el disco se monta en runtime, el entrypoint hace `chown` antes de bajar a `app`).
-- Actualizar `AGENTS.md`, `README.md` y docs para reflejar el renombre de `Containerfile` a `Dockerfile`.
+- Actualizar `AGENTS.md`, `README.md` y docs para reflejar el renombre de `Dockerfile` a `Dockerfile`.
 
 ## 9. Criterio de aceptación
 
 - `render.yaml` existe en la raíz del repo y es válido (Render lo acepta sin errores).
-- `Dockerfile` existe (renombrado desde `Containerfile`).
+- `Dockerfile` existe (renombrado desde `Dockerfile`).
 - `compose.prod.yml` y `ci.yml` actualizados para usar `Dockerfile`.
 - El build de Docker sigue pasando (local y en CI).
 - La app arranca en Render y responde `200` en `/api/health`.
@@ -154,10 +154,10 @@ deploy:
 - **Service sleep en free tier.** Primera request tarda ~30s. Mitigación: ping externo o plan Starter.
 - **El entrypoint necesita root.** Render ejecuta el contenedor como root por defecto (el Dockerfile no tiene `USER app`), así que el entrypoint puede hacer `chown`. Verificado en T1.
 - **Build context.** Render construye con la raíz del repo. El `.dockerignore` excluye `docs/`, `diagramas/`, `*.md`, etc. Verificar que `specs/` no esté excluido (no lo está).
-- **Renombrar `Containerfile`.** Afecta `compose.prod.yml`, `ci.yml`, y ~7 documentos. Mitigación: find-and-replace global.
+- **Renombrar `Dockerfile`.** Afecta `compose.prod.yml`, `ci.yml`, y ~7 documentos. Mitigación: find-and-replace global.
 
 ## 12. Lo que queda al builder
 
 - `autoDeploy: false` en `render.yaml`. El deploy se triggerea desde CI (Opción A). El primer deploy es manual (desde el dashboard de Render).
 - Decidir el tamaño del disco. Recomendación: 1 GB (suficiente para SQLite en demo/piloto).
-- Actualizar `AGENTS.md`, `README.md` y docs para reflejar el renombre de `Containerfile` a `Dockerfile`.
+- Actualizar `AGENTS.md`, `README.md` y docs para reflejar el renombre de `Dockerfile` a `Dockerfile`.

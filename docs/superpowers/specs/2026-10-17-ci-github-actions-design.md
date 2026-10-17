@@ -6,7 +6,7 @@
 
 ## 1. Por qué
 
-Hoy la única forma de saber si un cambio rompe algo es correr `just check` a mano en el contenedor de desarrollo. No hay CI: un PR puede mergearse con typecheck, lint o tests rotos, y un cambio en el `Containerfile` o en `specs/` puede pasar en dev (donde el bind mount tapa los problemas) y reventar en prod. T1 y T2 cerraron precisamente ese hueco (`specs/` no llegaba a la imagen); falta automatizar la verificación para que no dependa de que alguien se acuerde de correrla.
+Hoy la única forma de saber si un cambio rompe algo es correr `just check` a mano en el contenedor de desarrollo. No hay CI: un PR puede mergearse con typecheck, lint o tests rotos, y un cambio en el `Dockerfile` o en `specs/` puede pasar en dev (donde el bind mount tapa los problemas) y reventar en prod. T1 y T2 cerraron precisamente ese hueco (`specs/` no llegaba a la imagen); falta automatizar la verificación para que no dependa de que alguien se acuerde de correrla.
 
 ## 2. Qué hace el workflow
 
@@ -23,13 +23,13 @@ Verifica el código TypeScript/React con las mismas tres puertas que `just check
 
 Cache de npm vía `actions/setup-node` con `cache: 'npm'`, que usa `package-lock.json` como clave. Sin cache de capas Docker en esta versión.
 
-Node 22 porque `engines.node >= 22` y el `Containerfile` usa `node:22-alpine`; usar otra versión en CI que en prod es una fuente de falsos verdes.
+Node 22 porque `engines.node >= 22` y el `Dockerfile` usa `node:22-alpine`; usar otra versión en CI que en prod es una fuente de falsos verdes.
 
 ### 2.2 `build-image` (ubuntu-latest, depende de `verify`)
 
 Construye la imagen de producción y la somete a un smoke test, que es lo único que prueba de verdad el `COPY specs` y el entrypoint:
 
-1. `docker build -f Containerfile -t blinka-payagent:ci .`
+1. `docker build -f Dockerfile -t blinka-payagent:ci .`
 2. Levantar el contenedor en background.
 3. Esperar el healthcheck (`GET /api/health`).
 4. `curl` y verificar `200`.
@@ -56,12 +56,12 @@ No se dispara en otras ramas ni en tags. `pull_request` (no `pull_request_target
 
 - `.github/workflows/ci.yml`
 
-No se toca el `Containerfile`, ni `package.json`, ni los scripts. El workflow consume lo que ya existe.
+No se toca el `Dockerfile`, ni `package.json`, ni los scripts. El workflow consume lo que ya existe.
 
 ## 6. Riesgos y cómo se mitigan
 
 - **`npm ci` falla si el lockfile está desincronizado.** Es el comportamiento deseado: fuerza a commitear el lockfile actualizado.
-- **El build de la imagen necesita toolchain** (`python3 make g++` en la etapa `deps`). El `Containerfile` ya lo tiene; el workflow no lo toca.
+- **El build de la imagen necesita toolchain** (`python3 make g++` en la etapa `deps`). El `Dockerfile` ya lo tiene; el workflow no lo toca.
 - **El smoke test depende de que el entrypoint haga `chown` y baje a `app`.** Ya verificado en T1; el smoke test lo re-verifica en cada PR.
 - **Dos tests de `dataDir` solo corren como root.** `runAsNobody` hace `setuid(65534)`, que requiere root. En CI (runner no-root) se saltan con `test.skip`; en el contenedor de dev (root) corren completos. No es una pérdida de cobertura del código: `dataDir.ts` sigue typechecked y linted en CI.
 - **El healthcheck tarda ~10s en pasar** (`start-period: 10s`). El smoke test debe esperar con reintentos, no con un `sleep` fijo.

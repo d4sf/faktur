@@ -18,8 +18,8 @@ rápido y desplegar sin depender de lo que haya instalado en cada máquina.
    que la API, sin salto entre capas.
 2. **Monorepo con npm workspaces** (`api/`, `web/`): un `npm install`, un
    typecheck, un build y una imagen por entorno.
-3. **Dos imágenes**: `Containerfile.dev` (hot reload, código montado) y
-   `Containerfile` (multi-stage, UI compilada servida por la API, usuario no
+3. **Dos imágenes**: `Dockerfile.dev` (hot reload, código montado) y
+   `Dockerfile` (multi-stage, UI compilada servida por la API, usuario no
    root). La configuración se compone con `compose.yml` + overlay.
 4. **`just` como interfaz única**: build, logs, tests, lint y arranque se
    ejecutan con recetas; nadie necesita recordar comandos de Compose.

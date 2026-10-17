@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Configurar el despliegue de Faktur en Render usando Docker, con disco persistente, health check, variables de entorno, renombre de `Containerfile` a `Dockerfile`, y trigger de deploy desde CI (Opción A: `autoDeploy: false` + GitHub Action).
+**Goal:** Configurar el despliegue de Faktur en Render usando Docker, con disco persistente, health check, variables de entorno, renombre de `Dockerfile` a `Dockerfile`, y trigger de deploy desde CI (Opción A: `autoDeploy: false` + GitHub Action).
 
-**Architecture:** Un archivo `render.yaml` en la raíz declara el servicio (Docker runtime, disco, env vars, health check, `autoDeploy: false`). El `Containerfile` se renombra a `Dockerfile`. `compose.prod.yml` y `ci.yml` se actualizan. El workflow de CI gana un job `deploy` que triggerea Render después de `verify` + `build-image` (solo en push a main). Las referencias en docs se actualizan con find-and-replace. El `chown` del entrypoint siempre se ejecuta (idempotente, funciona en local y en Render).
+**Architecture:** Un archivo `render.yaml` en la raíz declara el servicio (Docker runtime, disco, env vars, health check, `autoDeploy: false`). El `Dockerfile` se renombra a `Dockerfile`. `compose.prod.yml` y `ci.yml` se actualizan. El workflow de CI gana un job `deploy` que triggerea Render después de `verify` + `build-image` (solo en push a main). Las referencias en docs se actualizan con find-and-replace. El `chown` del entrypoint siempre se ejecuta (idempotente, funciona en local y en Render).
 
 **Tech Stack:** Render Blueprints (render.yaml), GitHub Actions, Docker, PyYAML (validación local).
 
@@ -14,51 +14,51 @@
 
 - Todo corre dentro del contenedor para verificación. `just` no está instalado en el host: usar `bash ./scripts/compose.sh <args>`. El cwd de `compose exec` es `/app`.
 - Commits: Conventional Commits, mensajes en inglés, un commit = un cambio lógico.
-- El renombre `Containerfile` → `Dockerfile` no cambia el contenido del archivo, solo el nombre.
-- `Containerfile.dev` se renombra a `Dockerfile.dev` (consistencia). `compose.dev.yml` se actualiza.
+- El renombre `Dockerfile` → `Dockerfile` no cambia el contenido del archivo, solo el nombre.
+- `Dockerfile.dev` se renombra a `Dockerfile.dev` (consistencia). `compose.dev.yml` se actualiza.
 - Prettier no aplica a `render.yaml` ni a `Dockerfile` (no son archivos que Prettier parsea).
 - El `Dockerfile` debe seguir pasando el build de producción (`COMPOSE_ENV=prod bash ./scripts/compose.sh build`).
-- `.dockerignore` debe excluir `Dockerfile` y `Dockerfile.dev` en vez de `Containerfile` y `Containerfile.dev`.
+- `.dockerignore` debe excluir `Dockerfile` y `Dockerfile.dev` en vez de `Dockerfile` y `Dockerfile.dev`.
 
 ## Review Focus
 
 Cinco formas de falla que el spec implica.
 
 1. **`compose.prod.yml` no actualizado.** Si se renombra el archivo pero no se actualiza `dockerfile:`, `just prod` falla con "file not found". Mitigación: actualizar en el mismo commit.
-2. **CI no actualizado.** Si `ci.yml` sigue referenciando `Containerfile`, el workflow falla en el paso de build. Mitigación: actualizar en el mismo commit.
+2. **CI no actualizado.** Si `ci.yml` sigue referenciando `Dockerfile`, el workflow falla en el paso de build. Mitigación: actualizar en el mismo commit.
 3. **`render.yaml` inválido.** Un typo en YAML o un campo no soportado hace que Render rechace el blueprint. Mitigación: validar con PyYAML localmente.
 4. **El job `deploy` corre en PRs.** El deploy solo debe ocurrir en push a `main`, no en PRs. Mitigación: `if: github.ref == 'refs/heads/main' && github.event_name == 'push'`.
 5. **El job `deploy` falla si los secrets no existen.** Si `RENDER_API_KEY` o `RENDER_SERVICE_ID` no están configurados en GitHub, el deploy falla. Mitigación: documentar en el PR body y en el README.
 
 ---
 
-### Task 1: Renombrar `Containerfile` a `Dockerfile`
+### Task 1: Renombrar `Dockerfile` a `Dockerfile`
 
 **Files:**
-- Rename: `Containerfile` → `Dockerfile`
-- Rename: `Containerfile.dev` → `Dockerfile.dev`
-- Modify: `compose.prod.yml` (dockerfile: Containerfile → Dockerfile)
-- Modify: `compose.dev.yml` (dockerfile: Containerfile.dev → Dockerfile.dev)
-- Modify: `.dockerignore` (Containerfile → Dockerfile)
+- Rename: `Dockerfile` → `Dockerfile`
+- Rename: `Dockerfile.dev` → `Dockerfile.dev`
+- Modify: `compose.prod.yml` (dockerfile: Dockerfile → Dockerfile)
+- Modify: `compose.dev.yml` (dockerfile: Dockerfile.dev → Dockerfile.dev)
+- Modify: `.dockerignore` (Dockerfile → Dockerfile)
 
 - [ ] **Step 1: Renombrar los archivos**
 
 ```bash
-git mv Containerfile Dockerfile
-git mv Containerfile.dev Dockerfile.dev
+git mv Dockerfile Dockerfile
+git mv Dockerfile.dev Dockerfile.dev
 ```
 
 - [ ] **Step 2: Actualizar `compose.prod.yml`**
 
-Cambiar `dockerfile: Containerfile` a `dockerfile: Dockerfile`.
+Cambiar `dockerfile: Dockerfile` a `dockerfile: Dockerfile`.
 
 - [ ] **Step 3: Actualizar `compose.dev.yml`**
 
-Cambiar `dockerfile: Containerfile.dev` a `dockerfile: Dockerfile.dev`.
+Cambiar `dockerfile: Dockerfile.dev` a `dockerfile: Dockerfile.dev`.
 
 - [ ] **Step 4: Actualizar `.dockerignore`**
 
-Cambiar `Containerfile` a `Dockerfile` y `Containerfile.dev` a `Dockerfile.dev`.
+Cambiar `Dockerfile` a `Dockerfile` y `Dockerfile.dev` a `Dockerfile.dev`.
 
 - [ ] **Step 5: Verificar que el build sigue pasando**
 
@@ -70,7 +70,7 @@ Expected: ambos builds exitosos.
 
 ```bash
 git add Dockerfile Dockerfile.dev compose.prod.yml compose.dev.yml .dockerignore
-git commit -m "chore: rename Containerfile to Dockerfile for Render compatibility"
+git commit -m "chore: rename Dockerfile to Dockerfile for Render compatibility"
 ```
 
 ---
@@ -167,15 +167,15 @@ git commit -m "ci: add render deploy trigger after verify and build"
 **Files:**
 - Modify: `AGENTS.md`, `README.md`, `docs/backlog_implementacion_mvp.md`, `docs/propuesta_modelo_ER_faktur.md`, `docs/decisiones/0001-stack-ts-node-react.md`, `docs/superpowers/specs/*.md`, `docs/superpowers/plans/*.md`
 
-- [ ] **Step 1: Reemplazar `Containerfile` por `Dockerfile` en docs**
+- [ ] **Step 1: Reemplazar `Dockerfile` por `Dockerfile` en docs**
 
-Run: `sed -i 's/Containerfile/Dockerfile/g' AGENTS.md README.md docs/backlog_implementacion_mvp.md docs/propuesta_modelo_ER_faktur.md docs/decisiones/0001-stack-ts-node-react.md docs/superpowers/specs/*.md docs/superpowers/plans/*.md`
+Run: `sed -i 's/Dockerfile/Dockerfile/g' AGENTS.md README.md docs/backlog_implementacion_mvp.md docs/propuesta_modelo_ER_faktur.md docs/decisiones/0001-stack-ts-node-react.md docs/superpowers/specs/*.md docs/superpowers/plans/*.md`
 
-Nota: `Containerfile.dev` se convierte en `Dockerfile.dev` con este sed. Eso está bien porque es consistente.
+Nota: `Dockerfile.dev` se convierte en `Dockerfile.dev` con este sed. Eso está bien porque es consistente.
 
-- [ ] **Step 2: Verificar que no quedan referencias a `Containerfile`**
+- [ ] **Step 2: Verificar que no quedan referencias a `Dockerfile`**
 
-Run: `grep -rn "Containerfile" --include="*.yml" --include="*.yaml" --include="*.sh" --include="*.md" --include="*.ts" --include="*.tsx" --include="*.json" . | grep -v node_modules | grep -v ".superpowers"`
+Run: `grep -rn "Dockerfile" --include="*.yml" --include="*.yaml" --include="*.sh" --include="*.md" --include="*.ts" --include="*.tsx" --include="*.json" . | grep -v node_modules | grep -v ".superpowers"`
 
 Expected: sin salida.
 
@@ -189,7 +189,7 @@ Expected: ambos builds exitosos.
 
 ```bash
 git add -A
-git commit -m "docs: update references from Containerfile to Dockerfile"
+git commit -m "docs: update references from Dockerfile to Dockerfile"
 ```
 
 ---
@@ -214,9 +214,9 @@ Run: `python3 -c "import yaml; yaml.safe_load(open('render.yaml')); yaml.safe_lo
 
 Expected: `YAMLs válidos`.
 
-- [ ] **Step 4: Verificar que no quedan referencias a `Containerfile`**
+- [ ] **Step 4: Verificar que no quedan referencias a `Dockerfile`**
 
-Run: `grep -rn "Containerfile" --include="*.yml" --include="*.yaml" --include="*.sh" --include="*.md" --include="*.ts" --include="*.tsx" --include="*.json" . | grep -v node_modules | grep -v ".superpowers"`
+Run: `grep -rn "Dockerfile" --include="*.yml" --include="*.yaml" --include="*.sh" --include="*.md" --include="*.ts" --include="*.tsx" --include="*.json" . | grep -v node_modules | grep -v ".superpowers"`
 
 Expected: sin salida.
 

@@ -4,7 +4,7 @@
 
 **Goal:** Añadir un workflow de GitHub Actions que ejecute typecheck, lint y tests, y verifique que la imagen de producción construye y arranca, en cada PR a `main` y en cada push a `main`.
 
-**Architecture:** Un único archivo `.github/workflows/ci.yml` con dos jobs: `verify` (Node 22 en el runner, cache de npm, las tres puertas de `just check`) y `build-image` (construye el `Containerfile` de prod y hace un smoke test con el healthcheck). `build-image` depende de `verify` para fail fast. Sin secretos, sin publicación, sin cache de capas Docker.
+**Architecture:** Un único archivo `.github/workflows/ci.yml` con dos jobs: `verify` (Node 22 en el runner, cache de npm, las tres puertas de `just check`) y `build-image` (construye el `Dockerfile` de prod y hace un smoke test con el healthcheck). `build-image` depende de `verify` para fail fast. Sin secretos, sin publicación, sin cache de capas Docker.
 
 **Tech Stack:** GitHub Actions, Node 22, Docker (buildx incluido en el runner).
 
@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- El workflow vive en `.github/workflows/ci.yml` y es el único archivo nuevo. No se toca `Containerfile`, `package.json` ni scripts.
+- El workflow vive en `.github/workflows/ci.yml` y es el único archivo nuevo. No se toca `Dockerfile`, `package.json` ni scripts.
 - Node 22 (`engines.node >= 22`, `node:22-alpine` en prod). Usar otra versión en CI que en prod es una fuente de falsos verdes.
 - El runner es `ubuntu-latest`. No hay contenedor de dev en CI: los tests corren directo con `npm` (el contenedor es para desarrollo local y para la imagen de prod).
 - Sin secretos: `env.test.ts` valida env pero ningún test toca Gemini real.
@@ -38,7 +38,7 @@ Cinco formas de falla que el spec implica y que ningún test del workflow toca. 
 - Create: `.github/workflows/ci.yml`
 
 **Interfaces:**
-- Consumes: nada de código del repo. Consume el `Containerfile` existente, `package.json`, `package-lock.json`, y los scripts `typecheck`, `lint`, `test` del root.
+- Consumes: nada de código del repo. Consume el `Dockerfile` existente, `package.json`, `package-lock.json`, y los scripts `typecheck`, `lint`, `test` del root.
 - Produces: el workflow en sí. No produce código que otras tareas consuman.
 
 - [ ] **Step 1: Crear el directorio y escribir el workflow**
@@ -91,7 +91,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Build production image
-        run: docker build -f Containerfile -t blinka-payagent:ci .
+        run: docker build -f Dockerfile -t blinka-payagent:ci .
 
       - name: Smoke test
         run: |
@@ -133,7 +133,7 @@ Expected: los cuatro pasan (typecheck limpio, lint limpio, 63/63 tests). Si algu
 
 - [ ] **Step 4: Verificar que el build de la imagen corre**
 
-Run: `docker build -f Containerfile -t blinka-payagent:ci .`
+Run: `docker build -f Dockerfile -t blinka-payagent:ci .`
 
 Expected: build exitoso (igual que el que se hizo en T4 para verificar el `COPY specs`).
 
