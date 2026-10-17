@@ -3,6 +3,10 @@ services:
     environment:
       PORT: "3000"
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.8-flash}
+      NOTIFIER_WEBHOOK_URL: ${NOTIFIER_WEBHOOK_URL:-}
+      DATA_DIR: /app/data
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/health"]
       interval: 15s
