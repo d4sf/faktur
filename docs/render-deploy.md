@@ -33,7 +33,7 @@ El `Dockerfile` construye la imagen (deps → build → runtime) y el `entrypoin
    - **Dockerfile path:** `./Dockerfile`
    - **Health check path:** `/api/health`
    - **Disk:** `faktur-data`, 1 GB, montado en `/app/data`
-7. Render te pedirá los valores de `GEMINI_API_KEY` y `NOTIFIER_WEBHOOK_URL` (marcados como `sync: false`). Déjalos vacíos si no los tienes.
+7. Render te pedirá los valores de `GEMINI_API_KEY`, `NOTIFIER_WEBHOOK_URL` y `ADMIN_TOKEN` (marcados como `sync: false`). Déjalos vacíos si no los tienes, **excepto `ADMIN_TOKEN`**: si quieres poder reiniciar la base de datos desde la UI (perfil "demo"), pon un valor simple (ej. `demo123`). Sin él, el reset fallará con `db_reset_token_missing`.
 8. Haz clic en **"Apply"** (o "Create Blueprint").
 
 Render empezará a construir la imagen Docker. Esto tarda ~3-5 minutos. Puedes ver el progreso en la pestaña **"Logs"** del servicio.
@@ -112,6 +112,22 @@ A partir del primer deploy exitoso, el flujo es:
    - **"EACCES: permission denied, open '/app/data/faktur.db'"** → El entrypoint no hizo `chown`. Verifica que el `Dockerfile` no tenga `USER app` (no lo tiene).
    - **"Cannot find module '/app/api/dist/server.js'"** → El build de TypeScript falló. Revisa el log de build.
    - **"no such table: vendors"** → El schema no se aplicó. Verifica que `loadDb` se llame en `server.ts` y que `specs/` llegue a la imagen.
+
+### Error `internal_error` al reiniciar la base de datos
+
+El panel de administración (`/datos`) llama a `POST /api/admin/db/reset`. Si el servidor devuelve `{"error": "internal_error"}`, el error real está en los logs de Render. Las causas más comunes:
+
+1. **`ADMIN_TOKEN` no configurado.** En producción (`NODE_ENV=production`), el reset requiere un token. Si `ALLOW_DB_RESET=true` pero `ADMIN_TOKEN` está vacío, el servidor responde `db_reset_token_missing`. Si ambos están configurados pero el token no coincide, responde `admin_token_invalid`.
+   - **Solución:** Configurar `ADMIN_TOKEN` en el dashboard de Render (Environment → Edit). Usar un valor simple como `demo123` para la demo.
+
+2. **`fixtures/` no está en la imagen.** El perfil "demo" lee `fixtures/ground_truth.json` y `fixtures/TC-*.json`. Si el `Dockerfile` no copia `fixtures/` al stage runtime, el reset falla con `ENOENT: no such file or directory, open '/app/fixtures/ground_truth.json'`.
+   - **Solución:** Verificar que el `Dockerfile` incluya `COPY --from=build --chown=app:app /app/fixtures ./fixtures` en el stage runtime. (Ya incluido en el commit más reciente.)
+
+3. **El disco no tiene permisos de escritura.** El entrypoint hace `chown app:app /app/data` al arrancar. Si el disco se montó después del primer arranque, puede haber un problema.
+   - **Solución:** Redeployar el servicio (Manual Deploy → Deploy latest commit) para que el entrypoint vuelva a ejecutar el `chown`.
+
+4. **La base tiene datos de una versión anterior.** Si la base ya tiene políticas v2, v3, etc. (de pruebas anteriores), el seed base puede fallar al verificar conteos.
+   - **Solución:** Borrar el disco en Render (Dashboard → Disks → Delete) y redeployar. El seed se re-aplica automáticamente.
 
 ### El health check falla
 
