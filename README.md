@@ -60,7 +60,26 @@ lo que se decidió después y su texto original no se edita.
 - `Containerfile.dev`: Node 22 + dependencias, hot reload; el código se monta
   como volumen y `node_modules` queda en un volumen nombrado.
 - `Containerfile`: multi-stage (deps → build → runtime), sirve la UI compilada
-  desde la API y corre como usuario no root.
+  desde la API. Arranca como root solo para lo que hace
+  `scripts/entrypoint.sh` —ajustar el owner de `data/`— y baja a `app` con
+  `su-exec` antes de ejecutar nada.
+
+## Datos de la demo
+
+`just prod` monta `./data` en el contenedor. El entrypoint le cambia el owner a
+uid 100, así que **después del primer arranque el usuario del host pierde
+escritura** sobre `data/` y no puede borrarlo:
+
+```bash
+sudo chown -R "$(id -u):$(id -g)" data    # recuperar el control del directorio
+```
+
+Para resetear entre tomas, eso más `rm -rf data/`. La alternativa sin `sudo` es
+borrar desde el contenedor, que corre como root:
+
+```bash
+COMPOSE_ENV=prod bash ./scripts/compose.sh exec app rm -rf /app/data/*
+```
 
 La decisión de stack y su justificación están en
 `docs/decisiones/0001-stack-ts-node-react.md`.

@@ -5,6 +5,13 @@ FROM node:22-alpine AS deps
 # ya está en el caché, pero `npm ci` —que es lo que corre acá— lo dispara siempre
 # y aborta sin toolchain. Solo vive en esta etapa: runtime parte de una base
 # limpia, así que la imagen final no carga con esto.
+# Verificado por experimento: sin estas tres líneas, `npm ci` de este repo
+# dispara `node-gyp rebuild` sobre better-sqlite3 y aborta con
+# "Could not find any Python installation". El paquete declara `gypfile: false`
+# y no expone script de instalación, así que la causa exacta del default de npm
+# no está documentada; lo verificado es que el build necesita el toolchain.
+# Solo vive en esta etapa: runtime parte de `node:22-alpine` limpio y no lo
+# hereda (verificado: la imagen final no tiene python3, make ni g++).
 RUN apk add --no-cache python3 make g++
 
 WORKDIR /app
