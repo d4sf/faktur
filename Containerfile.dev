@@ -1,6 +1,9 @@
 FROM node:22-alpine AS dev
 
-RUN apk add --no-cache bash curl git
+# python3/make/g++ son para `npm ci` de better-sqlite3: el paquete trae
+# binding.gyp y npm le aplica su default `node-gyp rebuild`. Solo la imagen dev
+# los carga; la de producción los compila en su etapa de deps y no los hereda.
+RUN apk add --no-cache bash curl git python3 make g++
 
 WORKDIR /app
 

@@ -6,6 +6,8 @@ services:
     image: ${APP_IMAGE:-blinka-payagent:prod}
     ports:
       - "127.0.0.1:${APP_PORT:-3000}:3000"
+    volumes:
+      - ./data:/app/data
     environment:
       NODE_ENV: production
     restart: unless-stopped

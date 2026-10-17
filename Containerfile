@@ -1,5 +1,12 @@
 FROM node:22-alpine AS deps
 
+# better-sqlite3 trae binding.gyp y no declara script `install`, así que npm le
+# aplica su default `node-gyp rebuild`. `npm install` lo evita cuando el paquete
+# ya está en el caché, pero `npm ci` —que es lo que corre acá— lo dispara siempre
+# y aborta sin toolchain. Solo vive en esta etapa: runtime parte de una base
+# limpia, así que la imagen final no carga con esto.
+RUN apk add --no-cache python3 make g++
+
 WORKDIR /app
 
 COPY package.json package-lock.json ./
@@ -17,15 +24,25 @@ FROM node:22-alpine AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
 
-RUN addgroup -S app && adduser -S app -G app
+# uid/gid fijos: el entrypoint hace `chown app:app` sobre un bind mount del host,
+# y el resultado tiene que ser reproducible. El -g 101 no es cosmético: el grupo
+# `users` ya ocupa el gid 100 en la imagen base.
+RUN addgroup -S -g 101 app && adduser -S -u 100 -G app app
+
+# su-exec baja de root a app sin meter un runtime de Go (gosu se compila).
+RUN apk add --no-cache su-exec
 
 COPY --from=build --chown=app:app /app/package.json ./package.json
 COPY --from=build --chown=app:app /app/node_modules ./node_modules
 COPY --from=build --chown=app:app /app/api/package.json ./api/package.json
 COPY --from=build --chown=app:app /app/api/dist ./api/dist
 COPY --from=build --chown=app:app /app/web/dist ./web/dist
+COPY --chmod=755 scripts/entrypoint.sh /app/scripts/entrypoint.sh
 
-USER app
+# Sin `USER app`: ese USER fijo es lo que le impediría al entrypoint arreglar
+# los permisos del bind mount antes de bajar de privilegios.
+ENTRYPOINT ["/app/scripts/entrypoint.sh"]
+
 EXPOSE 3000
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
