@@ -631,7 +631,7 @@ El runner tiene que **afirmar que el conjunto de `reason_code` que produjo es ig
 
 ---
 
-#### [ ] T20 · Editor de reglas con simulación en vivo
+#### [x] T20 · Editor de reglas con simulación en vivo
 
 **Síntesis.** Panel Bento para mover umbral, presupuesto y budgets por categoría, con simulación previa contra `POST /api/policy/preview`: al bajar el slider, las facturas que antes eran PAGAR se muestran como ESCALAR **en la simulación**, sin tocar las decisiones ya tomadas. Botón para volver a la versión base.
 

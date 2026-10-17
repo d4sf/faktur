@@ -1,12 +1,7 @@
-/**
- * @file Reglas.tsx
- * @description Catálogo oficial de las 8 reglas deterministas de política (versión v1 congelada)
- * y panel de parámetros financieros globales (umbral autónomo, presupuesto mensual, tolerancia de desvío y budgets por categoría).
- * Basado en specs/policy.spec.json y en la matriz de precedencia del motor de decisiones.
- */
-
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { VerdictBadge } from "@/components/ui/VerdictBadge";
+import { PolicyEditor } from "@/components/reglas/PolicyEditor";
+import { usePolicy } from "@/hooks/usePolicy";
 
 /**
  * Representa una regla del motor determinista de cuentas por pagar.
@@ -87,16 +82,24 @@ const POLICY_RULES: PolicyRule[] = [
   },
 ];
 
-const CATEGORY_BUDGETS = [
-  { category: "Marketing", budget: "$4,000.00 USD", status: "Activo" },
-  { category: "Legal", budget: "$3,000.00 USD", status: "Activo" },
-  { category: "Infraestructura", budget: "$1,500.00 USD", status: "Activo" },
-  { category: "Diseño", budget: "$1,000.00 USD", status: "Activo" },
-  { category: "Software", budget: "$500.00 USD", status: "Activo" },
-  { category: "Retail", budget: "$0.00 USD", status: "Bloqueado" },
-];
-
 export default function Reglas() {
+  const { policy, records, loading, error, refresh } = usePolicy();
+
+  const handleApply = async (candidate: import("@/types/policy").CandidatePolicy) => {
+    const res = await fetch("/api/policy", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(candidate),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || `HTTP ${res.status}`);
+    }
+    const newPolicy = await res.json();
+    await refresh();
+    return newPolicy;
+  };
+
   return (
     <div className="space-y-8">
       {/* 1. Encabezado */}
@@ -110,74 +113,7 @@ export default function Reglas() {
         </p>
       </div>
 
-      {/* 2. Parámetros globales congelados */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 md:gap-5">
-        <Card className="rounded-xl border border-border/80 shadow-xs">
-          <CardHeader className="pb-1.5">
-            <CardTitle className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Umbral autónomo
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-              $1,000<span className="text-base font-normal text-muted-foreground">.00</span>
-            </div>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Máximo para pago sin intervención humana
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="rounded-xl border border-border/80 shadow-xs">
-          <CardHeader className="pb-1.5">
-            <CardTitle className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Presupuesto mensual
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-              $5,000<span className="text-base font-normal text-muted-foreground">.00</span>
-            </div>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Límite de dispersión global por ciclo
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="rounded-xl border border-border/80 shadow-xs">
-          <CardHeader className="pb-1.5">
-            <CardTitle className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Tolerancia de desvío
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-              1.4<span className="text-base font-normal text-muted-foreground">x</span>
-            </div>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Máximo +40% sobre histórico acordado
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="rounded-xl border border-border/80 shadow-xs">
-          <CardHeader className="pb-1.5">
-            <CardTitle className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Confianza mínima IA
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-              70<span className="text-base font-normal text-muted-foreground">%</span>
-            </div>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Umbral mínimo de legibilidad de campos
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* 3. Tabla de las 8 reglas con orden de precedencia */}
+      {/* 2. Tabla de las 8 reglas con orden de precedencia */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <div>
@@ -189,7 +125,9 @@ export default function Reglas() {
               se cumple define el veredicto.
             </p>
           </div>
-          <span className="text-xs font-mono text-muted-foreground">Versión v1</span>
+          <span className="text-xs font-mono text-muted-foreground">
+            Versión {policy?.version ?? "v1"}
+          </span>
         </div>
 
         <div className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
@@ -234,27 +172,22 @@ export default function Reglas() {
         </div>
       </div>
 
-      {/* 4. Presupuestos por categoría */}
-      <div className="space-y-3">
-        <h3 className="text-base font-bold tracking-tight text-foreground">
-          Presupuestos asignados por categoría
-        </h3>
-
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          {CATEGORY_BUDGETS.map((cat) => (
-            <div
-              key={cat.category}
-              className="rounded-xl border border-border/80 bg-card p-3 space-y-1 shadow-xs"
-            >
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-semibold text-foreground">{cat.category}</span>
-              </div>
-              <p className="font-mono text-xs font-bold text-foreground">{cat.budget}</p>
-              <span className="text-[10px] text-muted-foreground">{cat.status}</span>
-            </div>
-          ))}
+      {/* 3. Editor de política */}
+      {loading && (
+        <div className="space-y-4">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-32 w-full" />
         </div>
-      </div>
+      )}
+
+      {error && (
+        <div className="rounded-xl border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive">
+          Error al cargar la política: {error}
+        </div>
+      )}
+
+      {policy && <PolicyEditor policy={policy} records={records} onApply={handleApply} />}
     </div>
   );
 }
