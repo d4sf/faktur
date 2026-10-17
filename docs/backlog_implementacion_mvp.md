@@ -545,7 +545,7 @@ El runner tiene que **afirmar que el conjunto de `reason_code` que produjo es ig
 
 ### Bloque F — Human-in-the-loop
 
-#### [ ] T16 · Ledger: solo PAGAR imputa
+#### [x] T16 · Ledger: solo PAGAR imputa
 
 **Síntesis.** `ledger_entries` recibe una fila únicamente cuando el veredicto final es PAGAR, con `amount_usd` positivo, `policy_version` copiada y `entry_type = COMPROMISO_PAGAR`. FRENAR y ESCALAR-pendiente no mueven saldo. El asiento es idempotente y ocurre dentro de la transacción que cierra la aprobación.
 

@@ -3,32 +3,12 @@ import { randomUUID } from "node:crypto";
 import type Database from "better-sqlite3";
 
 import { ExtractedInvoice } from "../domain/extraction.js";
-import { evaluate, type BudgetState, type EvaluationContext } from "../domain/ruleEngine.js";
+import { evaluate, type EvaluationContext } from "../domain/ruleEngine.js";
 import type { DecisionRow } from "../repositories/decisions.js";
 import { getDecision, insertDecision } from "../repositories/decisions.js";
 import { getInvoiceRow, updateInvoiceStatus } from "../repositories/invoices.js";
+import { getBudgetState, insertLedgerEntry } from "../repositories/ledger.js";
 import { getActivePolicySpec } from "../repositories/policies.js";
-
-function budgetState(db: Database.Database, monthlyBudget: number): BudgetState {
-  const monthly = db
-    .prepare("SELECT COALESCE(SUM(amount_usd), 0) AS spent FROM ledger_entries")
-    .get() as { spent: number };
-  const byCategory = db
-    .prepare(
-      `SELECT v.category AS category, SUM(l.amount_usd) AS spent
-       FROM ledger_entries l
-       JOIN invoices i ON i.id = l.invoice_id
-       JOIN vendors v ON v.id = i.vendor_id
-       GROUP BY v.category`,
-    )
-    .all() as Array<{ category: string; spent: number }>;
-
-  return {
-    monthlySpent: monthly.spent,
-    monthlyBudget,
-    categorySpent: Object.fromEntries(byCategory.map((r) => [r.category, r.spent])),
-  };
-}
 
 /**
  * Corre el motor contra la política activa y persiste la decisión en una sola transacción.
@@ -74,7 +54,7 @@ export function decideInvoice(invoiceId: string, db: Database.Database): Decisio
             category: vendorRow.category,
           },
     existingInvoices,
-    budgetState: budgetState(db, policy.monthly_budget_usd),
+    budgetState: getBudgetState(db),
   };
 
   const result = evaluate(
@@ -103,6 +83,12 @@ export function decideInvoice(invoiceId: string, db: Database.Database): Decisio
     });
 
     if (result.verdict === "PAGAR") {
+      insertLedgerEntry({
+        invoice_id: invoiceId,
+        decision_id: id,
+        policy_version: policy.version,
+        amount_usd: invoice.total_usd,
+      });
       updateInvoiceStatus(invoiceId, "DECIDIDA", db);
     } else if (result.verdict === "ESCALAR") {
       updateInvoiceStatus(invoiceId, "PENDIENTE_APROBACION", db);
