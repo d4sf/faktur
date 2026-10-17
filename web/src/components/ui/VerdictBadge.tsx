@@ -2,9 +2,10 @@
  * @file VerdictBadge.tsx
  * @description Componente de etiqueta visual sólida para los tres veredictos canónicos:
  * PAGAR (verde esmeralda), FRENAR (rojo carmín) y ESCALAR (ámbar dorado).
- * Diseñado sin emojis circulares y con esquinas suaves (rounded-md) para máxima legibilidad fintech.
+ * La variante sólida suma ícono + texto para no depender solo del color (accesibilidad).
  */
 
+import { CircleCheck, CircleX, TriangleAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
@@ -44,6 +45,14 @@ export function VerdictBadge({
     lg: "px-3 py-1 text-xs font-bold",
   }[size];
 
+  const iconStyles = {
+    sm: "size-2.5",
+    md: "size-3",
+    lg: "size-3.5",
+  }[size];
+
+  const solidGap = size === "sm" ? "gap-1" : "gap-1.5";
+
   // Variante cápsula con punto indicador (no parece un botón interactivo)
   if (variant === "pill") {
     const pillStyles =
@@ -62,6 +71,7 @@ export function VerdictBadge({
 
     return (
       <span
+        data-verdict={verdict}
         className={cn(
           "inline-flex items-center gap-1.5 rounded-full border text-[10px] font-mono tracking-wider font-semibold select-none shadow-none",
           pillStyles,
@@ -79,12 +89,15 @@ export function VerdictBadge({
   if (verdict === "PAGAR") {
     return (
       <span
+        data-verdict="PAGAR"
         className={cn(
           "inline-flex items-center justify-center font-bold tracking-wider text-white bg-emerald-600 dark:bg-emerald-600 rounded-md shadow-xs select-none",
+          solidGap,
           sizeStyles,
           className,
         )}
       >
+        <CircleCheck className={iconStyles} aria-hidden="true" />
         PAGAR
       </span>
     );
@@ -93,12 +106,15 @@ export function VerdictBadge({
   if (verdict === "FRENAR") {
     return (
       <span
+        data-verdict="FRENAR"
         className={cn(
           "inline-flex items-center justify-center font-bold tracking-wider text-white bg-rose-600 dark:bg-rose-600 rounded-md shadow-xs select-none",
+          solidGap,
           sizeStyles,
           className,
         )}
       >
+        <CircleX className={iconStyles} aria-hidden="true" />
         FRENAR
       </span>
     );
@@ -107,12 +123,15 @@ export function VerdictBadge({
   if (verdict === "ESCALAR") {
     return (
       <span
+        data-verdict="ESCALAR"
         className={cn(
           "inline-flex items-center justify-center font-bold tracking-wider text-white bg-amber-500 dark:bg-amber-600 rounded-md shadow-xs select-none",
+          solidGap,
           sizeStyles,
           className,
         )}
       >
+        <TriangleAlert className={iconStyles} aria-hidden="true" />
         ESCALAR
       </span>
     );
@@ -120,6 +139,7 @@ export function VerdictBadge({
 
   return (
     <span
+      data-verdict={verdict}
       className={cn(
         "inline-flex items-center justify-center font-medium bg-muted text-foreground rounded-md",
         sizeStyles,

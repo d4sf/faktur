@@ -233,7 +233,7 @@ El cierre es atómico: ledger + aprobación + factura + auditoría en una transa
 
 Cada tarea lleva: qué hace, por qué, traza, dependencias y criterio de "hecho". El commit va en inglés, Conventional Commits.
 
-El prefijo `[x]` / `[ ]` marca si la tarea está implementada y mergeada. Las tareas hechas hasta la fecha: T1, T2, T3, T4, T5, T26 (y el scaffold de CI en una rama aparte).
+El prefijo `[x]` / `[ ]` marca si la tarea está implementada y mergeada. Las tareas hechas hasta la fecha: T1, T2, T3, T4, T5, T12, T26, T18 (y el scaffold de CI en una rama aparte).
 
 ### Bloque A — Cimientos
 
@@ -599,7 +599,7 @@ El runner tiene que **afirmar que el conjunto de `reason_code` que produjo es ig
 
 > El MVP §14 pone la UI en el bloque 2. Solo arranca cuando la ruta completa ya funciona.
 
-#### [ ] T18 · Dropzone con estado de carga
+#### [x] T18 · Dropzone con estado de carga
 
 **Síntesis.** Zona de arrastrar y soltar que acepta PDF, imagen y JSON mock, con preview, mensaje "Analizando documento…" y bloqueo de doble envío. Muestra el badge 🟢/🔴/🟡 al terminar. Un reenvío duplicado muestra el FRENAR con su motivo, no un error.
 

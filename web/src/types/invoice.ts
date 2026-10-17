@@ -24,6 +24,11 @@ export interface InvoiceData {
   reason_code: string;
   reason_description: string;
   failingRuleId?: number;
+  /**
+   * `true` cuando el backend detectó que el documento ya había sido recibido
+   * (regla 2). El veredicto sigue siendo FRENAR, nunca un error de red.
+   */
+  duplicate?: boolean;
   resolved_status?: "APROBADO_HUMANO" | "RECHAZADO_HUMANO";
   resolved_reason?: string;
   resolved_at?: string;

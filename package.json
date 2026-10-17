@@ -20,7 +20,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "npm run test -w api"
+    "test": "npm run test -w api && npm run test -w web"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
