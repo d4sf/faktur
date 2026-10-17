@@ -11,12 +11,13 @@ El Tablero actual tiene una tabla de auditoría inline con 4 facturas hardcoded,
 
 ## 2. Goals
 
-- **Tabla de decisiones reutilizable** (`AuditTable`) con columnas: Folio, Proveedor, Fecha, Monto USD, Veredicto (badge), Motivo (reason_code + texto), Acción (botón Revisar solo si ESCALAR).
+- **Tabla de decisiones reutilizable** (`AuditTable`) con columnas: Folio, Proveedor, Fecha, Monto USD, Veredicto (badge), Motivo (reason_code + texto), Acción (botón "Revisar" solo si ESCALAR, "Ver detalle" para el resto).
 - **Orden LIFO** (más reciente primero), provisto por el backend.
-- **Inspector lateral** (`InvoiceInspector`) que muestra la línea de tiempo de la factura (ingesta → extracción → decisión → resolución) y responde solo con datos del `AuditRecord`, sin inventar.
+- **Inspector lateral** (`InvoiceInspector`) como `Sheet` (drawer) con fetch on demand a `GET /api/invoices/:id` para la línea de tiempo.
 - **Card Health & ROI** (`RoiCard`) con touchless rate, presupuesto restante y total procesadas, conectada a las métricas del API.
 - **Conexión a `/api/audit-trail`** para datos reales (reemplaza los datos hardcoded).
 - **Badges con ícono + texto**, nunca solo color (accesibilidad).
+- **Estados vacío, carga y error** manejados en la tabla.
 - **`just check` y `just fmt` limpios.**
 - **`DESIGN.md`** creado en la raíz, basado en los estilos y componentes ya implementados.
 
@@ -41,12 +42,19 @@ El Tablero actual tiene una tabla de auditoría inline con 4 facturas hardcoded,
 
 | Decisión | Elegido | Por qué |
 |:---|:---|:---|
-| Inspector de factura | `Sheet` (drawer lateral) en vez de `Dialog` modal | Más espacio para la línea de tiempo; no bloquea la tabla. En mobile, Sheet se comporta como modal. |
+| Inspector de factura | `Sheet` (drawer lateral) | Más espacio para la línea de tiempo; no bloquea la tabla. En mobile, Sheet se comporta como modal. |
 | Card de ROI | 3 cards en el Bento Grid (touchless rate, presupuesto restante, total procesadas) | Consistente con el layout Bento existente. |
 | Fuente de datos | `GET /api/audit-trail` con carga manual + botón "Refrescar" | Tiempo real opcional; carga manual es más simple y suficiente para demo. |
 | Tabla de decisiones | Extraer de `Tablero.tsx` a `AuditTable.tsx` | Reutilizable en otras pantallas (bandeja, reporte). |
-| Badge de estado | `VerdictBadge` existente | Ya cumple "ícono + texto, no solo color" (el texto es el veredicto). |
-| Línea de tiempo | Componente `InvoiceTimeline` con eventos INGESTA → EXTRACCIÓN → DECISIÓN → RESOLUCIÓN | Datos del `AuditRecord` (ingested_at, decided_at, approval status). |
+| Badge de estado | `VerdictBadge` existente (muestra `verdict`) + `estado` como texto secundario | Consistente con el resto de la UI. |
+| Línea de tiempo | Lista vertical con ícono por tipo, `detail` completo | Más espacio para texto largo; el motivo legible es lo que la rúbrica premia. |
+| Fetch on demand | El inspector llama a `GET /api/invoices/:id` al abrir | Mantiene el audit-trail ligero. |
+| Estados vacío/carga/error | Skeleton rows (carga), "Sin registros" con link a `/subir` (vacío), error con botón "Reintentar" | Cubre los tres estados sin sorpresas. |
+| Botón en tabla | "Ver detalle" para todos, "Revisar" (amber) solo para ESCALADA | El usuario puede inspeccionar cualquier factura; la acción de revisar solo donde tiene sentido. |
+| Resolución humana | Mostrar quién, cuándo y comentario completo (o "Pendiente de aprobación") | Información de auditoría que el jurado quiere ver. |
+| RoiCard formato | `AuditFeed` formatea valores y pasa strings a `RoiCard` | `RoiCard` es genérico, no sabe qué KPI muestra. |
+| Inspector read-only | Solo mostrar datos, no editar | La resolución (aprobar/rechazar) es T21. |
+| Paginación | No (carga todos, limit 200) | 12 facturas en demo; suficiente. |
 
 ## 6. Estructura de archivos
 
@@ -73,11 +81,14 @@ interface AuditTableProps {
 ```
 
 - Tabla HTML con `<thead>` y `<tbody>`.
-- Columnas: Folio, Proveedor, Fecha, Monto USD, Veredicto (VerdictBadge), Motivo (reason_code + texto truncado), Acción (botón "Revisar" solo si `estado === "ESCALADA"`).
-- Orden LIFO: el array viene ordenado del backend (`ORDER BY d.decided_at DESC`).
-- Click en fila o botón "Revisar" abre el inspector.
-- Responsive: en mobile, ocultar columnas secundarias (Fecha, Monto USD) y mostrar solo Folio + Veredicto + Acción.
-- Loading state: skeleton rows (Shadcn `Skeleton`).
+- Columnas: Folio, Proveedor, Fecha, Monto USD, Veredicto (VerdictBadge), Motivo (reason_code + texto truncado), Acción.
+- Acción: botón "Ver detalle" (ghost) para todos; botón "Revisar" (outline, amber) solo si `estado === "ESCALADA"`.
+- Orden LIFO: el array viene ordenado del backend.
+- Click en fila abre el inspector.
+- Responsive: en mobile, ocultar Fecha y Monto USD; mostrar Folio + Veredicto + Acción.
+- Loading: skeleton rows (Shadcn `Skeleton`).
+- Empty: mensaje "Sin registros" con link a `/subir`.
+- Error: mensaje de error con botón "Reintentar".
 
 ### 7.2 `InvoiceInspector`
 
@@ -94,20 +105,22 @@ interface InvoiceInspectorProps {
 - Sección de datos: proveedor, tax_id, monto original, monto USD, moneda, fechas (issue, due).
 - Sección de decisión: reason_code (monospace), explanation, policy_version, decided_by, decided_at.
 - Línea de tiempo vertical: INGESTA → EXTRACCIÓN → DECISIÓN → RESOLUCIÓN (si hay approval).
+- Resolución: quién, cuándo, comentario (o "Pendiente de aprobación").
 - Footer: botón "Cerrar".
+- Fetch on demand: al abrir, llama a `GET /api/invoices/:id` para obtener timeline.
 
 ### 7.3 `RoiCard`
 
 ```tsx
 interface RoiCardProps {
   title: string;
-  value: string | number;
+  value: string;
   subtitle: string;
 }
 ```
 
 - Card de Shadcn con título (uppercase, tracking-wide, text-xs, muted), valor (text-2xl/3xl, bold), subtítulo (text-xs, muted).
-- Usado para: Touchless Rate %, Presupuesto Restante, Total Procesadas.
+- `value` es string (formateado por `AuditFeed`).
 
 ### 7.4 `AuditFeed`
 
@@ -117,6 +130,7 @@ interface RoiCardProps {
 
 - Usa `useEffect` + `fetch("/api/audit-trail")` para cargar datos.
 - Estado: `loading`, `error`, `data`.
+- Formatea métricas y pasa strings a `RoiCard`.
 - Renderiza `RoiCard` × 3 + `AuditTable` + `InvoiceInspector`.
 - Botón "Refrescar" para recargar manualmente.
 
@@ -168,6 +182,16 @@ export interface TimelineEvent {
   at: string;
   detail: string;
 }
+
+export interface AuditDetail {
+  record: AuditRecordView;
+  timeline: TimelineEvent[];
+  resolution: {
+    resolved_by: string;
+    resolved_at: string;
+    comment: string | null;
+  } | null;
+}
 ```
 
 ## 9. Card de ROI — métricas
@@ -207,7 +231,8 @@ export interface TimelineEvent {
 - **El inspector debe ser read-only.** No debe permitir editar la decisión. Solo mostrar datos. La resolución es T21.
 - **`AuditRecordView` del backend vs. tipo del frontend.** Si el backend cambia un campo, el frontend se rompe. Mitigación: tipos estrictos en `web/src/types/audit.ts`.
 - **La API puede no tener datos.** Si la base está vacía, la tabla muestra "Sin registros". El componente debe manejar el estado vacío.
+- **Fetch on demand añade latencia.** Al abrir el inspector, se hace un `fetch` a `/api/invoices/:id`. Si la red es lenta, el inspector muestra un spinner. Mitigación: skeleton en el inspector mientras carga.
 
 ## 14. DESIGN.md
 
-Se crea `DESIGN.md` en la raíz del proyecto, analizando los componentes y estilos ya implementados. El contenido completo está en el archivo `DESIGN.md` (creado en paralelo con este spec). Cubre: paleta de colores, tipografía, espaciado, componentes, dark/light theme, accesibilidad, responsive, patrones de layout, animaciones y iconos.
+Se crea `DESIGN.md` en la raíz del proyecto, analizando los componentes y estilos ya implementados. El contenido completo está en el archivo `DESIGN.md` (creado en paralelo con este spec). Cubre: paleta de colores, tipografía, espaciado, componentes, dark/light theme, accesibilidad, responsive, patrones de layout, animaciones y iconos.<|end|>
