@@ -1,0 +1,12 @@
+{
+  "invoice_number": "INV-DS-950",
+  "vendor_name": "DevStudio Latam",
+  "vendor_tax_id": "DEVSTUDIO-LATAM",
+  "issue_date": "2026-10-09",
+  "due_date": "2026-10-24",
+  "currency": "USD",
+  "subtotal": 900,
+  "tax_amount": 50,
+  "total_amount": 950,
+  "line_items": [{ "description": "Design sprint", "quantity": 1, "unit_price": 900, "total": 900 }]
+}

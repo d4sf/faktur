@@ -1,0 +1,14 @@
+{
+  "invoice_number": "INV-NR-350",
+  "vendor_name": "Nuevo Redactor",
+  "vendor_tax_id": "NUEVO-REDATOR",
+  "issue_date": "2026-10-04",
+  "due_date": "2026-10-18",
+  "currency": "USD",
+  "subtotal": 330,
+  "tax_amount": 20,
+  "total_amount": 350,
+  "line_items": [
+    { "description": "Copywriting services", "quantity": 1, "unit_price": 330, "total": 330 }
+  ]
+}

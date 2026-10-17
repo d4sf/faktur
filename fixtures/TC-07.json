@@ -1,0 +1,14 @@
+{
+  "invoice_number": "INV-FD-1200",
+  "vendor_name": "Freelance Design",
+  "vendor_tax_id": "FREELANCE-DESIGN",
+  "issue_date": "2026-10-06",
+  "due_date": "2026-10-22",
+  "currency": "USD",
+  "subtotal": 1100,
+  "tax_amount": 100,
+  "total_amount": 1200,
+  "line_items": [
+    { "description": "Logo redesign", "quantity": 1, "unit_price": 1100, "total": 1100 }
+  ]
+}

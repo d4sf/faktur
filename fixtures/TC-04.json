@@ -1,0 +1,14 @@
+{
+  "invoice_number": "INV-GA-3500",
+  "vendor_name": "Growth Agency",
+  "vendor_tax_id": "GROWTH-AGENCY",
+  "issue_date": "2026-10-03",
+  "due_date": "2026-10-25",
+  "currency": "USD",
+  "subtotal": 3300,
+  "tax_amount": 200,
+  "total_amount": 3500,
+  "line_items": [
+    { "description": "Marketing campaign Q4", "quantity": 1, "unit_price": 3300, "total": 3300 }
+  ]
+}

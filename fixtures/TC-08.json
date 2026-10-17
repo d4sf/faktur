@@ -1,0 +1,13 @@
+{
+  "invoice_number": "INV-EF-900",
+  "vendor_name": "Entidad Fantasma",
+  "issue_date": "2026-10-07",
+  "due_date": "2026-10-21",
+  "currency": "USD",
+  "subtotal": 850,
+  "tax_amount": 50,
+  "total_amount": 900,
+  "line_items": [
+    { "description": "Consulting services", "quantity": 1, "unit_price": 850, "total": 850 }
+  ]
+}

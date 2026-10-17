@@ -1,0 +1,62 @@
+{
+  "TC-01": {
+    "expected_verdict": "PAGAR",
+    "expected_reason_code": "SUCCESS_TOUCHLESS_STP",
+    "dependsOn": []
+  },
+  "TC-02": {
+    "expected_verdict": "PAGAR",
+    "expected_reason_code": "SUCCESS_TOUCHLESS_STP",
+    "dependsOn": []
+  },
+  "TC-03": {
+    "expected_verdict": "FRENAR",
+    "expected_reason_code": "ERR_DUPLICATE_INVOICE",
+    "dependsOn": ["TC-01"]
+  },
+  "TC-04": {
+    "expected_verdict": "ESCALAR",
+    "expected_reason_code": "ALERT_THRESHOLD_EXCEEDED",
+    "dependsOn": []
+  },
+  "TC-05": {
+    "expected_verdict": "ESCALAR",
+    "expected_reason_code": "ALERT_NEW_VENDOR",
+    "dependsOn": []
+  },
+  "TC-06": {
+    "expected_verdict": "ESCALAR",
+    "expected_reason_code": "ALERT_BUDGET_OVERRUN",
+    "dependsOn": []
+  },
+  "TC-07": {
+    "expected_verdict": "ESCALAR",
+    "expected_reason_code": "ALERT_VENDOR_DRIFT",
+    "dependsOn": []
+  },
+  "TC-08": {
+    "expected_verdict": "FRENAR",
+    "expected_reason_code": "ERR_INVALID_DATA",
+    "dependsOn": []
+  },
+  "TC-09": {
+    "expected_verdict": "PAGAR",
+    "expected_reason_code": "SUCCESS_TOUCHLESS_STP",
+    "dependsOn": []
+  },
+  "TC-10": {
+    "expected_verdict": "ESCALAR",
+    "expected_reason_code": "ALERT_BUDGET_TIGHT",
+    "dependsOn": ["TC-02"]
+  },
+  "TC-11": {
+    "expected_verdict": "FRENAR",
+    "expected_reason_code": "ERR_BLACKLISTED_VENDOR",
+    "dependsOn": []
+  },
+  "TC-12": {
+    "expected_verdict": "ESCALAR",
+    "expected_reason_code": "ALERT_LOW_CONFIDENCE",
+    "dependsOn": []
+  }
+}

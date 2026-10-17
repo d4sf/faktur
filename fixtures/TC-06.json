@@ -1,0 +1,15 @@
+{
+  "invoice_number": "INV-LG-5000",
+  "vendor_name": "Legal Global",
+  "vendor_tax_id": "LEGAL-GLOBAL",
+  "issue_date": "2026-10-05",
+  "due_date": "2026-10-30",
+  "currency": "EUR",
+  "subtotal": 4630,
+  "tax_amount": 370,
+  "total_amount": 5000,
+  "line_items": [
+    { "description": "Legal advisory services", "quantity": 1, "unit_price": 4630, "total": 4630 },
+    { "description": "Document review", "quantity": 1, "unit_price": 370, "total": 370 }
+  ]
+}
