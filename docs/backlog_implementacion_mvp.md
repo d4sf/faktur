@@ -237,17 +237,24 @@ Cada tarea lleva: qué hace, por qué, traza, dependencias y criterio de "hecho"
 
 #### T1 · Dependencias, variables de entorno y persistencia de datos
 
-**Síntesis.** Agrega al workspace: `zod` (el Pydantic del PRD), el SDK de Gemini, `@fastify/multipart`, un driver SQLite y `@fastify/cors`. Crea el esqueleto `api/src/{domain,db,llm,routes}/`. Centraliza env en un módulo tipado: `GEMINI_API_KEY`, `GEMINI_MODEL`, `DATA_DIR`, `PORT`, `WEB_DIST`, `NOTIFIER_WEBHOOK_URL`. Resuelve el almacenamiento: volumen nombrado para `/app/data` en `compose.prod.yml`, `RUN mkdir -p /app/data && chown app:app` en `Containerfile`, y `DATA_DIR` con default escribible.
+**Síntesis.** Agrega al workspace: `zod` (el Pydantic del PRD), `google-genai`, `@fastify/multipart` y `better-sqlite3`. **`@fastify/cors` queda fuera**: en este stack nunca hay cross-origin, porque Vite proxea `/api` en dev y Fastify sirve el SPA del mismo origen en producción. Crea solo `api/src/config/`; `domain/`, `db/`, `llm/` y `routes/` aparecen en la tarea que los llena, porque git no trackea directorios vacíos y `.gitkeep` sería andamiaje muerto. Centraliza env en un módulo tipado que valida con Zod y falla al arrancar nombrando **todas** las variables malas en un solo mensaje: `GEMINI_API_KEY`, `GEMINI_MODEL`, `DATA_DIR`, `PORT`, `WEB_DIST`, `NOTIFIER_WEBHOOK_URL`. Resuelve el almacenamiento con bind mount a `./data` en `compose.prod.yml` y un `scripts/entrypoint.sh` que arregla el owner de `/app/data` y baja de root a `app` con `su-exec`.
 
-**Por qué.** El repo hoy solo tiene `/api/health`. Sin cimiento, cada tarea posterior redecide rutas, variables y dónde vive la base.
+**Por qué.** El repo hoy solo tiene `/api/health`. Sin cimiento, cada tarea posterior redecide rutas, variables y dónde vive la base. Y el contenedor de producción corre como usuario no root: sin resolver el owner del directorio, cada `just rebuild` borra el audit trail y el estado del HITL, que es justo lo que la demo tiene que mostrar.
 
-**Traza.** MVP §1, §3 · PRD §9 · AGENTS.md (contenedores).
+**Dos hechos que hay que saber antes de tocar esto:**
+
+- `better-sqlite3@13` trae `binding.gyp` y no declara script `install`, así que npm le aplica su default `node-gyp rebuild`. `npm install` lo evita, **`npm ci` lo dispara siempre** — y los dos Containerfiles usan `npm ci`. Por eso `python3 make g++` van en la etapa `deps` del `Containerfile` y en el `Containerfile.dev`. El runtime no los hereda: parte de una base limpia.
+- Un bind mount **tapa** el directorio que la imagen creó, así que el `chown` del `Containerfile` no basta: tiene que hacerlo el entrypoint, en runtime y como root, antes de bajar privilegios.
+
+**Traza.** MVP §1, §3 · PRD §9 · AGENTS.md (contenedores) · spec y plan de T1 en `docs/superpowers/`.
 
 **Depende de.** Nada.
 
-**Hecho cuando** `npm run typecheck`, `lint` y `test` pasan en verde; las env faltantes fallan al arrancar con mensaje claro; un rebuild conserva el contenido de `DATA_DIR`.
+**Hecho cuando** `npm run typecheck`, `lint` y `test` pasan en verde; las env faltantes o malformadas fallan al arrancar nombrando la variable; un rebuild conserva el contenido de `data/`; `just prod` levanta y escribe sin ningún paso manual en el host.
 
-**Commit.** `chore(api): add domain deps, env config and persistent data dir`
+**Costumbre heredada.** Los tipos de `better-sqlite3` son de la 9.x: el genérico va en `prepare`, no en `get`. `db.prepare<[string], Row>(sql).get("a")` devuelve `Row | undefined`; `db.prepare(sql).get("a")` devuelve `unknown` y no compila. T3 lo va a necesitar.
+
+**Commit.** `feat(api): add validated env module and domain dependencies` + `feat(infra): persist data dir across rebuilds via entrypoint chown`.
 
 ---
 
