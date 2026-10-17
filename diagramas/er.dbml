@@ -1,0 +1,89 @@
+// Database Markup Language (DBML) Definition
+
+Table VENDORS {
+  id varchar [pk]
+  tax_id varchar [unique, not null, note: 'UPPER, TRIM']
+  display_name varchar
+  status varchar [note: 'ALLOWLISTED | BLOCKLISTED']
+  historical_avg_usd float [note: 'para drift x1.40']
+}
+
+Table INVOICES {
+  id varchar [pk]
+  vendor_id varchar [ref: > VENDORS.id, note: 'nullable -> FRENAR']
+  invoice_number varchar [note: 'folio']
+  file_hash varchar [unique, not null, note: 'SHA-256']
+  currency varchar [note: 'FK logica a FX_RATES']
+  total_amount float [note: 'original']
+  fx_rate_used float [note: 'congelada']
+  total_usd float [note: 'evaluada']
+  extraction_confidence float [note: '0..1']
+  extraction_json varchar [note: 'crudo validado']
+}
+
+Table LINE_ITEMS {
+  id varchar [pk]
+  invoice_id varchar [ref: > INVOICES.id]
+  description varchar
+  quantity float
+  unit_price float
+  total float
+}
+
+Table POLICIES {
+  version varchar [pk, note: 'v1, v2...']
+  auto_approval_threshold_usd float [note: '1000.0']
+  monthly_budget_usd float [note: '5000.0']
+  vendor_drift_factor float [note: '1.40']
+  allowed_currencies varchar [note: 'lista']
+  is_active boolean [note: 'una sola']
+}
+
+Table POLICY_CATEGORY_BUDGETS {
+  policy_version varchar [ref: > POLICIES.version]
+  category varchar [note: 'Infraestructura...']
+  budget_usd float
+
+  indexes {
+    (policy_version, category) [pk]
+  }
+}
+
+Table FX_RATES {
+  currency varchar [pk]
+  rate_to_usd float
+}
+
+Table DECISIONS {
+  id varchar [pk]
+  invoice_id varchar [unique, ref: - INVOICES.id, note: '1:1 v1']
+  verdict varchar [note: 'PAGAR | FRENAR | ESCALAR']
+  reason_code varchar [note: 'SUCCESS | ERR_* | ALERT_*']
+  explanation varchar [note: 'motivo legible']
+  policy_version varchar [ref: > POLICIES.version, note: 'obligatoria']
+  decided_by varchar [note: 'AGENTE | HUMANO']
+}
+
+Table APPROVALS {
+  id varchar [pk]
+  decision_id varchar [unique, ref: - DECISIONS.id]
+  status varchar [note: 'PENDIENTE | APROBADA | NEGADA']
+  resolved_by varchar [note: 'quien']
+  comment varchar [note: 'por que']
+  override_with_overbudget boolean
+}
+
+Table LEDGER_ENTRIES {
+  id varchar [pk]
+  invoice_id varchar [ref: > INVOICES.id]
+  decision_id varchar [ref: > DECISIONS.id]
+  amount_usd float [note: 'solo PAGAR final']
+  entry_type varchar [note: 'COMPROMISO_PAGAR']
+}
+
+Table NOTIFICATIONS {
+  id varchar [pk]
+  channel varchar [note: 'SLACK_CARD | WEBHOOK | CONSOLE']
+  payload_json varchar
+  status varchar [note: 'PENDIENTE | ENVIADA | FALLIDA']
+}
