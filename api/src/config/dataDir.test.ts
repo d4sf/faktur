@@ -52,45 +52,55 @@ test("crea DATA_DIR y uploads cuando no existen", () => {
   }
 });
 
-test("un directorio existente sin permiso de escritura lanza nombrando la ruta", () => {
-  const root = scratch();
-  const dataDir = join(root, "data");
+const isRoot = typeof process.getuid === "function" && process.getuid() === 0;
 
-  try {
-    mkdirSync(join(dataDir, "uploads"), { recursive: true });
-    // 0o500 = lectura y recorrido, sin escritura. `mkdirSync` con `recursive`
-    // sobre un directorio existente es un no-op que no pide permiso, así que sin
-    // el chequeo de escritura explícito este caso pasa y el EACCES aflora en el
-    // primer INSERT de T3.
-    chmodSync(dataDir, 0o500);
+test(
+  "un directorio existente sin permiso de escritura lanza nombrando la ruta",
+  { skip: !isRoot },
+  () => {
+    const root = scratch();
+    const dataDir = join(root, "data");
 
-    const { status, output } = runAsNobody(dataDir);
+    try {
+      mkdirSync(join(dataDir, "uploads"), { recursive: true });
+      // 0o500 = lectura y recorrido, sin escritura. `mkdirSync` con `recursive`
+      // sobre un directorio existente es un no-op que no pide permiso, así que sin
+      // el chequeo de escritura explícito este caso pasa y el EACCES aflora en el
+      // primer INSERT de T3.
+      chmodSync(dataDir, 0o500);
 
-    assert.notEqual(status, 0, `el hijo debería haber fallado; salida: ${output}`);
-    assert.match(output, /DATA_DIR/);
-    assert.ok(output.includes(dataDir), `el mensaje debería nombrar la ruta: ${output}`);
-  } finally {
-    chmodSync(dataDir, 0o700);
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+      const { status, output } = runAsNobody(dataDir);
 
-test("un directorio escribible no falla aunque el proceso no sea el owner", () => {
-  const root = scratch();
-  const dataDir = join(root, "data");
+      assert.notEqual(status, 0, `el hijo debería haber fallado; salida: ${output}`);
+      assert.match(output, /DATA_DIR/);
+      assert.ok(output.includes(dataDir), `el mensaje debería nombrar la ruta: ${output}`);
+    } finally {
+      chmodSync(dataDir, 0o700);
+      rmSync(root, { recursive: true, force: true });
+    }
+  },
+);
 
-  try {
-    mkdirSync(dataDir, { recursive: true });
-    chmodSync(dataDir, 0o777);
+test(
+  "un directorio escribible no falla aunque el proceso no sea el owner",
+  { skip: !isRoot },
+  () => {
+    const root = scratch();
+    const dataDir = join(root, "data");
 
-    const { status } = runAsNobody(dataDir);
+    try {
+      mkdirSync(dataDir, { recursive: true });
+      chmodSync(dataDir, 0o777);
 
-    assert.equal(status, 0, "un 0777 debería ser escribible para cualquiera");
-  } finally {
-    chmodSync(dataDir, 0o700);
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+      const { status } = runAsNobody(dataDir);
+
+      assert.equal(status, 0, "un 0777 debería ser escribible para cualquiera");
+    } finally {
+      chmodSync(dataDir, 0o700);
+      rmSync(root, { recursive: true, force: true });
+    }
+  },
+);
 
 test("un archivo donde va el directorio lanza en vez de propagar errno crudo", () => {
   const root = scratch();
