@@ -59,24 +59,19 @@ async function upload(app: Awaited<ReturnType<typeof buildApp>>, content: Buffer
   });
 }
 
-test("extrae un JSON mock y persiste la factura EXTRAIDA", async () => {
+test("extrae un JSON mock y persiste la factura EXTRAIDA en el upload", async () => {
   const app = await buildApp({ logLevel: "silent" });
 
   try {
     const uploaded = await upload(app, JSON_FIXTURE);
+    assert.equal(uploaded.statusCode, 201);
     const attemptId = uploaded.json().attempt_id as string;
+    const invoiceId = uploaded.json().invoice_id as string;
 
-    const res = await app.inject({
-      method: "POST",
-      url: `/api/ingest-attempts/${attemptId}/extract`,
-    });
-
-    assert.equal(res.statusCode, 200);
-    const invoiceId = res.json().invoice_id as string;
     const invoice = db
       .prepare("SELECT status, total_usd FROM invoices WHERE id = ?")
       .get(invoiceId) as { status: string; total_usd: number };
-    assert.equal(invoice.status, "EXTRAIDA");
+    assert.equal(invoice.status, "DECIDIDA");
     assert.equal(invoice.total_usd, 420);
 
     const again = await app.inject({
@@ -94,17 +89,17 @@ test("un PDF sin API key responde 503 extraction_unavailable", async () => {
   const app = await buildApp({ logLevel: "silent" });
 
   try {
-    const uploaded = await upload(app, Buffer.from("%PDF-1.4"), {
+    const res = await upload(app, Buffer.from("%PDF-1.4"), {
       filename: "factura.pdf",
       mimeType: "application/pdf",
-    });
-    const res = await app.inject({
-      method: "POST",
-      url: `/api/ingest-attempts/${uploaded.json().attempt_id}/extract`,
     });
 
     assert.equal(res.statusCode, 503);
     assert.deepEqual(res.json(), { error: "extraction_unavailable" });
+    const attempts = db.prepare("SELECT attempt_status FROM ingest_attempts").all() as Array<{
+      attempt_status: string;
+    }>;
+    assert.equal(attempts[0]?.attempt_status, "RECIBIDA");
   } finally {
     await app.close();
   }
@@ -114,18 +109,13 @@ test("un JSON invalido deja el intento RECHAZADA y responde 422", async () => {
   const app = await buildApp({ logLevel: "silent" });
 
   try {
-    const uploaded = await upload(app, Buffer.from('{"invoice_number":"solo-esto"}'));
-    const attemptId = uploaded.json().attempt_id as string;
-    const res = await app.inject({
-      method: "POST",
-      url: `/api/ingest-attempts/${attemptId}/extract`,
-    });
+    const res = await upload(app, Buffer.from('{"invoice_number":"solo-esto"}'));
 
     assert.equal(res.statusCode, 422);
     assert.deepEqual(res.json(), { error: "extraction_invalid" });
-    const attempt = db
-      .prepare("SELECT attempt_status FROM ingest_attempts WHERE id = ?")
-      .get(attemptId) as { attempt_status: string };
+    const attempt = db.prepare("SELECT attempt_status FROM ingest_attempts").get() as {
+      attempt_status: string;
+    };
     assert.equal(attempt.attempt_status, "RECHAZADA");
   } finally {
     await app.close();

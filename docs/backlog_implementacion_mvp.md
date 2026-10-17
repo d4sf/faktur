@@ -463,7 +463,7 @@ El runner tiene que **afirmar que el conjunto de `reason_code` que produjo es ig
 
 ### Bloque E — API de decisión
 
-#### [ ] T12 · `POST /api/invoices`, `/extract`, `/decide`
+#### [x] T12 · `POST /api/invoices`, `/extract`, `/decide`
 
 **Síntesis.** Los tres endpoints del MVP §3: subida (estado `recibida`), extracción tipada con confianza por campo, y decisión. `/decide` corre T5 contra la política activa, persiste la decisión con su `policy_version`, mueve `invoices.status` según el veredicto y, si es ESCALAR, abre la fila en `approvals`.
 
