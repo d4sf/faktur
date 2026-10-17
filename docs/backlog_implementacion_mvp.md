@@ -245,8 +245,8 @@ El prefijo `[x]` / `[ ]` marca si la tarea está implementada y mergeada. Las ta
 
 **Dos hechos que hay que saber antes de tocar esto:**
 
-- `better-sqlite3@13` trae `binding.gyp` y no declara script `install`, así que npm le aplica su default `node-gyp rebuild`. `npm install` lo evita, **`npm ci` lo dispara siempre** — y los dos Containerfiles usan `npm ci`. Por eso `python3 make g++` van en la etapa `deps` del `Containerfile` y en el `Containerfile.dev`. El runtime no los hereda: parte de una base limpia.
-- Un bind mount **tapa** el directorio que la imagen creó, así que el `chown` del `Containerfile` no basta: tiene que hacerlo el entrypoint, en runtime y como root, antes de bajar privilegios.
+- `better-sqlite3@13` trae `binding.gyp` y no declara script `install`, así que npm le aplica su default `node-gyp rebuild`. `npm install` lo evita, **`npm ci` lo dispara siempre** — y los dos Dockerfiles usan `npm ci`. Por eso `python3 make g++` van en la etapa `deps` del `Dockerfile` y en el `Dockerfile.dev`. El runtime no los hereda: parte de una base limpia.
+- Un bind mount **tapa** el directorio que la imagen creó, así que el `chown` del `Dockerfile` no basta: tiene que hacerlo el entrypoint, en runtime y como root, antes de bajar privilegios.
 
 **Traza.** MVP §1, §3 · PRD §9 · AGENTS.md (contenedores) · spec y plan de T1 en `docs/superpowers/`.
 
@@ -295,7 +295,7 @@ El prefijo `[x]` / `[ ]` marca si la tarea está implementada y mergeada. Las ta
 
 **Hecho cuando** insertar un `file_hash` repetido en `invoices` falla por constraint y no por un `if` en TypeScript; el mismo hash sí entra en `ingest_attempts`; crear una aprobación sobre un veredicto que no sea ESCALAR falla; `decisions.policy_version` es `NOT NULL`; toda transición prohibida de S17 revienta en la capa de aplicación con 409.
 
-**Toolchain ya resuelto en T1.** Este riesgo estaba mal diagnosticado y quedó cerrado. `better-sqlite3@13` sí trae prebuilds para Alpine musl (`prebuilds/linuxmusl-x64.node`) y resuelve por `exports`, así que **no** compila desde fuente en runtime. Lo que sí es cierto, verificado por experimento: el `npm ci` de este repo dispara `node-gyp rebuild` sobre ese paquete y aborta sin `python3 make g++`, así que el toolchain ya está en la etapa `deps` del `Containerfile` y en el `Containerfile.dev`. T3 no tiene que agregarlo.
+**Toolchain ya resuelto en T1.** Este riesgo estaba mal diagnosticado y quedó cerrado. `better-sqlite3@13` sí trae prebuilds para Alpine musl (`prebuilds/linuxmusl-x64.node`) y resuelve por `exports`, así que **no** compila desde fuente en runtime. Lo que sí es cierto, verificado por experimento: el `npm ci` de este repo dispara `node-gyp rebuild` sobre ese paquete y aborta sin `python3 make g++`, así que el toolchain ya está en la etapa `deps` del `Dockerfile` y en el `Dockerfile.dev`. T3 no tiene que agregarlo.
 
 Al verificar el binario en la imagen de producción, usar `ls node_modules/better-sqlite3/prebuilds/` con `COMPOSE_ENV=prod`. **No** usar `build/Release/`: ese layout es de versiones viejas y en v13 no existe. Un `docker compose run` pelado levanta la imagen dev, que no prueba nada.
 

@@ -18,7 +18,7 @@
 - Prettier: 100 columnas, comillas dobles, semicolons. `just check` no corre Prettier.
 - Commits: Conventional Commits, mensajes en inglés, un commit = un cambio lógico.
 - `node_modules` es un volumen nombrado en dev: al cambiar `package.json`, correr `just install` (o `just rebuild`). Editar `package.json` no reinstala solo.
-- El `Containerfile` de producción construye el web con `npm run build`; cualquier cambio que rompa el build rompe también la imagen de prod.
+- El `Dockerfile` de producción construye el web con `npm run build`; cualquier cambio que rompa el build rompe también la imagen de prod.
 
 ## Review Focus
 
@@ -28,7 +28,7 @@ Cinco formas de falla que el spec implica y que ningún test del camino feliz to
 2. **Alias `@/` no resuelto.** Shadcn espera `@/components`, `@/lib/utils`. Sin `paths` en `tsconfig.json` y `resolve.alias` en Vite, tsc falla con "Cannot find module '@/...'". Verificación: `npm run typecheck` pasa.
 3. **FOUC del tema.** Si la clase `dark` se aplica después del primer render, el usuario ve un flash. Mitigación: script inline en `index.html`. Verificación: inspección visual + código.
 4. **Ruta inexistente que da 404 en vez de renderizar el layout.** Con `react-router-dom`, una ruta no declarada muestra la página de fallback de Vite (404). Mitigación: declarar las 8 rutas explícitamente y un catch-all `*` que redirige a `/`. Verificación: navegar a `/ruta-inexistente` muestra el layout.
-5. **El build de producción rompe por una dependencia nueva.** El `Containerfile` corre `npm run build` en el stage `build`. Si una dependencia nueva no está en `package-lock.json` o requiere toolchain, el build falla. Mitigación: correr `npm run build` localmente antes de commitear, y verificar con `COMPOSE_ENV=prod bash ./scripts/compose.sh build`.
+5. **El build de producción rompe por una dependencia nueva.** El `Dockerfile` corre `npm run build` en el stage `build`. Si una dependencia nueva no está en `package-lock.json` o requiere toolchain, el build falla. Mitigación: correr `npm run build` localmente antes de commitear, y verificar con `COMPOSE_ENV=prod bash ./scripts/compose.sh build`.
 
 ---
 
@@ -465,7 +465,7 @@ git commit -m "feat(web): scaffold bento layout, tailwind and shadcn ui"
 
 Run: `COMPOSE_ENV=prod bash ./scripts/compose.sh build`
 
-Expected: imagen construida sin errores (el `Containerfile` corre `npm run build` que incluye el web).
+Expected: imagen construida sin errores (el `Dockerfile` corre `npm run build` que incluye el web).
 
 - [ ] **Step 2: Verificar que `just check` pasa**
 

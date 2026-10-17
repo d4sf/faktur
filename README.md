@@ -57,9 +57,9 @@ lo que se decidió después y su texto original no se edita.
 
 ## Imágenes
 
-- `Containerfile.dev`: Node 22 + dependencias, hot reload; el código se monta
+- `Dockerfile.dev`: Node 22 + dependencias, hot reload; el código se monta
   como volumen y `node_modules` queda en un volumen nombrado.
-- `Containerfile`: multi-stage (deps → build → runtime), sirve la UI compilada
+- `Dockerfile`: multi-stage (deps → build → runtime), sirve la UI compilada
   desde la API. Arranca como root solo para lo que hace
   `scripts/entrypoint.sh` —ajustar el owner de `data/`— y baja a `app` con
   `su-exec` antes de ejecutar nada.

@@ -10,7 +10,7 @@
 
 Sin T1, cada tarea posterior vuelve a decidir dónde vive la base, qué variable guarda la llave de Gemini y cómo se leen los datos de la demo. Eso produce tres o cuatro respuestas distintas en el mismo repo y un `just rebuild` que borra el audit trail.
 
-La consecuencia concreta que este spec evita: **el contenedor de producción corre como usuario no root y hoy no tiene dónde escribir**. `Containerfile` crea el usuario `app` pero no crea `/app/data`, y `compose.prod.yml` no monta ningún volumen. El primer `npm run seed` en producción falla por permisos, o peor, la demo arranca sin datos y nadie sabe por qué.
+La consecuencia concreta que este spec evita: **el contenedor de producción corre como usuario no root y hoy no tiene dónde escribir**. `Dockerfile` crea el usuario `app` pero no crea `/app/data`, y `compose.prod.yml` no monta ningún volumen. El primer `npm run seed` en producción falla por permisos, o peor, la demo arranca sin datos y nadie sabe por qué.
 
 ## 2. Objetivos
 
@@ -42,7 +42,7 @@ Lo que haría que esto se considere fallido aunque compile:
 
 **Decisión del dueño del producto.** Se evaluaron `better-sqlite3`, `node:sqlite` y cambiar la imagen base a Debian.
 
-El backlog (§6, T3) marcaba un riesgo: `better-sqlite3` no tendría prebuilds para musl y habría que agregar toolchain de build a los dos Containerfiles. **Ese riesgo se verificó y es falso.** La instalación real en el contenedor de este repo:
+El backlog (§6, T3) marcaba un riesgo: `better-sqlite3` no tendría prebuilds para musl y habría que agregar toolchain de build a los dos Dockerfiles. **Ese riesgo se verificó y es falso.** La instalación real en el contenedor de este repo:
 
 ```
 added 2 packages, and audited 3 packages in 2s      ← sin compilar
@@ -100,7 +100,7 @@ Esta decisión sola no alcanzaba: el bind mount tapa el `/app/data` de la imagen
 
 **Decisión del dueño del producto.** De las cinco opciones, la elegida es la que se arregla sola, sin pasos manuales ni permisos abiertos.
 
-**El problema medido.** Un bind mount **tapa** el directorio que la imagen creó: el `mkdir -p /app/data && chown app:app /app/data` del `Containerfile` no tiene efecto bajo `just prod`. Y como T1 trackea `data/.gitkeep`, un clone nuevo siempre trae `./data` con el dueño del host:
+**El problema medido.** Un bind mount **tapa** el directorio que la imagen creó: el `mkdir -p /app/data && chown app:app /app/data` del `Dockerfile` no tiene efecto bajo `just prod`. Y como T1 trackea `data/.gitkeep`, un clone nuevo siempre trae `./data` con el dueño del host:
 
 ```
 $ stat -c '%U uid=%u gid=%g modo=%a' data/
@@ -191,7 +191,7 @@ Versiones a fijar:
 
 Agregar las 5 de §6 a `api/package.json`, salvo `@types/better-sqlite3`, que va a `devDependencies`. **`@fastify/cors` no se agrega.**
 
-**El lockfile se regenera.** Editar `api/package.json` a mano rompe `npm ci`, que es lo que corren tanto `Containerfile` (`deps`) como `Containerfile.dev`. El orden correcto es: editar el JSON, y después regenerar el lock **desde el contenedor dev**, que es el único lado donde hay Node disponible:
+**El lockfile se regenera.** Editar `api/package.json` a mano rompe `npm ci`, que es lo que corren tanto `Dockerfile` (`deps`) como `Dockerfile.dev`. El orden correcto es: editar el JSON, y después regenerar el lock **desde el contenedor dev**, que es el único lado donde hay Node disponible:
 
 ```bash
 just install
@@ -312,7 +312,7 @@ data/*
 
 Con `data/.gitkeep` trackeado, el directorio sobrevive al clone sin que su contenido se versione.
 
-**`Containerfile`** (runtime) — uid/gid explícitos y entrada por `entrypoint.sh`:
+**`Dockerfile`** (runtime) — uid/gid explícitos y entrada por `entrypoint.sh`:
 
 ```dockerfile
 RUN addgroup -S -g 101 app && adduser -S -u 100 -G app app
@@ -502,6 +502,6 @@ Sin decidir, y el implementador puede resolverlo con criterio:
 
 Sin tocar, aunque tentado:
 
-- `Containerfile.dev`: corre como root y no necesita el entrypoint. Solo se toca el `Containerfile` de producción.
+- `Dockerfile.dev`: corre como root y no necesita el entrypoint. Solo se toca el `Dockerfile` de producción.
 - `justfile`: ninguna receta cambia. El `prod` ya levanta lo que hace falta.
 - `web/`: T1 no lo toca.

@@ -4,7 +4,7 @@
 
 **Goal:** Congelar el contrato de datos del agente y la política v1: schemas Zod para extracción, decisión, auditoría e ingesta; la tabla de precedencia como dato validado; y `specs/policy.spec.json` que la aplicación carga y valida al arrancar.
 
-**Architecture:** Seis módulos en `api/src/domain/`, uno por responsabilidad, con los tipos derivados del schema por `z.infer`. La precedencia es una constante Zod-validada al importarse, no un `switch`. El JSON de política vive en `specs/` y se importa con `with { type: "json" }`; el `Containerfile` de producción lo copia, porque `tsc` no lo lleva a `dist/`. `geminiSchema.ts` emite el JSON Schema que T10 le mandará a la API de Google.
+**Architecture:** Seis módulos en `api/src/domain/`, uno por responsabilidad, con los tipos derivados del schema por `z.infer`. La precedencia es una constante Zod-validada al importarse, no un `switch`. El JSON de política vive en `specs/` y se importa con `with { type: "json" }`; el `Dockerfile` de producción lo copia, porque `tsc` no lo lleva a `dist/`. `geminiSchema.ts` emite el JSON Schema que T10 le mandará a la API de Google.
 
 **Tech Stack:** TypeScript 5.9, Node 22.23.3, Zod 4.6.7, Fastify 5.6, `node:test` vía tsx.
 
@@ -21,7 +21,7 @@
 - Idiomas de Zod 4, no de Zod 3: `z.url()`, `z.enum(ARRAY)` sobre un `as const`.
 - Prettier: 100 columnas, comillas dobles, semicolons. `just check` no corre Prettier, así que hay que correrlo aparte.
 - Commits: Conventional Commits, **mensajes en inglés**, un commit = un cambio lógico.
-- El `Containerfile` de producción necesita `python3 make g++` en su etapa `deps`: verificado por experimento que sin esas tres líneas `npm ci` aborta. **No tocar esa línea.**
+- El `Dockerfile` de producción necesita `python3 make g++` en su etapa `deps`: verificado por experimento que sin esas tres líneas `npm ci` aborta. **No tocar esa línea.**
 - `data/` está gitignored salvo `data/.gitkeep`. `.superpowers` está gitignored.
 
 ## Review Focus
@@ -49,7 +49,7 @@ Cinco formas de falla que el spec implica y que ningún test del camino feliz to
 | `api/src/domain/geminiSchema.ts` | Crear | Emitir el JSON Schema que T10 le manda a la API de Google. |
 | `api/src/domain/index.ts` | Crear | Barrel: reexporta schemas y tipos. |
 | `specs/policy.spec.json` | Crear | La política v1 congelada. |
-| `Containerfile` | Modificar | `COPY specs` al stage runtime. |
+| `Dockerfile` | Modificar | `COPY specs` al stage runtime. |
 | `api/package.json` | Modificar | Los seis `.test.ts` nuevos en el script `test`. |
 | `docs/backlog_implementacion_mvp.md` | Modificar | Las dos afirmaciones falsas de §0. |
 | `docs/propuesta_modelo_ER_faktur.md` | Modificar | `Marketing 2500` → `4000`, `Diseño` → `Diseno`, y la cobertura de casos pasa a 12. |
@@ -537,7 +537,7 @@ git commit -m "feat(api): add precedence table as validated data"
 - Create: `specs/policy.spec.json`
 - Create: `api/src/domain/policy.ts`
 - Create: `api/src/domain/policy.test.ts`
-- Modify: `Containerfile` (stage runtime)
+- Modify: `Dockerfile` (stage runtime)
 - Modify: `api/package.json`
 
 **Interfaces:**
@@ -636,7 +636,7 @@ Tres niveles arriba: el archivo vive en `api/src/domain/`. **El atributo `with {
 
 Expected: PASS, 7 tests.
 
-- [ ] **Step 6: Copiar `specs/` al stage runtime del `Containerfile`**
+- [ ] **Step 6: Copiar `specs/` al stage runtime del `Dockerfile`**
 
 Después del `COPY ... /app/api/dist`, en el stage `runtime`:
 
@@ -667,8 +667,8 @@ Expected: `v1`. Si tira `ERR_MODULE_NOT_FOUND`, falta el `COPY` o la ruta del im
 ```bash
 bash ./scripts/compose.sh exec app npm run typecheck
 bash ./scripts/compose.sh exec app npm test
-bash ./scripts/compose.sh exec app npx prettier --check specs api/src/domain Containerfile
-git add specs/policy.spec.json api/src/domain/policy.ts api/src/domain/policy.test.ts api/package.json Containerfile
+bash ./scripts/compose.sh exec app npx prettier --check specs api/src/domain Dockerfile
+git add specs/policy.spec.json api/src/domain/policy.ts api/src/domain/policy.test.ts api/package.json Dockerfile
 git commit -m "feat(api): freeze policy spec v1 and load it validated"
 ```
 

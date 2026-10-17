@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - Todo corre dentro del contenedor. En el host `just` **no está instalado**: usá `bash ./scripts/compose.sh <args>` (el atajo de compose). Ninguna receta del `justfile` se puede correr directo.
-- `node_modules` en dev es un volumen nombrado: editar `package.json` no reinstala. Después de tocar el `package.json` corré `bash ./scripts/compose.sh exec app npm install` para regenerar `package-lock.json`, o el `npm ci` de los Containerfiles falla.
+- `node_modules` en dev es un volumen nombrado: editar `package.json` no reinstala. Después de tocar el `package.json` corré `bash ./scripts/compose.sh exec app npm install` para regenerar `package-lock.json`, o el `npm ci` de los Dockerfiles falla.
 - Imports relativos llevan extensión `.js` aunque el archivo sea `.ts` (`module: NodeNext`, `"type": "module"`).
 - `api/package.json` tiene el script `test` **hardcodeado**: `tsx --test src/app.test.ts`. Todo `.test.ts` nuevo se agrega a mano ahí.
 - Versiones fijadas: `zod@^4.6.7`, `@google/genai@^2.30.0`, `@fastify/multipart@^10.1.4`, `better-sqlite3@^13.0.3` en `dependencies`; `@types/better-sqlite3@^9.6.0` en `devDependencies`.
@@ -46,7 +46,7 @@ Cinco formas de falla que el spec implica pero que un test del camino feliz no t
 | `package-lock.json` | Modificar | Regenerado por npm, nunca a mano. |
 | `compose.yml` | Modificar | Declarar las variables para que lleguen al contenedor. |
 | `compose.prod.yml` | Modificar | Bind mount de `./data`. |
-| `Containerfile` | Modificar | uid/gid fijos, `su-exec`, entrypoint, sin `USER app`. |
+| `Dockerfile` | Modificar | uid/gid fijos, `su-exec`, entrypoint, sin `USER app`. |
 | `scripts/entrypoint.sh` | Crear | Arreglar permisos de `DATA_DIR` y bajar a `app`. |
 | `.gitignore` | Modificar | Cubrir el contenido de `data/`, no el directorio. |
 | `.dockerignore` | Modificar | Excluir `data/` de las imágenes. |
@@ -108,7 +108,7 @@ No agregues `@fastify/cors` (spec §5.4).
 bash ./scripts/compose.sh exec app npm install
 ```
 
-Expected: agrega `package-lock.json` con las 5. Si lo salteás, el `npm ci` de los Containerfiles falla después.
+Expected: agrega `package-lock.json` con las 5. Si lo salteás, el `npm ci` de los Dockerfiles falla después.
 
 - [ ] **Step 3: Escribir el test que falla**
 
@@ -269,7 +269,7 @@ git commit -m "feat(api): add validated env module and domain dependencies"
 **Files:**
 - Create: `scripts/entrypoint.sh`
 - Create: `data/.gitkeep` (vacío)
-- Modify: `Containerfile:15-34` (stage runtime)
+- Modify: `Dockerfile:15-34` (stage runtime)
 - Modify: `compose.prod.yml`
 - Modify: `.gitignore`
 - Modify: `.dockerignore`
@@ -327,7 +327,7 @@ chown app:app "$DATA_DIR" "$DATA_DIR/uploads"
 exec su-exec app "$@"
 ```
 
-- [ ] **Step 5: Modificar el stage runtime del `Containerfile`**
+- [ ] **Step 5: Modificar el stage runtime del `Dockerfile`**
 
 El `-g 101` no es cosmético: el grupo `users` ya ocupa el gid 100 en la imagen base.
 
@@ -418,7 +418,7 @@ Expected: lista `linuxmusl-x64.node`. `COMPOSE_ENV=prod` es obligatorio: un `run
 - [ ] **Step 13: Commit**
 
 ```bash
-git add Containerfile compose.prod.yml .gitignore .dockerignore data/.gitkeep scripts/entrypoint.sh api/src/server.ts
+git add Dockerfile compose.prod.yml .gitignore .dockerignore data/.gitkeep scripts/entrypoint.sh api/src/server.ts
 git commit -m "feat(infra): persist data dir across rebuilds via entrypoint chown"
 ```
 

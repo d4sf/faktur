@@ -86,13 +86,13 @@ Todo lo de esta tabla se comprobó en el contenedor antes de escribir el spec.
 
 ## 6. Decisiones
 
-### 6.1 El spec congelado vive en `specs/` y el `Containerfile` lo copia
+### 6.1 El spec congelado vive en `specs/` y el `Dockerfile` lo copia
 
-**Decisión del dueño del producto.** `specs/policy.spec.json` en la raíz del repo, importado con `import ... with { type: "json" }`, y `COPY` en el stage runtime del `Containerfile`.
+**Decisión del dueño del producto.** `specs/policy.spec.json` en la raíz del repo, importado con `import ... with { type: "json" }`, y `COPY` en el stage runtime del `Dockerfile`.
 
-Es la única opción que cumple las dos cosas a la vez: el archivo queda en un lugar visible y auditable del repo, y llega a producción. La alternativa obvia — moverlo a `api/` — funcionaría sin tocar el `Containerfile` pero contradice `AGENTS.md`, que ya declara que `specs/` es el destino previsto de `policy.spec.json`.
+Es la única opción que cumple las dos cosas a la vez: el archivo queda en un lugar visible y auditable del repo, y llega a producción. La alternativa obvia — moverlo a `api/` — funcionaría sin tocar el `Dockerfile` pero contradice `AGENTS.md`, que ya declara que `specs/` es el destino previsto de `policy.spec.json`.
 
-**Consecuencia que hay que aceptar:** T2 toca el `Containerfile`, que hasta ahora era territorio exclusivo de T1. Es una línea.
+**Consecuencia que hay que aceptar:** T2 toca el `Dockerfile`, que hasta ahora era territorio exclusivo de T1. Es una línea.
 
 ### 6.2 La precedencia vive en TypeScript, no en el JSON
 
@@ -312,7 +312,7 @@ Tres cosas verificadas que condicionan su implementación:
 import raw from "../../../specs/policy.spec.json" with { type: "json" };
 ```
 
-Desde `api/src/domain/policy.ts`, tres niveles arriba. Y el `Containerfile` runtime suma `COPY --from=build /app/specs ./specs`, porque `tsc` **no** copia el JSON al output (verificado: el JS emitido sigue apuntando al JSON por ruta relativa).
+Desde `api/src/domain/policy.ts`, tres niveles arriba. Y el `Dockerfile` runtime suma `COPY --from=build /app/specs ./specs`, porque `tsc` **no** copia el JSON al output (verificado: el JS emitido sigue apuntando al JSON por ruta relativa).
 
 Sin ese `COPY`, todo pasa en dev y revienta en prod. Es exactamente el fallo queTG1 enseñó a no confiar.
 
