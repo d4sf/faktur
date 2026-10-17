@@ -5,8 +5,6 @@
  * Basado en specs/policy.spec.json y en la matriz de precedencia del motor de decisiones.
  */
 
-import { useState } from "react";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { VerdictBadge } from "@/components/ui/VerdictBadge";
 

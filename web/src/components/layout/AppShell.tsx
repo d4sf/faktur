@@ -6,10 +6,7 @@
  */
 
 import {
-  CheckSquare,
-  Clock,
   FileSpreadsheet,
-  FileText,
   Inbox,
   LayoutDashboard,
   Menu,
