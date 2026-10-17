@@ -20,21 +20,62 @@ interface VerdictBadgeProps {
    */
   size?: "sm" | "md" | "lg";
   /**
+   * Variante visual: 'solid' (bloque sólido) o 'pill' (cápsula con punto indicador de estado).
+   */
+  variant?: "solid" | "pill";
+  /**
    * Clases adicionales opcionales de Tailwind CSS.
    */
   className?: string;
 }
 
 /**
- * Renderiza la etiqueta de veredicto con fondo sólido y tipografía en negrita.
+ * Renderiza la etiqueta de veredicto con fondo sólido o en formato cápsula con indicador.
  */
-export function VerdictBadge({ verdict, size = "md", className }: VerdictBadgeProps) {
+export function VerdictBadge({
+  verdict,
+  size = "md",
+  variant = "solid",
+  className,
+}: VerdictBadgeProps) {
   const sizeStyles = {
     sm: "px-2 py-0.5 text-[10px]",
     md: "px-2.5 py-0.5 text-[11px]",
     lg: "px-3 py-1 text-xs font-bold",
   }[size];
 
+  // Variante cápsula con punto indicador (no parece un botón interactivo)
+  if (variant === "pill") {
+    const pillStyles =
+      {
+        PAGAR: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+        FRENAR: "border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-400",
+        ESCALAR: "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400",
+      }[verdict] || "border-border bg-muted text-muted-foreground";
+
+    const dotColor =
+      {
+        PAGAR: "bg-emerald-500",
+        FRENAR: "bg-rose-500",
+        ESCALAR: "bg-amber-500",
+      }[verdict] || "bg-muted-foreground";
+
+    return (
+      <span
+        className={cn(
+          "inline-flex items-center gap-1.5 rounded-full border text-[10px] font-mono tracking-wider font-semibold select-none shadow-none",
+          pillStyles,
+          sizeStyles,
+          className,
+        )}
+      >
+        <span className={cn("size-1.5 rounded-full shrink-0", dotColor)} />
+        <span>{verdict}</span>
+      </span>
+    );
+  }
+
+  // Variante sólida predeterminada
   if (verdict === "PAGAR") {
     return (
       <span

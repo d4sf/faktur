@@ -1,11 +1,11 @@
 /**
  * @file ApprovalCard.tsx
  * @description Tarjeta individual de factura pendiente de revisión humana.
+ * Diseñada con espaciado simétrico exacto y etiqueta de estado de tipo píldora informativa.
  */
 
 import { AlertTriangle, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { VerdictBadge } from "@/components/ui/VerdictBadge";
 import { PendingApproval } from "@/types/invoice";
 
@@ -16,9 +16,10 @@ interface ApprovalCardProps {
 
 export function ApprovalCard({ item, onReview }: ApprovalCardProps) {
   return (
-    <Card className="rounded-xl border border-border/80 bg-card shadow-xs hover:border-foreground/20 transition-all flex flex-col justify-between">
-      <CardContent className="p-5 space-y-4">
-        {/* Cabecera de la tarjeta */}
+    <div className="rounded-xl border border-border/80 bg-card shadow-xs hover:border-foreground/20 transition-all flex flex-col justify-between overflow-hidden">
+      {/* Cuerpo principal de la tarjeta */}
+      <div className="p-5 space-y-4 flex-1">
+        {/* Cabecera con folio, proveedor y etiqueta de estado (no botón) */}
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
@@ -28,7 +29,7 @@ export function ApprovalCard({ item, onReview }: ApprovalCardProps) {
               {item.vendor_name || "Proveedor sin nombre"}
             </h4>
           </div>
-          <VerdictBadge verdict="ESCALAR" size="sm" />
+          <VerdictBadge verdict="ESCALAR" size="sm" variant="pill" />
         </div>
 
         {/* Importe a autorizar */}
@@ -49,22 +50,22 @@ export function ApprovalCard({ item, onReview }: ApprovalCardProps) {
             {item.explanation}
           </p>
         </div>
-      </CardContent>
+      </div>
 
-      {/* Pie de tarjeta con botón para abrir revisión */}
-      <div className="border-t border-border/60 bg-muted/10 p-3 flex items-center justify-between">
-        <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+      {/* Pie de tarjeta: misma distancia arriba y abajo (py-3 simétrico) */}
+      <div className="border-t border-border/60 bg-muted/10 px-5 py-3 flex items-center justify-between">
+        <span className="text-[10px] text-muted-foreground flex items-center gap-1.5">
           <Clock className="size-3" />
           <span>{item.requested_at}</span>
         </span>
         <Button
           size="sm"
           onClick={() => onReview(item)}
-          className="h-8 px-3.5 text-xs font-semibold shadow-xs gap-1.5"
+          className="h-8 px-4 text-xs font-semibold shadow-xs"
         >
           <span>Revisar caso</span>
         </Button>
       </div>
-    </Card>
+    </div>
   );
 }

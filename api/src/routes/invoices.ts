@@ -14,6 +14,7 @@ import {
   persistExtraction,
 } from "../services/extract.js";
 import { CurrencyNotAllowedError } from "../services/fx.js";
+import { notifyApprovalChange } from "../services/approvalEvents.js";
 import {
   InvalidFileTypeError,
   ingestFile,
@@ -126,6 +127,9 @@ export async function registerInvoiceRoutes(app: FastifyInstance): Promise<void>
         });
       }
       const decision = decideInvoice(persisted.invoice_id, getDb());
+      if (decision.verdict === "ESCALAR") {
+        notifyApprovalChange({ type: "NEW_APPROVAL", id: persisted.invoice_id });
+      }
 
       return reply.code(201).send({
         attempt_id: attempt.id,
