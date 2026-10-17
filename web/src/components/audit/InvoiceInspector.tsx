@@ -41,8 +41,15 @@ export function InvoiceInspector({ record, open, onOpenChange }: InvoiceInspecto
   const [detail, setDetail] = useState<AuditDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [aiExplanation, setAiExplanation] = useState<string | null>(null);
+  const [aiCached, setAiCached] = useState(false);
+  const [explaining, setExplaining] = useState(false);
+  const [explainError, setExplainError] = useState<string | null>(null);
 
   useEffect(() => {
+    setAiExplanation(null);
+    setAiCached(false);
+    setExplainError(null);
     if (!record || !open) {
       setDetail(null);
       setError(null);
@@ -62,6 +69,35 @@ export function InvoiceInspector({ record, open, onOpenChange }: InvoiceInspecto
       .catch((err) => setError(err instanceof Error ? err.message : "Error al cargar detalle"))
       .finally(() => setLoading(false));
   }, [record, open]);
+
+  const handleExplain = async (regenerate: boolean) => {
+    if (!record) return;
+    const targetId = record.invoice_id || record.id;
+    if (!targetId) return;
+    setExplaining(true);
+    setExplainError(null);
+    try {
+      const res = await fetch(`/api/invoices/${targetId}/explain`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ regenerate }),
+      });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(data?.error ?? `HTTP ${res.status}`);
+      }
+      const data = (await res.json()) as { explanation: string; cached: boolean };
+      setAiExplanation(data.explanation);
+      setAiCached(data.cached);
+    } catch (err) {
+      setExplainError(err instanceof Error ? err.message : "Error al generar explicación");
+    } finally {
+      setExplaining(false);
+    }
+  };
+
+  const showExplainButton =
+    record !== null && (record.verdict === "FRENAR" || record.verdict === "ESCALAR");
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -123,6 +159,45 @@ export function InvoiceInspector({ record, open, onOpenChange }: InvoiceInspecto
                 <span>Por: {record.id ? "AGENTE" : "—"}</span>
               </div>
             </div>
+
+            {/* Explicación con IA */}
+            {showExplainButton && (
+              <div className="space-y-2">
+                <Button
+                  size="sm"
+                  onClick={() => handleExplain(false)}
+                  disabled={explaining}
+                  className="text-xs"
+                >
+                  {explaining ? "Generando explicación…" : "Explicar con IA"}
+                </Button>
+                {explainError && (
+                  <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-xs text-destructive">
+                    {explainError}
+                  </div>
+                )}
+                {aiExplanation && (
+                  <div className="rounded-lg border border-border/80 bg-muted/20 p-3.5 space-y-1.5 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-foreground">Explicación con IA</span>
+                      {aiCached && (
+                        <span className="text-[10px] text-muted-foreground">cacheada</span>
+                      )}
+                    </div>
+                    <p className="text-muted-foreground whitespace-pre-wrap">{aiExplanation}</p>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleExplain(true)}
+                      disabled={explaining}
+                      className="h-7 px-2 text-[11px]"
+                    >
+                      Regenerar
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Aviso de acción pendiente si está escalada */}
             {record.estado === "ESCALADA" && (
