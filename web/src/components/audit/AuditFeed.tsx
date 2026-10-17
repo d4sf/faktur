@@ -45,22 +45,23 @@ export function AuditFeed() {
 
   return (
     <div className="space-y-8">
-      {/* KPIs */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 md:gap-5">
+      {/* KPIs con estilo Donezo refinado (1ra Hero Verde Bosque) */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <RoiCard
-          title="Tasa de aprobación automática"
+          variant="hero"
+          title="Tasa de aprobación autónoma"
           value={metrics ? `${metrics.touchless_rate}%` : "—"}
-          subtitle="Facturas aprobadas sin intervención manual"
+          subtitle="Facturas procesadas directamente sin firma humana (STP)"
         />
         <RoiCard
-          title="Presupuesto restante"
+          title="Presupuesto disponible"
           value={metrics ? formatBudget(metrics.budget_remaining) : "—"}
-          subtitle="Balance mensual disponible en USD"
+          subtitle="Balance mensual restante para dispersión"
         />
         <RoiCard
           title="Total procesadas"
-          value={metrics ? String(metrics.total_processed) : "—"}
-          subtitle="Facturas evaluadas en el ciclo actual"
+          value={metrics ? `${metrics.total_processed}` : "—"}
+          subtitle="Evaluadas con las 8 reglas deterministas"
         />
       </div>
 

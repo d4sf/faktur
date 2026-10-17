@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -12,9 +13,10 @@ interface PolicyEditorProps {
   policy: PolicySpec;
   records: AuditRecordView[];
   onApply: (policy: CandidatePolicy) => Promise<PolicySpec>;
+  onClose?: () => void;
 }
 
-export function PolicyEditor({ policy, records, onApply }: PolicyEditorProps) {
+export function PolicyEditor({ policy, records, onApply, onClose }: PolicyEditorProps) {
   const [threshold, setThreshold] = useState(policy.auto_approval_threshold_usd);
   const [monthlyBudget, setMonthlyBudget] = useState(policy.monthly_budget_usd);
   const [driftFactor, setDriftFactor] = useState(policy.vendor_drift_factor);
@@ -113,10 +115,24 @@ export function PolicyEditor({ policy, records, onApply }: PolicyEditorProps) {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h3 className="text-base font-bold tracking-tight text-foreground">Editor de política</h3>
-        <Badge variant="secondary" className="font-mono text-xs">
-          {activeVersion} activa
-        </Badge>
+        <div className="flex items-center gap-2">
+          <h3 className="text-base font-bold tracking-tight text-foreground">Editor de política</h3>
+          <Badge variant="secondary" className="font-mono text-xs">
+            {activeVersion} activa
+          </Badge>
+        </div>
+        {onClose && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={onClose}
+            className="text-xs text-muted-foreground hover:text-foreground h-8 px-2"
+          >
+            <X className="size-4 mr-1" />
+            Cerrar
+          </Button>
+        )}
       </div>
 
       {/* Sliders */}
@@ -134,37 +150,79 @@ export function PolicyEditor({ policy, records, onApply }: PolicyEditorProps) {
 
       {/* Budgets por categoría */}
       <div className="space-y-2">
-        <h4 className="text-sm font-medium text-foreground">Presupuestos por categoría</h4>
+        <h4 className="text-sm font-bold text-foreground">Presupuestos por categoría</h4>
         <CategoryBudgetTable
           budgets={budgets}
           onChange={handleBudgetChange}
           disabled={simulating || applying}
+          monthlyBudget={monthlyBudget}
         />
       </div>
 
       {/* Comment */}
-      <div className="space-y-2">
-        <label className="text-sm font-medium text-foreground">Comentario (auditoría)</label>
+      <div className="space-y-2 rounded-xl border border-border/70 bg-card/60 p-4">
+        <label className="text-xs font-bold text-foreground flex items-center justify-between">
+          <span>Motivo de ajuste (registro obligatorio de auditoría)</span>
+          <span className="text-[10px] text-muted-foreground font-normal">
+            Quedará registrado en el historial de versiones de política
+          </span>
+        </label>
         <Input
           value={comment}
           onChange={(e) => setComment(e.target.value)}
-          placeholder="Ajuste manual de parámetros"
+          placeholder="Ej: Aumento temporal de umbral para cierre de trimestre..."
           disabled={simulating || applying}
+          className="text-xs bg-background"
         />
       </div>
 
-      {/* Botones */}
-      <div className="flex flex-wrap gap-2">
-        <Button variant="outline" onClick={handleSimulate} disabled={simulating || applying}>
-          {simulating ? "Simulando..." : "Simular"}
+      {/* Botones de acción */}
+      <div className="flex flex-wrap items-center gap-2 pt-1">
+        <Button
+          variant="outline"
+          onClick={handleSimulate}
+          disabled={simulating || applying}
+          className="cursor-pointer font-semibold shadow-xs"
+        >
+          {simulating ? "Simulando impacto..." : "Simular impacto"}
         </Button>
-        <Button onClick={handleApply} disabled={!hasSimulated || applying || simulating}>
-          {applying ? "Aplicando..." : "Aplicar"}
+        <Button
+          onClick={handleApply}
+          disabled={!hasSimulated || applying || simulating}
+          className="cursor-pointer font-semibold shadow-xs"
+        >
+          {applying ? "Aplicando política..." : "Aplicar nueva política"}
         </Button>
-        <Button variant="ghost" onClick={handleReset} disabled={simulating || applying}>
+        <Button
+          variant="ghost"
+          onClick={handleReset}
+          disabled={simulating || applying}
+          className="cursor-pointer text-xs text-muted-foreground hover:text-foreground"
+        >
           Volver a la versión base
         </Button>
+        {onClose && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onClose}
+            disabled={simulating || applying}
+            className="sm:ml-auto cursor-pointer text-xs"
+          >
+            Cerrar editor
+          </Button>
+        )}
       </div>
+
+      {!hasSimulated && !simulating && (
+        <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+          <span>💡</span>
+          <span>
+            Haz clic en <strong>Simular impacto</strong> para previsualizar si alguna factura
+            existente cambiaría de veredicto antes de aplicar.
+          </span>
+        </p>
+      )}
 
       {/* Error */}
       {error && (

@@ -17,7 +17,10 @@ export default function Tablero() {
           </p>
         </div>
 
-        <Button asChild className="gap-2 shadow-xs shrink-0">
+        <Button
+          asChild
+          className="gap-2 shadow-xs shrink-0 bg-[#185338] hover:bg-[#185338]/90 text-white rounded-xl cursor-pointer font-semibold"
+        >
           <Link to="/subir">
             <UploadCloud className="size-4" />
             <span>Subir factura</span>

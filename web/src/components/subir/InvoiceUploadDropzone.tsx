@@ -138,8 +138,8 @@ export function InvoiceUploadDropzone({
             disabled
               ? "cursor-not-allowed border-border/60 bg-muted/10 opacity-60"
               : isDragging
-                ? "border-primary bg-primary/5"
-                : "border-border/80 bg-muted/20 hover:border-primary/50 hover:bg-muted/40",
+                ? "border-[#185338] bg-[#185338]/5"
+                : "border-border/80 bg-muted/20 hover:border-[#185338]/50 hover:bg-[#185338]/5",
           ].join(" ")}
         >
           <div className="text-muted-foreground group-hover:text-foreground transition-colors">
@@ -151,7 +151,7 @@ export function InvoiceUploadDropzone({
               type="button"
               tabIndex={-1}
               disabled={disabled}
-              className="h-11 px-6 text-sm font-semibold shadow-xs"
+              className="h-11 px-6 text-sm font-semibold shadow-xs bg-[#185338] hover:bg-[#185338]/90 text-white rounded-xl cursor-pointer"
             >
               Seleccionar factura
             </Button>
@@ -186,7 +186,7 @@ export function InvoiceUploadDropzone({
                 type="button"
                 disabled={disabled}
                 onClick={() => onSelectDemo(demo.key)}
-                className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted/50 hover:border-foreground/20 transition-all shadow-xs disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex items-center gap-2 rounded-xl border border-border/80 bg-card px-3.5 py-1.5 text-xs font-medium text-foreground hover:bg-muted/50 hover:border-[#185338]/40 transition-all shadow-xs disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
               >
                 <VerdictBadge verdict={demo.verdict} size="sm" />
                 <span>{demo.label}</span>

@@ -288,9 +288,9 @@ export default function Bandeja() {
                 size="sm"
                 onClick={handleManualRefresh}
                 disabled={loading}
-                className={`h-9 gap-1.5 text-xs transition-all ${
+                className={`h-9 gap-1.5 text-xs rounded-xl transition-all ${
                   justUpdated
-                    ? "border-transparent bg-emerald-600 text-white hover:bg-emerald-600 dark:bg-emerald-600 dark:text-white shadow-xs"
+                    ? "border-transparent bg-[#185338] text-white hover:bg-[#185338] shadow-xs"
                     : ""
                 }`}
               >
@@ -301,7 +301,7 @@ export default function Bandeja() {
                   </>
                 ) : loading ? (
                   <>
-                    <RefreshCw className="size-3.5 animate-spin text-primary" />
+                    <RefreshCw className="size-3.5 animate-spin text-[#185338]" />
                     <span>Comprobando...</span>
                   </>
                 ) : (
@@ -311,7 +311,11 @@ export default function Bandeja() {
                   </>
                 )}
               </Button>
-              <Button asChild size="sm" className="h-9 text-xs font-semibold gap-1.5 shadow-xs">
+              <Button
+                asChild
+                size="sm"
+                className="h-9 text-xs font-semibold gap-1.5 shadow-xs bg-[#185338] hover:bg-[#185338]/90 text-white rounded-xl cursor-pointer"
+              >
                 <Link to="/subir">Subir factura</Link>
               </Button>
             </div>

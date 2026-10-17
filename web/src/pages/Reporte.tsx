@@ -183,7 +183,7 @@ export default function Reporte() {
           <Button
             asChild
             size="lg"
-            className="h-10 px-4 text-xs font-semibold gap-2 shadow-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+            className="h-10 px-4 text-xs font-semibold gap-2 shadow-xs bg-[#185338] hover:bg-[#185338]/90 text-white rounded-xl cursor-pointer"
           >
             {/* Sin `download`: el nombre fechado lo fija el Content-Disposition de la API. */}
             <a href="/api/report.csv">
@@ -194,54 +194,63 @@ export default function Reporte() {
         </div>
       </div>
 
-      {/* Tarjetas de Métricas de Auditoría */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <Card className="rounded-xl border border-border/80 bg-card p-4 shadow-xs">
-          <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
-            Total procesado
-          </span>
-          <p className="mt-1 text-2xl font-bold text-foreground">
-            {metrics.total_processed}{" "}
-            <span className="text-xs font-normal text-muted-foreground">facturas</span>
+      {/* Tarjetas de Métricas de Auditoría (Estilo Donezo con 1ra Hero Verde Bosque) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* KPI 1 (Hero Card Verde Bosque) */}
+        <div className="rounded-2xl bg-[#185338] text-white p-5 shadow-xs flex flex-col justify-between min-h-[130px]">
+          <div>
+            <span className="text-xs font-medium text-emerald-100/90">Total procesado</span>
+            <div className="text-3xl font-extrabold tracking-tight mt-1.5">
+              {metrics.total_processed}{" "}
+              <span className="text-base font-normal text-emerald-200/80">facturas</span>
+            </div>
+          </div>
+          <p className="text-[11px] font-medium text-emerald-200 mt-2">
+            Volumen acumulado en el ciclo actual
           </p>
-          <span className="text-[10px] text-muted-foreground mt-1 block">En el período actual</span>
-        </Card>
+        </div>
 
-        <Card className="rounded-xl border border-border/80 bg-card p-4 shadow-xs">
-          <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
-            Tasa autónoma STP
-          </span>
-          <p className="mt-1 text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-            {metrics.touchless_rate}%
+        {/* KPI 2: Tasa autónoma STP */}
+        <div className="rounded-2xl bg-card border border-border/80 p-5 shadow-xs flex flex-col justify-between min-h-[130px] hover:border-border transition-colors">
+          <div>
+            <span className="text-xs font-medium text-muted-foreground">Tasa autónoma STP</span>
+            <div className="text-3xl font-extrabold tracking-tight text-foreground mt-1.5">
+              {metrics.touchless_rate}
+              <span className="text-lg font-normal text-muted-foreground">%</span>
+            </div>
+          </div>
+          <p className="text-[11px] font-medium text-muted-foreground mt-2">
+            Pase directo sin firma humana
           </p>
-          <span className="text-[10px] text-muted-foreground mt-1 block">
-            Pase directo sin humanos
-          </span>
-        </Card>
+        </div>
 
-        <Card className="rounded-xl border border-border/80 bg-card p-4 shadow-xs">
-          <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
-            Presupuesto disponible
-          </span>
-          <p className="mt-1 text-2xl font-bold text-foreground">
-            ${metrics.budget_remaining.toLocaleString("en-US", { minimumFractionDigits: 2 })}
-          </p>
-          <span className="text-[10px] text-muted-foreground mt-1 block">
+        {/* KPI 3: Presupuesto disponible */}
+        <div className="rounded-2xl bg-card border border-border/80 p-5 shadow-xs flex flex-col justify-between min-h-[130px] hover:border-border transition-colors">
+          <div>
+            <span className="text-xs font-medium text-muted-foreground">
+              Presupuesto disponible
+            </span>
+            <div className="text-3xl font-extrabold tracking-tight text-foreground mt-1.5">
+              ${metrics.budget_remaining.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+            </div>
+          </div>
+          <p className="text-[11px] font-medium text-muted-foreground mt-2">
             De $5,000.00 USD global
-          </span>
-        </Card>
-
-        <Card className="rounded-xl border border-border/80 bg-card p-4 shadow-xs">
-          <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
-            Umbral de corte
-          </span>
-          <p className="mt-1 text-2xl font-bold text-foreground">
-            ${metrics.threshold_limit.toLocaleString("en-US", { minimumFractionDigits: 2 })}
           </p>
-          <span className="text-[10px] text-muted-foreground mt-1 block">
-            Límite para auto-pago (R7)
-          </span>
-        </Card>
+        </div>
+
+        {/* KPI 4: Umbral de corte */}
+        <div className="rounded-2xl bg-card border border-border/80 p-5 shadow-xs flex flex-col justify-between min-h-[130px] hover:border-border transition-colors">
+          <div>
+            <span className="text-xs font-medium text-muted-foreground">Umbral de aprobación</span>
+            <div className="text-3xl font-extrabold tracking-tight text-foreground mt-1.5">
+              ${metrics.threshold_limit.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+            </div>
+          </div>
+          <p className="text-[11px] font-medium text-muted-foreground mt-2">
+            Límite para auto-pago (Regla 7)
+          </p>
+        </div>
       </div>
 
       {/* Tabla Previa del Reporte con Buscador */}
@@ -254,7 +263,7 @@ export default function Reporte() {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Filtrar por folio, proveedor o código..."
-              className="w-full rounded-lg border border-border bg-card pl-9 pr-3 py-2 text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary shadow-xs"
+              className="w-full rounded-xl border border-border bg-card pl-9 pr-3 py-2 text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary shadow-xs"
             />
           </div>
           <span className="text-xs text-muted-foreground">
@@ -262,7 +271,7 @@ export default function Reporte() {
           </span>
         </div>
 
-        <Card className="rounded-xl border border-border/80 overflow-hidden shadow-xs">
+        <Card className="rounded-2xl border border-border/80 overflow-hidden shadow-xs">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="border-b border-border bg-muted/20 text-muted-foreground">

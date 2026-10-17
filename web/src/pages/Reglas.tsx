@@ -1,3 +1,13 @@
+/**
+ * @file Reglas.tsx
+ * @description Catálogo oficial de las 8 reglas deterministas de política (versión v1 congelada),
+ * panel de parámetros financieros globales (estilo Donezo refinado sin flechas ni puntos distractores),
+ * presupuestos por categoría con indicadores limpios y editor interactivo de política en vivo (T20).
+ */
+
+import { useState } from "react";
+import { FileCode2, Lock, SlidersHorizontal, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { VerdictBadge } from "@/components/ui/VerdictBadge";
 import { PolicyEditor } from "@/components/reglas/PolicyEditor";
@@ -82,8 +92,18 @@ const POLICY_RULES: PolicyRule[] = [
   },
 ];
 
+const CATEGORY_BUDGETS = [
+  { category: "Marketing", budget: "$4,000.00 USD", status: "Activo" },
+  { category: "Legal", budget: "$3,000.00 USD", status: "Activo" },
+  { category: "Infraestructura", budget: "$1,500.00 USD", status: "Activo" },
+  { category: "Diseño", budget: "$1,000.00 USD", status: "Activo" },
+  { category: "Software", budget: "$500.00 USD", status: "Activo" },
+  { category: "Retail", budget: "$0.00 USD", status: "Bloqueado" },
+];
+
 export default function Reglas() {
   const { policy, records, loading, error, refresh } = usePolicy();
+  const [isEditing, setIsEditing] = useState(false);
 
   const handleApply = async (candidate: import("@/types/policy").CandidatePolicy) => {
     const res = await fetch("/api/policy", {
@@ -100,94 +120,254 @@ export default function Reglas() {
     return newPolicy;
   };
 
+  const threshold = policy?.auto_approval_threshold_usd ?? 1000;
+  const monthlyBudget = policy?.monthly_budget_usd ?? 5000;
+  const driftFactor = policy?.vendor_drift_factor ?? 1.4;
+  const minConfidence = policy?.min_extraction_confidence ?? 0.7;
+  const activeVersion = policy?.version ?? "v1";
+
+  const categoryItems = policy?.category_budgets
+    ? Object.entries(policy.category_budgets).map(([category, budget]) => ({
+        category,
+        budget: `$${budget.toLocaleString("en-US", { minimumFractionDigits: 2 })} USD`,
+        status: budget > 0 ? "Activo" : "Bloqueado",
+      }))
+    : CATEGORY_BUDGETS;
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* 1. Encabezado */}
-      <div className="flex flex-col gap-1">
-        <h2 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-          Reglas de política
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          Parámetros financieros y orden de precedencia determinista del agente de pagos (versión v1
-          congelada).
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-1">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
+            Reglas de política
+          </h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Parámetros financieros y orden de precedencia determinista del agente de pagos.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#185338] text-white text-xs font-semibold shadow-xs">
+            <Lock className="size-3.5" />
+            <span>
+              {activeVersion} {policy ? "Activa" : "Congelada"}
+            </span>
+          </div>
+
+          <a
+            href="/api/policy"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-card border border-border/80 text-foreground text-xs font-semibold shadow-xs hover:bg-muted/50 transition-colors"
+          >
+            <FileCode2 className="size-3.5 text-muted-foreground" />
+            <span>Spec JSON</span>
+          </a>
+
+          <Button
+            type="button"
+            variant={isEditing ? "secondary" : "default"}
+            size="sm"
+            onClick={() => setIsEditing((prev) => !prev)}
+            className="rounded-full text-xs font-semibold gap-1.5 h-8 px-3.5 shadow-xs cursor-pointer"
+          >
+            {isEditing ? (
+              <>
+                <X className="size-3.5" />
+                <span>Cerrar editor</span>
+              </>
+            ) : (
+              <>
+                <SlidersHorizontal className="size-3.5" />
+                <span>Editar política</span>
+              </>
+            )}
+          </Button>
+        </div>
       </div>
 
-      {/* 2. Tabla de las 8 reglas con orden de precedencia */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
+      {/* Editor interactivo desplegable */}
+      {isEditing && (
+        <div className="rounded-2xl bg-card border border-primary/30 p-6 shadow-sm transition-all animate-in fade-in-50 duration-200">
+          {loading && (
+            <div className="space-y-4">
+              <Skeleton className="h-8 w-48" />
+              <Skeleton className="h-32 w-full" />
+              <Skeleton className="h-32 w-full" />
+            </div>
+          )}
+
+          {error && (
+            <div className="rounded-xl border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive">
+              Error al cargar la política: {error}
+            </div>
+          )}
+
+          {policy && (
+            <PolicyEditor
+              policy={policy}
+              records={records}
+              onApply={handleApply}
+              onClose={() => setIsEditing(false)}
+            />
+          )}
+        </div>
+      )}
+
+      {/* 2. Tarjetas KPI superiores (Estilo Donezo: 1ra verde bosque + 3 blancas, sin flechas y subtítulos limpios sin puntos) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* KPI 1 (Hero Card Verde Bosque) */}
+        <div className="rounded-2xl bg-[#185338] text-white p-5 shadow-xs flex flex-col justify-between min-h-[130px]">
           <div>
-            <h3 className="text-base font-bold tracking-tight text-foreground">
-              Matriz determinista de precedencia (8 reglas)
-            </h3>
-            <p className="text-xs text-muted-foreground">
+            <span className="text-xs font-medium text-emerald-100/90">Umbral autónomo</span>
+            <div className="text-3xl font-extrabold tracking-tight mt-1.5">
+              ${threshold.toLocaleString("en-US")}
+              <span className="text-base font-normal text-emerald-200/80">.00</span>
+            </div>
+          </div>
+          <p className="text-[11px] font-medium text-emerald-200 mt-2">
+            Pago directo sin firma humana
+          </p>
+        </div>
+
+        {/* KPI 2: Presupuesto mensual */}
+        <div className="rounded-2xl bg-card border border-border/80 p-5 shadow-xs flex flex-col justify-between min-h-[130px] hover:border-border transition-colors">
+          <div>
+            <span className="text-xs font-medium text-muted-foreground">Presupuesto mensual</span>
+            <div className="text-3xl font-extrabold tracking-tight text-foreground mt-1.5">
+              ${monthlyBudget.toLocaleString("en-US")}
+              <span className="text-base font-normal text-muted-foreground">.00</span>
+            </div>
+          </div>
+          <p className="text-[11px] font-medium text-muted-foreground mt-2">
+            Límite global por ciclo
+          </p>
+        </div>
+
+        {/* KPI 3: Tolerancia de desvío */}
+        <div className="rounded-2xl bg-card border border-border/80 p-5 shadow-xs flex flex-col justify-between min-h-[130px] hover:border-border transition-colors">
+          <div>
+            <span className="text-xs font-medium text-muted-foreground">Tolerancia de desvío</span>
+            <div className="text-3xl font-extrabold tracking-tight text-foreground mt-1.5">
+              {driftFactor}
+              <span className="text-lg font-normal text-muted-foreground">x</span>
+            </div>
+          </div>
+          <p className="text-[11px] font-medium text-muted-foreground mt-2">
+            Máximo +{Math.round((driftFactor - 1) * 100)}% sobre acordado
+          </p>
+        </div>
+
+        {/* KPI 4: Confianza mínima IA */}
+        <div className="rounded-2xl bg-card border border-border/80 p-5 shadow-xs flex flex-col justify-between min-h-[130px] hover:border-border transition-colors">
+          <div>
+            <span className="text-xs font-medium text-muted-foreground">Confianza mínima IA</span>
+            <div className="text-3xl font-extrabold tracking-tight text-foreground mt-1.5">
+              {Math.round(minConfidence * 100)}
+              <span className="text-lg font-normal text-muted-foreground">%</span>
+            </div>
+          </div>
+          <p className="text-[11px] font-medium text-muted-foreground mt-2">
+            Filtro de legibilidad OCR
+          </p>
+        </div>
+      </div>
+
+      {/* 3. Matriz determinista de las 8 reglas (Screenshot 1: Bento Card amplia) */}
+      <div className="rounded-2xl bg-card border border-border/80 p-6 shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-4 border-b border-border/60">
+          <div>
+            <h2 className="text-base font-bold text-foreground">
+              Matriz determinista de precedencia
+            </h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
               El motor evalúa las reglas en este orden estricto de 1 a 8. La primera condición que
               se cumple define el veredicto.
             </p>
           </div>
-          <span className="text-xs font-mono text-muted-foreground">
-            Versión {policy?.version ?? "v1"}
+          <span className="px-3 py-1 rounded-full bg-muted/60 text-xs font-mono font-medium text-muted-foreground self-start sm:self-auto">
+            Precedencia 1 → 8
           </span>
         </div>
 
-        <div className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="border-b border-border bg-muted/20 text-muted-foreground">
-                <tr>
-                  <th className="px-4 py-3 font-semibold uppercase tracking-wider text-[10px] whitespace-nowrap">
-                    Regla
-                  </th>
-                  <th className="px-4 py-3 font-semibold uppercase tracking-wider text-[10px]">
-                    Nombre
-                  </th>
-                  <th className="px-4 py-3 font-semibold uppercase tracking-wider text-[10px] whitespace-nowrap">
-                    Salida canónica
-                  </th>
-                  <th className="px-4 py-3 font-semibold uppercase tracking-wider text-[10px]">
-                    Condición de disparo
-                  </th>
-                  <th className="px-4 py-3 font-semibold uppercase tracking-wider text-[10px]">
-                    Acción del agente
-                  </th>
+        <div className="overflow-x-auto mt-2">
+          <table className="w-full text-left text-xs">
+            <thead className="border-b border-border/60 text-muted-foreground">
+              <tr>
+                <th className="py-3 px-3 font-semibold uppercase tracking-wider text-[10px] whitespace-nowrap">
+                  Regla
+                </th>
+                <th className="py-3 px-3 font-semibold uppercase tracking-wider text-[10px]">
+                  Nombre
+                </th>
+                <th className="py-3 px-3 font-semibold uppercase tracking-wider text-[10px] whitespace-nowrap">
+                  Veredicto
+                </th>
+                <th className="py-3 px-3 font-semibold uppercase tracking-wider text-[10px]">
+                  Condición de disparo
+                </th>
+                <th className="py-3 px-3 font-semibold uppercase tracking-wider text-[10px]">
+                  Acción del agente
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border/40">
+              {POLICY_RULES.map((rule) => (
+                <tr key={rule.ruleNumber} className="hover:bg-muted/30 transition-colors">
+                  <td className="py-3.5 px-3 font-mono font-bold text-foreground whitespace-nowrap">
+                    {rule.ruleNumber}
+                  </td>
+                  <td className="py-3.5 px-3 font-medium text-foreground whitespace-nowrap">
+                    {rule.name}
+                  </td>
+                  <td className="py-3.5 px-3 whitespace-nowrap">
+                    <VerdictBadge verdict={rule.verdict} size="sm" />
+                  </td>
+                  <td className="py-3.5 px-3 text-muted-foreground max-w-xs">{rule.condition}</td>
+                  <td className="py-3.5 px-3 text-muted-foreground max-w-xs">{rule.action}</td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-border/60">
-                {POLICY_RULES.map((rule) => (
-                  <tr key={rule.ruleNumber} className="hover:bg-muted/20 transition-colors">
-                    <td className="px-4 py-3 font-mono font-bold text-foreground whitespace-nowrap">
-                      {rule.ruleNumber}
-                    </td>
-                    <td className="px-4 py-3 font-medium text-foreground">{rule.name}</td>
-                    <td className="px-4 py-3">
-                      <VerdictBadge verdict={rule.verdict} size="sm" />
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground max-w-sm">{rule.condition}</td>
-                    <td className="px-4 py-3 text-muted-foreground max-w-sm">{rule.action}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
 
-      {/* 3. Editor de política */}
-      {loading && (
-        <div className="space-y-4">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-32 w-full" />
-          <Skeleton className="h-32 w-full" />
+      {/* 4. Presupuestos por categoría (Screenshot 2: con puntito, sin fondo ni píldora de color) */}
+      <div className="rounded-2xl bg-card border border-border/80 p-6 shadow-xs">
+        <div className="pb-3 border-b border-border/60">
+          <h2 className="text-base font-bold text-foreground">
+            Presupuestos asignados por categoría
+          </h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Límites mensuales asignados para el control de gastos por rubro.
+          </p>
         </div>
-      )}
 
-      {error && (
-        <div className="rounded-xl border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive">
-          Error al cargar la política: {error}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mt-4">
+          {categoryItems.map((cat) => {
+            const isBlocked = cat.status === "Bloqueado";
+
+            return (
+              <div
+                key={cat.category}
+                className="rounded-xl border border-border/70 bg-card p-3.5 space-y-1.5 hover:border-border transition-colors"
+              >
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-foreground">{cat.category}</span>
+                  <div className="flex items-center gap-1.5">
+                    <span
+                      className={`size-1.5 rounded-full ${isBlocked ? "bg-rose-500" : "bg-emerald-500"}`}
+                    />
+                    <span className="text-[11px] text-muted-foreground">{cat.status}</span>
+                  </div>
+                </div>
+                <p className="font-mono text-xs font-bold text-foreground pt-0.5">{cat.budget}</p>
+              </div>
+            );
+          })}
         </div>
-      )}
-
-      {policy && <PolicyEditor policy={policy} records={records} onApply={handleApply} />}
+      </div>
     </div>
   );
 }

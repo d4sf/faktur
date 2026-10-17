@@ -47,7 +47,7 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const location = useLocation();
 
   return (
-    <SidebarMenu className="gap-0.5">
+    <SidebarMenu className="gap-1">
       {navItems.map((item) => {
         const Icon = item.icon;
         const isActive =
@@ -55,20 +55,31 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
 
         return (
           <SidebarMenuItem key={item.to}>
-            <SidebarMenuButton asChild isActive={isActive} className="h-8 px-2.5">
+            <SidebarMenuButton
+              asChild
+              isActive={isActive}
+              className={cn(
+                "h-9 px-3 rounded-xl font-medium transition-all duration-150",
+                isActive
+                  ? "!bg-[#185338] !text-white font-semibold shadow-xs hover:!bg-[#185338] hover:!text-white"
+                  : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+              )}
+            >
               <NavLink
                 to={item.to}
                 end={item.to === "/"}
                 onClick={onNavigate}
-                className={cn(
-                  "flex w-full items-center gap-2.5 rounded-md px-2.5 py-1 text-sm font-medium transition-all duration-150",
-                  isActive
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground font-semibold shadow-xs border border-sidebar-border"
-                    : "text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
-                )}
+                className="flex w-full items-center gap-2.5"
               >
-                <Icon className="size-4 shrink-0" />
-                <span>{item.label}</span>
+                <Icon
+                  className={cn(
+                    "size-4 shrink-0 transition-colors",
+                    isActive ? "!text-white opacity-100" : "text-muted-foreground",
+                  )}
+                />
+                <span className={cn(isActive ? "!text-white font-semibold" : "")}>
+                  {item.label}
+                </span>
               </NavLink>
             </SidebarMenuButton>
           </SidebarMenuItem>

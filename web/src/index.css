@@ -30,23 +30,23 @@
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.48 0.23 264);
-  --primary-foreground: oklch(0.99 0 0);
+  --primary: #185338;
+  --primary-foreground: #ffffff;
   --muted: oklch(0.97 0 0);
   --muted-foreground: oklch(0.556 0 0);
   --border: oklch(0.922 0 0);
-  --ring: oklch(0.65 0.2 264);
+  --ring: #185338;
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.985 0 0);
   --radius: 0.75rem;
   --sidebar: hsl(0 0% 98%);
   --sidebar-foreground: hsl(240 5.3% 26.1%);
-  --sidebar-primary: hsl(224.3 76.3% 48%);
-  --sidebar-primary-foreground: hsl(0 0% 98%);
-  --sidebar-accent: hsl(224.3 40% 96%);
-  --sidebar-accent-foreground: hsl(224.3 76.3% 40%);
+  --sidebar-primary: #185338;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: hsl(240 4.8% 95.9%);
+  --sidebar-accent-foreground: hsl(240 5.9% 10%);
   --sidebar-border: hsl(220 13% 91%);
-  --sidebar-ring: hsl(224.3 76.3% 48%);
+  --sidebar-ring: #185338;
 }
 
 .dark {
@@ -54,22 +54,22 @@
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.19 0 0);
   --card-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.62 0.21 260);
-  --primary-foreground: oklch(0.99 0 0);
+  --primary: #1e704a;
+  --primary-foreground: #ffffff;
   --muted: oklch(0.24 0 0);
   --muted-foreground: oklch(0.708 0 0);
   --border: oklch(1 0 0 / 10%);
-  --ring: oklch(0.62 0.21 260);
+  --ring: #1e704a;
   --destructive: oklch(0.704 0.191 22.216);
   --destructive-foreground: oklch(0.985 0 0);
   --sidebar: hsl(240 5.9% 10%);
   --sidebar-foreground: hsl(240 4.8% 95.9%);
-  --sidebar-primary: hsl(224.3 76.3% 55%);
-  --sidebar-primary-foreground: hsl(0 0% 100%);
-  --sidebar-accent: hsl(224.3 30% 16%);
-  --sidebar-accent-foreground: hsl(224.3 85% 75%);
+  --sidebar-primary: #1e704a;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: hsl(240 3.7% 15.9%);
+  --sidebar-accent-foreground: hsl(240 4.8% 95.9%);
   --sidebar-border: hsl(240 3.7% 15.9%);
-  --sidebar-ring: hsl(224.3 76.3% 55%);
+  --sidebar-ring: #1e704a;
 }
 
 @layer base {
@@ -91,5 +91,15 @@
   [role="button"][aria-disabled="true"],
   input:disabled {
     cursor: not-allowed;
+  }
+  /* Eliminar controles nativos feos de inputs numéricos en Chrome/WebKit/Firefox */
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
   }
 }
