@@ -8,7 +8,7 @@
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test src/app.test.ts src/config/env.test.ts src/config/dataDir.test.ts src/domain/decision.test.ts src/domain/audit.test.ts src/domain/ingestion.test.ts src/domain/extraction.test.ts src/domain/precedence.test.ts src/domain/policy.test.ts src/domain/geminiSchema.test.ts"
+    "test": "tsx --test src/app.test.ts src/config/env.test.ts src/config/dataDir.test.ts src/domain/decision.test.ts src/domain/audit.test.ts src/domain/ingestion.test.ts src/domain/extraction.test.ts src/domain/precedence.test.ts src/domain/policy.test.ts src/domain/geminiSchema.test.ts src/db/schema.test.ts src/db/seed.test.ts"
   },
   "dependencies": {
     "@fastify/multipart": "^10.1.4",
