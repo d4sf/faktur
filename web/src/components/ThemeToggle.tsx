@@ -1,15 +1,31 @@
-import { Moon, Sun } from "lucide-react";
+/**
+ * @file ThemeToggle.tsx
+ * @description Componente de control para alternar entre modo claro y modo oscuro.
+ * Sincronizado con el hook useTheme y la clase 'dark' en el elemento raíz del DOM.
+ */
 
-import { Button } from "@/components/ui/button";
+import { Moon, Sun } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { useTheme } from "@/hooks/useTheme";
 
-export function ThemeToggle() {
+/**
+ * Renderiza el switch con íconos de Sol y Luna y etiqueta de modo.
+ */
+export function ThemeToggle({ showLabel = true }: { showLabel?: boolean }) {
   const { theme, toggle } = useTheme();
+  const isDark = theme === "dark";
 
   return (
-    <Button variant="ghost" size="sm" onClick={toggle} aria-label="Cambiar tema">
-      {theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
-      <span className="ml-2">{theme === "dark" ? "Claro" : "Oscuro"}</span>
-    </Button>
+    <div className="flex items-center justify-between gap-3 rounded-lg border border-sidebar-border bg-sidebar-accent/40 px-3 py-2 transition-colors">
+      <div className="flex items-center gap-2 text-xs font-medium text-sidebar-foreground">
+        {isDark ? (
+          <Moon className="size-4 text-primary" />
+        ) : (
+          <Sun className="size-4 text-amber-500" />
+        )}
+        {showLabel && <span>{isDark ? "Modo oscuro" : "Modo claro"}</span>}
+      </div>
+      <Switch checked={isDark} onCheckedChange={toggle} aria-label="Alternar modo claro y oscuro" />
+    </div>
   );
 }
