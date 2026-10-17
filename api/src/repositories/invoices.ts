@@ -45,6 +45,7 @@ export function updateInvoiceStatus(
 
 /** La proyección de T13: el `AuditRecord` de la última decisión más el estado actual. */
 export type AuditRecordView = AuditRecord & {
+  invoice_id: string;
   estado: "PAGADA" | "FRENADA" | "ESCALADA" | "PENDIENTE";
 };
 
@@ -117,6 +118,7 @@ function estadoOf(status: InvoiceStatus): AuditRecordView["estado"] {
 function toAuditRecord(row: RecordRow): AuditRecordView {
   return {
     id: row.decision_id,
+    invoice_id: row.id,
     invoice: ExtractedInvoice.parse(JSON.parse(row.extraction_json)),
     document_hash: row.file_hash,
     amount_usd: row.amount_usd_evaluated,
