@@ -116,6 +116,30 @@ export function determineFailingRuleId(reasonCode: string | undefined): number |
 }
 
 /**
+ * Títulos amigables en lenguaje natural para los códigos canónicos de veredicto.
+ */
+export const REASON_TITLES: Record<string, string> = {
+  SUCCESS_TOUCHLESS_STP: "Aprobación autónoma directa",
+  ERR_INVALID_DATA: "Datos fiscales incompletos",
+  ALERT_LOW_CONFIDENCE: "Confianza insuficiente en lectura",
+  ERR_DUPLICATE_INVOICE: "Factura duplicada",
+  ERR_BLACKLISTED_VENDOR: "Proveedor en lista negra",
+  ALERT_NEW_VENDOR: "Proveedor no autorizado",
+  ALERT_VENDOR_DRIFT: "Desviación de tarifa acordada",
+  ALERT_BUDGET_OVERRUN: "Presupuesto del período superado",
+  ALERT_BUDGET_TIGHT: "Saldo insuficiente en categoría",
+  ALERT_THRESHOLD_EXCEEDED: "Supera umbral de aprobación",
+};
+
+/**
+ * Retorna el título descriptivo en lenguaje natural de un código de razón.
+ */
+export function formatReasonTitle(code: string | undefined): string {
+  if (!code) return "Evaluación completada";
+  return REASON_TITLES[code] || code;
+}
+
+/**
  * Respuesta de `POST /api/invoices` (campos que consume la UI).
  */
 interface IngestResponse {

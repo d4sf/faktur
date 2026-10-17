@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { AuditTable } from "@/components/audit/AuditTable";
+import { DashboardCharts } from "@/components/audit/DashboardCharts";
 import { InvoiceInspector } from "@/components/audit/InvoiceInspector";
 import { RoiCard } from "@/components/audit/RoiCard";
 import type { AuditRecordView, AuditTrail } from "@/types/audit";
@@ -64,6 +65,9 @@ export function AuditFeed() {
           subtitle="Evaluadas con las 8 reglas deterministas"
         />
       </div>
+
+      {/* Gráficos de Estadísticas y Analítica Visual */}
+      <DashboardCharts records={data?.records ?? []} metrics={metrics} />
 
       {/* Tabla */}
       <div className="space-y-3">

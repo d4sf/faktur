@@ -41,10 +41,12 @@ test("la tabla muestra folio, proveedor, monto USD, veredicto con ícono y motiv
 
   assert.match(html, /INV-AWS-8821/);
   assert.match(html, /Amazon Web Services/);
+  assert.match(html, /ID: AWS-CLOUD-01/);
   assert.match(html, /\$450\.00/);
   assert.match(html, /PAGAR/);
   assert.match(html, /data-verdict="PAGAR"/);
   assert.match(html, /<svg/);
+  assert.match(html, /Aprobación autónoma directa/);
   assert.match(html, /SUCCESS_TOUCHLESS_STP/);
   assert.match(html, /Cumple todas las políticas/);
   assert.match(html, /PAGADA/);
@@ -85,4 +87,28 @@ test("muestra el monto original cuando la moneda no es USD", () => {
 
   assert.match(html, /MXN 1,000\.00/);
   assert.match(html, /\$58\.00/);
+});
+
+test("muestra controles de paginación y limita a 10 registros por defecto", () => {
+  const records = Array.from({ length: 15 }, (_, i) =>
+    buildRecord({
+      id: `decision-${i + 1}`,
+      invoice: {
+        ...buildRecord().invoice,
+        invoice_number: `INV-PAGE-${i + 1}`,
+      },
+    }),
+  );
+
+  const html = renderToStaticMarkup(<AuditTable records={records} onSelectRecord={() => {}} />);
+
+  assert.match(html, /INV-PAGE-1</);
+  assert.match(html, /INV-PAGE-10</);
+  // El registro 11 no debe salir en la primera página
+  assert.doesNotMatch(html, /INV-PAGE-11</);
+  // Controles de paginación presentes
+  assert.match(html, /Mostrar:/);
+  assert.match(html, /Mostrando/);
+  assert.match(html, /Página/);
+  assert.match(html, /15/);
 });

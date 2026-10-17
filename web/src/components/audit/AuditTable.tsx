@@ -1,8 +1,10 @@
-import { Eye } from "lucide-react";
+import { useState } from "react";
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Eye } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { VerdictBadge } from "@/components/ui/VerdictBadge";
+import { formatReasonTitle } from "@/lib/invoiceSubmit";
 import type { AuditRecordView } from "@/types/audit";
 
 interface AuditTableProps {
@@ -35,6 +37,15 @@ function formatDate(s: string): string {
 }
 
 export function AuditTable({ records, onSelectRecord, loading = false }: AuditTableProps) {
+  const [pageSize, setPageSize] = useState<number>(10);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+
+  const totalRecords = records.length;
+  const totalPages = Math.max(1, Math.ceil(totalRecords / pageSize));
+  const validPage = Math.min(currentPage, totalPages);
+  const startIndex = (validPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, totalRecords);
+  const currentRecords = records.slice(startIndex, endIndex);
   if (loading) {
     return (
       <div className="overflow-hidden rounded-xl border border-border/80 bg-card shadow-xs">
@@ -139,7 +150,7 @@ export function AuditTable({ records, onSelectRecord, loading = false }: AuditTa
             </tr>
           </thead>
           <tbody className="divide-y divide-border/60">
-            {records.map((rec) => (
+            {currentRecords.map((rec) => (
               <tr
                 key={rec.id}
                 className="hover:bg-muted/30 transition-colors cursor-pointer"
@@ -152,9 +163,11 @@ export function AuditTable({ records, onSelectRecord, loading = false }: AuditTa
                   <div className="font-medium text-foreground">
                     {rec.invoice.vendor_name ?? "—"}
                   </div>
-                  <div className="text-[10px] text-muted-foreground">
-                    {rec.invoice.vendor_tax_id ?? "—"}
-                  </div>
+                  {rec.invoice.vendor_tax_id && (
+                    <div className="text-[10px] text-muted-foreground font-mono">
+                      ID: {rec.invoice.vendor_tax_id}
+                    </div>
+                  )}
                 </td>
                 <td className="hidden px-4 py-3 text-muted-foreground md:table-cell">
                   {formatDate(rec.invoice.issue_date ?? rec.created_at)}
@@ -172,8 +185,15 @@ export function AuditTable({ records, onSelectRecord, loading = false }: AuditTa
                   <div className="mt-0.5 text-[10px] text-muted-foreground">{rec.estado}</div>
                 </td>
                 <td className="px-4 py-3 text-muted-foreground max-w-xs">
-                  <div className="truncate text-[11px] font-mono">{rec.reason_code}</div>
-                  <div className="truncate text-[11px]">{rec.explanation}</div>
+                  <div
+                    className="truncate text-xs font-semibold text-foreground"
+                    title={`Código: ${rec.reason_code}`}
+                  >
+                    {formatReasonTitle(rec.reason_code)}
+                  </div>
+                  <div className="truncate text-[11px] text-muted-foreground mt-0.5">
+                    {rec.explanation}
+                  </div>
                 </td>
                 <td className="px-4 py-3 text-right">
                   <Button
@@ -190,10 +210,9 @@ export function AuditTable({ records, onSelectRecord, loading = false }: AuditTa
                   </Button>
                   {rec.estado === "ESCALADA" && (
                     <Button
-                      variant="outline"
                       size="sm"
                       asChild
-                      className="h-7 px-2 text-xs text-amber-700 dark:text-amber-400 border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 ml-1 shadow-xs cursor-pointer"
+                      className="h-7 px-3 text-xs font-semibold bg-amber-600 hover:bg-amber-700 text-white ml-1.5 rounded-lg shadow-xs cursor-pointer transition-colors"
                     >
                       <a href="/bandeja" onClick={(e) => e.stopPropagation()}>
                         Revisar
@@ -206,6 +225,97 @@ export function AuditTable({ records, onSelectRecord, loading = false }: AuditTa
           </tbody>
         </table>
       </div>
+
+      {/* Barra de paginación */}
+      {totalRecords > 0 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-border/80 bg-muted/20 px-4 py-3 text-xs text-muted-foreground">
+          {/* Selector de filas por página y rango actual */}
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] font-medium">Mostrar:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="h-7 rounded-lg border border-border bg-background px-2 text-xs font-semibold text-foreground shadow-xs focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
+              >
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+            </div>
+
+            <span className="hidden sm:inline-block text-border">|</span>
+
+            <span>
+              Mostrando <strong className="font-semibold text-foreground">{startIndex + 1}</strong>{" "}
+              a <strong className="font-semibold text-foreground">{endIndex}</strong> de{" "}
+              <strong className="font-semibold text-foreground">{totalRecords}</strong> facturas
+            </span>
+          </div>
+
+          {/* Navegación de páginas */}
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-medium mr-1">
+              Página <strong className="text-foreground">{validPage}</strong> de{" "}
+              <strong className="text-foreground">{totalPages}</strong>
+            </span>
+
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setCurrentPage(1)}
+                disabled={validPage === 1}
+                className="size-7 rounded-lg shadow-xs disabled:opacity-40"
+                title="Primera página"
+              >
+                <ChevronsLeft className="size-3.5" />
+                <span className="sr-only">Primera página</span>
+              </Button>
+
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={validPage === 1}
+                className="size-7 rounded-lg shadow-xs disabled:opacity-40"
+                title="Página anterior"
+              >
+                <ChevronLeft className="size-3.5" />
+                <span className="sr-only">Página anterior</span>
+              </Button>
+
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={validPage === totalPages}
+                className="size-7 rounded-lg shadow-xs disabled:opacity-40"
+                title="Página siguiente"
+              >
+                <ChevronRight className="size-3.5" />
+                <span className="sr-only">Página siguiente</span>
+              </Button>
+
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setCurrentPage(totalPages)}
+                disabled={validPage === totalPages}
+                className="size-7 rounded-lg shadow-xs disabled:opacity-40"
+                title="Última página"
+              >
+                <ChevronsRight className="size-3.5" />
+                <span className="sr-only">Última página</span>
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
