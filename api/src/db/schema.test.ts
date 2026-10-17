@@ -4,7 +4,7 @@ import Database from "better-sqlite3";
 
 import { applySchema } from "./schema.js";
 
-test("applySchema crea las 12 tablas", () => {
+test("applySchema crea las 13 tablas", () => {
   const db = new Database(":memory:");
   db.pragma("foreign_keys = ON");
   applySchema(db);
@@ -13,6 +13,7 @@ test("applySchema crea las 12 tablas", () => {
     .all()
     .map((r) => (r as { name: string }).name);
   assert.deepEqual(tables, [
+    "ai_explanations",
     "approvals",
     "categories",
     "decisions",

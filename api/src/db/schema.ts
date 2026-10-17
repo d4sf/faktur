@@ -157,6 +157,20 @@ CREATE INDEX IF NOT EXISTS idx_ledger_entries_decision_id ON ledger_entries(deci
 CREATE INDEX IF NOT EXISTS idx_notifications_invoice_id ON notifications(invoice_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_decision_id ON notifications(decision_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_policies_one_active ON policies(is_active) WHERE is_active = 1;
+
+CREATE TABLE IF NOT EXISTS ai_explanations (
+  id TEXT PRIMARY KEY,
+  invoice_id TEXT NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
+  decision_id TEXT NOT NULL REFERENCES decisions(id) ON DELETE CASCADE,
+  policy_version TEXT NOT NULL REFERENCES policies(version),
+  model TEXT NOT NULL,
+  prompt_version TEXT NOT NULL DEFAULT 'v1',
+  explanation TEXT NOT NULL CHECK (length(explanation) <= 1500),
+  created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_ai_explanations_decision_id ON ai_explanations(decision_id);
+CREATE INDEX IF NOT EXISTS idx_ai_explanations_invoice_id ON ai_explanations(invoice_id);
 `;
 
 export function applySchema(db: Database.Database): void {
