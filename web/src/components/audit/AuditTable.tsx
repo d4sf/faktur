@@ -16,6 +16,13 @@ function formatUsd(n: number): string {
   return `$${n.toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
 }
 
+/**
+ * Formatea el monto en su moneda original (ej. `MXN 1,000.00`).
+ */
+function formatOriginal(amount: number, currency: string): string {
+  return `${currency} ${amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
+}
+
 function formatDate(s: string): string {
   try {
     return new Date(s).toLocaleDateString("es-AR", {
@@ -154,7 +161,12 @@ export function AuditTable({ records, onSelectRecord, loading = false }: AuditTa
                   {formatDate(rec.invoice.issue_date ?? rec.created_at)}
                 </td>
                 <td className="hidden px-4 py-3 font-semibold text-foreground md:table-cell">
-                  {formatUsd(rec.amount_usd)}
+                  <div>{formatUsd(rec.amount_usd)}</div>
+                  {rec.invoice.currency !== "USD" && (
+                    <div className="text-[10px] font-normal text-muted-foreground">
+                      {formatOriginal(rec.invoice.total_amount, rec.invoice.currency)}
+                    </div>
+                  )}
                 </td>
                 <td className="px-4 py-3">
                   <VerdictBadge verdict={rec.verdict} size="sm" />
