@@ -1,0 +1,19 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Containerfile.dev
+    image: ${APP_IMAGE_DEV:-blinka-payagent:dev}
+    command: npm run dev
+    ports:
+      - "127.0.0.1:${API_PORT:-3000}:3000"
+      - "127.0.0.1:${WEB_PORT:-5173}:5173"
+    volumes:
+      - .:/app
+      - node_modules:/app/node_modules
+    environment:
+      NODE_ENV: development
+      CHOKIDAR_USEPOLLING: ${CHOKIDAR_USEPOLLING:-false}
+
+volumes:
+  node_modules:
