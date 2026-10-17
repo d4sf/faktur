@@ -377,7 +377,7 @@ El runner tiene que **afirmar que el conjunto de `reason_code` que produjo es ig
 
 ---
 
-#### [ ] T7 · `policy_version` congelada en cada decisión
+#### [x] T7 · `policy_version` congelada en cada decisión
 
 **Síntesis.** Al escribir una decisión se guarda la versión de política usada, el monto evaluado, `decided_by` y timestamp. Cambiar la política no reescribe las decisiones viejas: una re-evaluación crea una fila nueva con la versión nueva.
 
