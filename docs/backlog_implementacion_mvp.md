@@ -561,7 +561,7 @@ El runner tiene que **afirmar que el conjunto de `reason_code` que produjo es ig
 
 ---
 
-#### [ ] T15 · Bandeja de aprobaciones y regla de excepción
+#### [x] T15 · Bandeja de aprobaciones y regla de excepción
 
 **Síntesis.** `GET /api/approvals?status=pendiente` lista los ESCALAR con emisor, monto, regla disparada y explicación. `POST /api/approvals/{id}` resuelve: al aprobar, re-chequea las reglas 1-3 con la `policy_version` del caso; si alguna dispara, responde 409 y no habilita PAGAR. Aprobado con excepción permitida → PAGAR; negado → la factura queda frenada. Aprobación ya cerrada → 200 idempotente sin duplicar el pago. Factura frenada → 409. Todo el cierre atómico.
 

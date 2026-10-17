@@ -27,10 +27,8 @@ export function getCategoryBudgets(db: Database.Database, version: string): Reco
   return Object.fromEntries(rows.map((r) => [r.category, r.budget_usd]));
 }
 
-/** Arma el `PolicySpec` del dominio a partir de la fila activa. */
-export function getActivePolicySpec(db: Database.Database): PolicySpec {
-  const row = getActivePolicyRow(db);
-  if (row === null) throw new Error("no_active_policy");
+/** Arma el `PolicySpec` del dominio a partir de una fila de `policies`. */
+function specFromRow(db: Database.Database, row: PolicyRow): PolicySpec {
   return PolicySpec.parse({
     version: row.version,
     created_at: row.created_at.slice(0, 10),
@@ -43,4 +41,23 @@ export function getActivePolicySpec(db: Database.Database): PolicySpec {
     allowed_currencies: JSON.parse(row.allowed_currencies),
     category_budgets: getCategoryBudgets(db, row.version),
   });
+}
+
+export function getPolicyRowByVersion(db: Database.Database, version: string): PolicyRow | null {
+  const row = db.prepare("SELECT * FROM policies WHERE version = ?").get(version);
+  return (row as PolicyRow | undefined) ?? null;
+}
+
+/** Arma el `PolicySpec` del dominio a partir de la fila activa. */
+export function getActivePolicySpec(db: Database.Database): PolicySpec {
+  const row = getActivePolicyRow(db);
+  if (row === null) throw new Error("no_active_policy");
+  return specFromRow(db, row);
+}
+
+/** La versión congelada de una decisión: la regla de excepción re-chequea con esta, no con la activa. */
+export function getPolicySpecByVersion(db: Database.Database, version: string): PolicySpec {
+  const row = getPolicyRowByVersion(db, version);
+  if (row === null) throw new Error("policy_not_found");
+  return specFromRow(db, row);
 }
