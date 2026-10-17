@@ -8,7 +8,7 @@
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test src/app.test.ts src/config/env.test.ts src/config/dataDir.test.ts"
+    "test": "tsx --test src/app.test.ts src/config/env.test.ts src/config/dataDir.test.ts src/domain/decision.test.ts src/domain/audit.test.ts"
   },
   "dependencies": {
     "@fastify/multipart": "^10.1.4",
