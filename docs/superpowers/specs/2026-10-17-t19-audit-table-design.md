@@ -225,7 +225,36 @@ export interface AuditDetail {
 - Tests del web (no existen hoy).
 - Modificación del backend.
 
-## 13. Riesgos
+## 13. Actualización de documentación y diagramas
+
+T19 es una tarea de frontend que consume endpoints existentes. No introduce nuevas entidades ni cambia el modelo de datos. Las actualizaciones de documentación son mínimas:
+
+### 13.1 Backlog (`docs/backlog_implementacion_mvp.md`)
+
+- Marcar T19 como `[x]` (ya tiene checkboxes desde la actualización anterior).
+- No se requieren cambios en §6.2 (casos de prueba) ni en §5 (precedencia).
+
+### 13.2 PRD (`docs/PRD_Faktur.md`)
+
+- No se requieren cambios. El PRD §5 (UI/accesibilidad) y RF-6 (Dashboard Bento Grid) ya describen la tabla de auditoría, el inspector y las cards de ROI. T19 implementa lo que el PRD ya especifica.
+
+### 13.3 ER (`docs/propuesta_modelo_ER_faktur.md` y `diagramas/er.mmd` / `er.dbml`)
+
+- No se requieren cambios. T19 no introduce nuevas entidades ni modifica las existentes. Los endpoints consumidos (`GET /api/audit-trail`, `GET /api/invoices/:id`) ya están documentados en el ER (§2.8 decisions, §2.9 approvals).
+
+### 13.4 Diagrama de navegación (`diagramas/navegacion_mermaid.mmd`)
+
+- No se requieren cambios. Las rutas ya existen en el diagrama (Tablero, Detalle). T19 solo implementa la UI de esas rutas.
+
+### 13.5 README (`README.md`)
+
+- Actualizar la sección de "Estructura del proyecto" si se añaden nuevos directorios (`web/src/components/audit/`, `web/src/types/audit.ts`). Opcional; se puede hacer en el commit de T19.
+
+### 13.6 DESIGN.md
+
+- Ya creado en paralelo con este spec (sección 14). No requiere actualización adicional.
+
+## 14. Riesgos
 
 - **Los datos hardcoded en `Tablero.tsx` no coinciden con los fixtures de T4.** Los nombres de proveedor en `RECENT_INVOICES` (Amazon Web Services, Vertex Analytics, etc.) no son los del seed de T3. Al conectar a la API real, la tabla mostrará los datos reales. Esto es esperado y correcto.
 - **El inspector debe ser read-only.** No debe permitir editar la decisión. Solo mostrar datos. La resolución es T21.
@@ -233,6 +262,6 @@ export interface AuditDetail {
 - **La API puede no tener datos.** Si la base está vacía, la tabla muestra "Sin registros". El componente debe manejar el estado vacío.
 - **Fetch on demand añade latencia.** Al abrir el inspector, se hace un `fetch` a `/api/invoices/:id`. Si la red es lenta, el inspector muestra un spinner. Mitigación: skeleton en el inspector mientras carga.
 
-## 14. DESIGN.md
+## 15. DESIGN.md
 
 Se crea `DESIGN.md` en la raíz del proyecto, analizando los componentes y estilos ya implementados. El contenido completo está en el archivo `DESIGN.md` (creado en paralelo con este spec). Cubre: paleta de colores, tipografía, espaciado, componentes, dark/light theme, accesibilidad, responsive, patrones de layout, animaciones y iconos.<|end|>
