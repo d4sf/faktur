@@ -45,7 +45,7 @@ export function PolicyEditor({ policy, records, onApply }: PolicyEditorProps) {
     min_extraction_confidence: minConfidence,
     allowed_currencies: policy.allowed_currencies,
     category_budgets: budgets,
-    created_at: new Date().toISOString(),
+    created_at: new Date().toISOString().split("T")[0],
     created_by: "admin",
     comment: comment || "Ajuste manual de parámetros",
   });
