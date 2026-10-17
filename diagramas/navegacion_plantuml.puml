@@ -1,0 +1,37 @@
+@startuml Navegacion_Blinka_PayAgent
+!theme plain
+title Blinka PayAgent — Navegación entre pantallas
+
+skinparam nodesep 50
+skinparam ranksep 80
+skinparam ArrowColor #666666
+skinparam state {
+  BackgroundColor White
+  BorderColor #333333
+  FontSize 13
+}
+
+state "Tablero de\nfacturas" as Tablero #EAF3FB
+state "Subir\nfacturas" as Subir
+state "Procesando" as Proc #FFF8E1
+state "Detalle de\nfactura" as Detalle
+state "Reglas de\npago" as Reglas
+state "Bandeja de\naprobaciones" as Bandeja
+state "Detalle de\naprobación" as Aprob
+state "Reporte\nCSV" as Reporte
+
+[*] --> Tablero
+
+Tablero --> Subir : subir
+Tablero --> Detalle : abrir
+Tablero --> Reglas : reglas
+Tablero --> Bandeja : pendientes
+Tablero --> Reporte : CSV
+
+Subir --> Proc : enviar
+Proc --> Tablero : pagar / frenar
+Proc --> Bandeja : escalar
+Bandeja --> Aprob : ver caso
+Aprob --> Bandeja : aprobar / negar
+
+@enduml

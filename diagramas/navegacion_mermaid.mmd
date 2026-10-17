@@ -1,0 +1,30 @@
+stateDiagram-v2
+    direction TB
+    [*] --> Tablero
+
+    state "Tablero de facturas" as Tablero
+    state "Subir facturas" as Subir
+    state "Procesando" as Proc
+    state "Detalle de factura" as Detalle
+    state "Reglas de pago" as Reglas
+    state "Bandeja de aprobaciones" as Bandeja
+    state "Detalle de aprobación" as Aprob
+    state "Reporte CSV" as Reporte
+
+    Tablero --> Subir : subir
+    Tablero --> Detalle : abrir
+    Tablero --> Reglas : reglas
+    Tablero --> Bandeja : pendientes
+    Tablero --> Reporte : CSV
+
+    Subir --> Proc : enviar
+    Proc --> Tablero : pagar / frenar
+    Proc --> Bandeja : escalar
+
+    Bandeja --> Aprob : ver caso
+    Aprob --> Bandeja : aprobar / negar
+
+    classDef hub fill:#EAF3FB,stroke:#333
+    classDef work fill:#FFF8E1,stroke:#333
+    class Tablero hub
+    class Proc work

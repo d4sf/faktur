@@ -1,0 +1,33 @@
+flowchart TD
+    A[Recibir factura<br/>PDF / imagen / JSON] --> B[Extraer campos con LLM<br/>JSON tipado + confianza por campo]
+    B --> C{¿Datos completos y<br/>confianza suficiente?}
+    C -->|no: ilegible o incompleto| F[🔴 FRENAR]
+    C -->|sí| D{¿Proveedor + nro de factura<br/>o hash ya registrado?}
+    D -->|sí: cobro duplicado| F
+    D -->|no| E{¿Beneficiario en<br/>lista bloqueada?}
+    E -->|sí| F
+    E -->|no| G{¿Beneficiario en<br/>la lista permitida?}
+    G -->|no: proveedor nuevo| S[🟡 ESCALAR]
+    G -->|sí| H{¿Cuadra con<br/>lo acordado?}
+    H -->|no: desvío de monto| S
+    H -->|sí| I{¿Presupuesto del<br/>periodo suficiente?}
+    I -->|no: saldo insuficiente| S
+    I -->|sí| J{¿Monto supera el<br/>límite autónomo?}
+    J -->|sí: requiere humano| S
+    J -->|no| P[🟢 PAGAR]
+
+    S --> N[Notificar a una persona]
+    N --> M{¿Aprueba?}
+    M -->|sí| AP[Decisión humana:<br/>APROBADA]
+    M -->|no| NG[Decisión humana:<br/>NEGADA]
+
+    F --> LOG[(Registro de decisiones)]
+    P --> LOG
+    AP --> LOG
+    NG --> LOG
+    LOG --> CSV[Reporte CSV]
+
+    style P fill:#E8F5E9,stroke:#2E7D32
+    style F fill:#FDECEA,stroke:#C62828
+    style S fill:#FFF8E1,stroke:#F9A825
+    style N fill:#F3E8FF,stroke:#7B1FA2

@@ -1,0 +1,62 @@
+@startuml Flujo_Decision_Blinka
+!theme plain
+title Blinka PayAgent — Flujo de una factura (decisión y compuerta humana)
+
+|#EAF3FB|Ingesta|
+|#FFF8E1|Agente|
+|#F3E8FF|Humano|
+
+|Ingesta|
+start
+:Recibir archivo (PDF / imagen / JSON);
+:Guardar original + hash;
+
+|Agente|
+:Extraer campos con LLM\n(JSON tipado + confianza);
+if (¿Datos críticos completos\ny confianza suficiente?) then (No)
+  :🔴 FRENAR\n"Datos incompletos o ilegibles";
+  stop
+else (Sí)
+endif
+if (¿Hash o (proveedor, nro factura)\nya registrado?) then (Sí)
+  :🔴 FRENAR\n"Cobro duplicado";
+  stop
+else (No)
+endif
+if (¿Beneficiario bloqueado?) then (Sí)
+  :🔴 FRENAR\n"Beneficiario en lista bloqueada";
+  stop
+else (No)
+endif
+
+|Agente|
+if (¿Beneficiario permitido?) then (No)
+  :🟡 ESCALAR\n"Proveedor fuera de la lista permitida";
+elseif (¿Cuadra con lo acordado?) then (No)
+  :🟡 ESCALAR\n"Desvío respecto de lo acordado";
+elseif (¿Presupuesto del periodo suficiente?) then (No)
+  :🟡 ESCALAR\n"Saldo insuficiente en la categoría";
+elseif (¿Monto > umbral de aprobación?) then (Sí)
+  :🟡 ESCALAR\n"Supera el límite de pago autónomo";
+else (Todo en regla)
+  :🟢 PAGAR\n(registra compromiso en el ledger);
+  :Escribir decisión + motivo + versión de política;
+  stop
+endif
+
+|Humano|
+:Recibir notificación\n(tarjeta Slack / webhook / correo);
+:Revisar contexto y motivo;
+if (¿Aprueba?) then (Sí)
+  :Registrar decisión humana:\nAPROBADA (quién, cuándo, por qué);
+  :🟢 PAGAR (dentro de la regla de excepción);
+else (No)
+  :Registrar decisión humana:\nNEGADA;
+  :🔴 FRENAR;
+endif
+
+|Agente|
+:Escribir en el registro + CSV;
+stop
+
+@enduml
