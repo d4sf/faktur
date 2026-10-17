@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: blinka-payagent
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    autoDeploy: false
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: LOG_LEVEL
+        value: info
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-3.8-flash
+      - key: NOTIFIER_WEBHOOK_URL
+        sync: false
+    disk:
+      name: faktur-data
+      mountPath: /app/data
+      sizeGB: 1
