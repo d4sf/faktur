@@ -1,0 +1,87 @@
+erDiagram
+    VENDORS ||--o{ INVOICES : "emite" 
+    INVOICES ||--o{ LINE_ITEMS : "detalla"
+    INVOICES ||--|| DECISIONS : "evaluada-en"
+    POLICIES ||--o{ DECISIONS : "rige"
+    POLICIES ||--o{ POLICY_CATEGORY_BUDGETS : "tope-por-categoria"
+    DECISIONS ||--o| APPROVALS : "escala-a-HITL"
+    DECISIONS ||--o| LEDGER_ENTRIES : "compromete"
+    INVOICES ||--o{ LEDGER_ENTRIES : "imputa"
+    INVOICES ||--o{ NOTIFICATIONS : "avisa"
+    DECISIONS ||--o{ NOTIFICATIONS : "contexto"
+    FX_RATES ||--o{ INVOICES : "convierte"
+
+    VENDORS {
+        string id PK
+        string tax_id UK
+        string display_name
+        string status
+        float historical_avg_usd
+    }
+    INVOICES {
+        string id PK
+        string vendor_id FK
+        string invoice_number
+        string file_hash UK
+        string currency
+        float total_amount
+        float fx_rate_used
+        float total_usd
+        float extraction_confidence
+        string extraction_json
+    }
+    LINE_ITEMS {
+        string id PK
+        string invoice_id FK
+        string description
+        float quantity
+        float unit_price
+        float total
+    }
+    POLICIES {
+        string version PK
+        float auto_approval_threshold_usd
+        float monthly_budget_usd
+        float vendor_drift_factor
+        string allowed_currencies
+        boolean is_active
+    }
+    POLICY_CATEGORY_BUDGETS {
+        string policy_version PK
+        string category PK
+        float budget_usd
+    }
+    FX_RATES {
+        string currency PK
+        float rate_to_usd
+    }
+    DECISIONS {
+        string id PK
+        string invoice_id FK
+        string verdict
+        string reason_code
+        string explanation
+        string policy_version FK
+        string decided_by
+    }
+    APPROVALS {
+        string id PK
+        string decision_id FK
+        string status
+        string resolved_by
+        string comment
+        boolean override_with_overbudget
+    }
+    LEDGER_ENTRIES {
+        string id PK
+        string invoice_id FK
+        string decision_id FK
+        float amount_usd
+        string entry_type
+    }
+    NOTIFICATIONS {
+        string id PK
+        string channel
+        string payload_json
+        string status
+    }
