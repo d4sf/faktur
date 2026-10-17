@@ -479,7 +479,7 @@ El runner tiene que **afirmar que el conjunto de `reason_code` que produjo es ig
 
 ---
 
-#### [ ] T13 · `GET /api/invoices` y detalle
+#### [x] T13 · `GET /api/invoices` y detalle
 
 **Síntesis.** Listado con estado, monto original y USD, regla disparada y motivo, para alimentar la tabla y el export. Filtros por estado y paginación simple. Más un detalle por factura con su línea de tiempo de auditoría: ingesta, extracción, decisión y resolución humana.
 

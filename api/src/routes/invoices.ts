@@ -3,7 +3,9 @@ import { readFileSync } from "node:fs";
 import type { FastifyInstance } from "fastify";
 
 import { getDb } from "../db/index.js";
+import { InvoiceStatus } from "../domain/decision.js";
 import { getAttempt, updateAttemptStatus } from "../repositories/ingest.js";
+import { getAuditRecord, listAuditRecords } from "../repositories/invoices.js";
 import { decideInvoice } from "../services/decide.js";
 import {
   ExtractionInvalidError,
@@ -41,6 +43,40 @@ function errorReply(error: unknown): { status: number; code: string } | null {
 }
 
 export async function registerInvoiceRoutes(app: FastifyInstance): Promise<void> {
+  app.get<{ Querystring: { status?: string; limit?: string; offset?: string } }>(
+    "/api/invoices",
+    async (request, reply) => {
+      const parsedStatus =
+        request.query.status === undefined
+          ? undefined
+          : InvoiceStatus.safeParse(request.query.status);
+      if (parsedStatus !== undefined && !parsedStatus.success) {
+        return reply.code(400).send({ error: "invalid_status" });
+      }
+
+      const limit = request.query.limit === undefined ? 50 : Number(request.query.limit);
+      const offset = request.query.offset === undefined ? 0 : Number(request.query.offset);
+      if (!Number.isInteger(limit) || limit < 1 || limit > 200) {
+        return reply.code(400).send({ error: "invalid_limit" });
+      }
+      if (!Number.isInteger(offset) || offset < 0) {
+        return reply.code(400).send({ error: "invalid_offset" });
+      }
+
+      return listAuditRecords(getDb(), {
+        ...(parsedStatus?.success ? { status: parsedStatus.data } : {}),
+        limit,
+        offset,
+      });
+    },
+  );
+
+  app.get<{ Params: { id: string } }>("/api/invoices/:id", async (request, reply) => {
+    const detail = getAuditRecord(request.params.id, getDb());
+    if (detail === null) return reply.code(404).send({ error: "not_found" });
+    return detail;
+  });
+
   /**
    * Flujo completo: hash → intento → extracción → persistencia → decisión.
    * Un reenvío duplicado responde 200 con su FRENAR, nunca un 409 ni un 500.
