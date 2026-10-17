@@ -82,7 +82,6 @@ export default function Bandeja() {
   const [selectedApproval, setSelectedApproval] = useState<PendingApproval | null>(null);
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceData | null>(null);
   const [justUpdated, setJustUpdated] = useState<boolean>(false);
-  const [lastSyncTime, setLastSyncTime] = useState<string>("hace un momento");
   const [notification, setNotification] = useState<{
     type: "success" | "error";
     text: string;
@@ -103,13 +102,6 @@ export default function Bandeja() {
       } else {
         setApprovals((prev) => (prev.length > 0 ? prev : FALLBACK_PENDING));
       }
-      setLastSyncTime(
-        new Date().toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-        }),
-      );
     } catch {
       setApprovals((prev) => (prev.length > 0 ? prev : FALLBACK_PENDING));
     } finally {
