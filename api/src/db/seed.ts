@@ -123,12 +123,13 @@ export function seed(db: Database.Database): void {
   }
 
   db.prepare(
-    "INSERT OR IGNORE INTO policies (version, auto_approval_threshold_usd, monthly_budget_usd, vendor_drift_factor, allowed_currencies, is_active, created_at, created_by, comment) VALUES (?,?,?,?,?,?,?,?,?)",
+    "INSERT OR IGNORE INTO policies (version, auto_approval_threshold_usd, monthly_budget_usd, vendor_drift_factor, min_extraction_confidence, allowed_currencies, is_active, created_at, created_by, comment) VALUES (?,?,?,?,?,?,?,?,?,?)",
   ).run(
     "v1",
     1000.0,
     5000.0,
     1.4,
+    0.7,
     JSON.stringify(["USD", "MXN", "COP", "EUR"]),
     1,
     NOW,

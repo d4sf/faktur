@@ -76,6 +76,8 @@ CREATE TABLE IF NOT EXISTS policies (
   auto_approval_threshold_usd REAL NOT NULL CHECK (auto_approval_threshold_usd >= 0),
   monthly_budget_usd REAL NOT NULL CHECK (monthly_budget_usd >= 0),
   vendor_drift_factor REAL NOT NULL CHECK (vendor_drift_factor > 0),
+  min_extraction_confidence REAL NOT NULL DEFAULT 0.7
+    CHECK (min_extraction_confidence >= 0 AND min_extraction_confidence <= 1),
   allowed_currencies TEXT NOT NULL,
   is_active INTEGER NOT NULL DEFAULT 0 CHECK (is_active IN (0,1)),
   created_at TEXT NOT NULL,
@@ -159,4 +161,14 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_policies_one_active ON policies(is_active)
 
 export function applySchema(db: Database.Database): void {
   db.exec(SCHEMA_SQL);
+
+  // Bases creadas antes del ADR 0002 no tienen la columna: se agrega en el lugar, sin
+  // framework de migraciones. `ADD COLUMN` con default es idempotente por el chequeo previo.
+  const policyColumns = db.pragma("table_info(policies)") as Array<{ name: string }>;
+  if (!policyColumns.some((column) => column.name === "min_extraction_confidence")) {
+    db.exec(
+      `ALTER TABLE policies ADD COLUMN min_extraction_confidence REAL NOT NULL DEFAULT 0.7
+         CHECK (min_extraction_confidence >= 0 AND min_extraction_confidence <= 1)`,
+    );
+  }
 }

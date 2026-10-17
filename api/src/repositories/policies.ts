@@ -7,6 +7,7 @@ export type PolicyRow = {
   auto_approval_threshold_usd: number;
   monthly_budget_usd: number;
   vendor_drift_factor: number;
+  min_extraction_confidence: number;
   allowed_currencies: string;
   is_active: number;
   created_at: string;
@@ -37,7 +38,7 @@ function specFromRow(db: Database.Database, row: PolicyRow): PolicySpec {
     auto_approval_threshold_usd: row.auto_approval_threshold_usd,
     monthly_budget_usd: row.monthly_budget_usd,
     vendor_drift_factor: row.vendor_drift_factor,
-    min_extraction_confidence: 0.7,
+    min_extraction_confidence: row.min_extraction_confidence,
     allowed_currencies: JSON.parse(row.allowed_currencies),
     category_budgets: getCategoryBudgets(db, row.version),
   });
