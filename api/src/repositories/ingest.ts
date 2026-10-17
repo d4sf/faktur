@@ -60,6 +60,20 @@ export function findAttemptByHash(
   return row ?? null;
 }
 
+/** Idempotencia del seed demo: el mismo hash con el mismo nombre de archivo ya se cargó. */
+export function findAttemptByHashAndName(
+  hash: string,
+  fileName: string,
+): { id: string; invoice_id: string | null } | null {
+  const row = getDb()
+    .prepare(
+      `SELECT id, invoice_id FROM ingest_attempts
+       WHERE file_hash = ? AND file_name = ? ORDER BY submitted_at ASC, id ASC LIMIT 1`,
+    )
+    .get(hash, fileName) as { id: string; invoice_id: string | null } | undefined;
+  return row ?? null;
+}
+
 export function linkAttemptToInvoice(attemptId: string, invoiceId: string): void {
   getDb()
     .prepare("UPDATE ingest_attempts SET invoice_id = ? WHERE id = ?")

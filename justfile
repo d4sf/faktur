@@ -72,6 +72,10 @@ test:
 check: typecheck lint
     {{compose}} exec -T app npm test
 
+# Carga el set demo de fixtures en la base.
+db-demo:
+    {{compose}} exec -T app npm run db:demo -w api
+
 # Construye la imagen de producción.
 build-prod:
     COMPOSE_ENV=prod {{compose}} build

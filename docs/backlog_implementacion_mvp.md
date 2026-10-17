@@ -511,7 +511,7 @@ El runner tiene que **afirmar que el conjunto de `reason_code` que produjo es ig
 
 ---
 
-#### [ ] T24 · Seed del set demo en la base
+#### [x] T24 · Seed del set demo en la base
 
 **Síntesis.** Script que carga los 11 fixtures del Bloque B contra una base limpia, con los 8 proveedores, `policies v1` con budgets por categoría y `fx_rates`, y deja la base en un estado coherente para la demo y para el cierre.
 
