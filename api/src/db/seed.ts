@@ -19,14 +19,62 @@ const VENDORS: Array<{
   status: "ALLOWLISTED" | "BLOCKLISTED";
   historical_avg_usd: number;
 }> = [
-  { tax_id: "CLOUD-SERVERS-INC", display_name: "CloudServers Inc", category: "Infraestructura", status: "ALLOWLISTED", historical_avg_usd: 420 },
-  { tax_id: "DEVSTUDIO-LATAM", display_name: "DevStudio Latam", category: "Diseno", status: "ALLOWLISTED", historical_avg_usd: 850 },
-  { tax_id: "GROWTH-AGENCY", display_name: "Growth Agency", category: "Marketing", status: "ALLOWLISTED", historical_avg_usd: 3000 },
-  { tax_id: "LEGAL-GLOBAL", display_name: "Legal Global", category: "Legal", status: "ALLOWLISTED", historical_avg_usd: 4000 },
-  { tax_id: "FREELANCE-DESIGN", display_name: "Freelance Design", category: "Diseno", status: "ALLOWLISTED", historical_avg_usd: 480 },
-  { tax_id: "SAAS-TOOLS-LTD", display_name: "SaaS Tools Ltd", category: "Software", status: "ALLOWLISTED", historical_avg_usd: 120 },
-  { tax_id: "AWS-AMAZON", display_name: "AWS Amazon", category: "Infraestructura", status: "ALLOWLISTED", historical_avg_usd: 350 },
-  { tax_id: "VENTA-POS-DUO", display_name: "Venta Pos Duo", category: "Retail", status: "BLOCKLISTED", historical_avg_usd: 0 },
+  {
+    tax_id: "CLOUD-SERVERS-INC",
+    display_name: "CloudServers Inc",
+    category: "Infraestructura",
+    status: "ALLOWLISTED",
+    historical_avg_usd: 420,
+  },
+  {
+    tax_id: "DEVSTUDIO-LATAM",
+    display_name: "DevStudio Latam",
+    category: "Diseno",
+    status: "ALLOWLISTED",
+    historical_avg_usd: 850,
+  },
+  {
+    tax_id: "GROWTH-AGENCY",
+    display_name: "Growth Agency",
+    category: "Marketing",
+    status: "ALLOWLISTED",
+    historical_avg_usd: 3000,
+  },
+  {
+    tax_id: "LEGAL-GLOBAL",
+    display_name: "Legal Global",
+    category: "Legal",
+    status: "ALLOWLISTED",
+    historical_avg_usd: 4000,
+  },
+  {
+    tax_id: "FREELANCE-DESIGN",
+    display_name: "Freelance Design",
+    category: "Diseno",
+    status: "ALLOWLISTED",
+    historical_avg_usd: 480,
+  },
+  {
+    tax_id: "SAAS-TOOLS-LTD",
+    display_name: "SaaS Tools Ltd",
+    category: "Software",
+    status: "ALLOWLISTED",
+    historical_avg_usd: 120,
+  },
+  {
+    tax_id: "AWS-AMAZON",
+    display_name: "AWS Amazon",
+    category: "Infraestructura",
+    status: "ALLOWLISTED",
+    historical_avg_usd: 350,
+  },
+  {
+    tax_id: "VENTA-POS-DUO",
+    display_name: "Venta Pos Duo",
+    category: "Retail",
+    status: "BLOCKLISTED",
+    historical_avg_usd: 0,
+  },
 ];
 
 const BUDGETS: Array<{ category: string; budget_usd: number }> = [
@@ -62,12 +110,31 @@ export function seed(db: Database.Database): void {
     "INSERT OR IGNORE INTO vendors (id, tax_id, display_name, category, status, historical_avg_usd, first_seen_at, last_seen_at) VALUES (?,?,?,?,?,?,?,?)",
   );
   for (const v of VENDORS) {
-    insertVendor.run(randomUUID(), v.tax_id, v.display_name, v.category, v.status, v.historical_avg_usd, NOW, NOW);
+    insertVendor.run(
+      randomUUID(),
+      v.tax_id,
+      v.display_name,
+      v.category,
+      v.status,
+      v.historical_avg_usd,
+      NOW,
+      NOW,
+    );
   }
 
   db.prepare(
     "INSERT OR IGNORE INTO policies (version, auto_approval_threshold_usd, monthly_budget_usd, vendor_drift_factor, allowed_currencies, is_active, created_at, created_by, comment) VALUES (?,?,?,?,?,?,?,?,?)",
-  ).run("v1", 1000.0, 5000.0, 1.4, JSON.stringify(["USD", "MXN", "COP", "EUR"]), 1, NOW, "KAY/O", "Version 1 congelada del MVP.");
+  ).run(
+    "v1",
+    1000.0,
+    5000.0,
+    1.4,
+    JSON.stringify(["USD", "MXN", "COP", "EUR"]),
+    1,
+    NOW,
+    "KAY/O",
+    "Version 1 congelada del MVP.",
+  );
 
   const insertBudget = db.prepare(
     "INSERT OR IGNORE INTO policy_category_budgets (policy_version, category, budget_usd) VALUES (?,?,?)",
@@ -76,7 +143,9 @@ export function seed(db: Database.Database): void {
     insertBudget.run("v1", b.category, b.budget_usd);
   }
 
-  const insertFx = db.prepare("INSERT OR IGNORE INTO fx_rates (currency, rate_to_usd, as_of) VALUES (?,?,?)");
+  const insertFx = db.prepare(
+    "INSERT OR IGNORE INTO fx_rates (currency, rate_to_usd, as_of) VALUES (?,?,?)",
+  );
   for (const fx of FX_RATES) {
     insertFx.run(fx.currency, fx.rate_to_usd, "2026-10-17");
   }
@@ -100,18 +169,23 @@ export function seed(db: Database.Database): void {
   const vendorTaxIds = db
     .prepare("SELECT tax_id FROM vendors ORDER BY tax_id")
     .all()
-    .map((r: { tax_id: string }) => r.tax_id);
+    .map((r) => (r as { tax_id: string }).tax_id);
   const expectedTaxIds = VENDORS.map((v) => v.tax_id).sort();
   if (JSON.stringify(vendorTaxIds) !== JSON.stringify(expectedTaxIds)) {
     throw new Error(`seed: vendors tax_ids no coinciden. Got: ${vendorTaxIds.join(", ")}`);
   }
 
-  const policyVersion = (db.prepare("SELECT version FROM policies").get() as { version: string }).version;
+  const policyVersion = (db.prepare("SELECT version FROM policies").get() as { version: string })
+    .version;
   if (policyVersion !== "v1") {
     throw new Error(`seed: policy version es ${policyVersion}, esperaba v1`);
   }
 
-  const marketingBudget = (db.prepare("SELECT budget_usd FROM policy_category_budgets WHERE category = 'Marketing'").get() as { budget_usd: number }).budget_usd;
+  const marketingBudget = (
+    db
+      .prepare("SELECT budget_usd FROM policy_category_budgets WHERE category = 'Marketing'")
+      .get() as { budget_usd: number }
+  ).budget_usd;
   if (marketingBudget !== 4000) {
     throw new Error(`seed: Marketing budget es ${marketingBudget}, esperaba 4000`);
   }
