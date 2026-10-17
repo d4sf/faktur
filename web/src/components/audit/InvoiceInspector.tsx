@@ -48,9 +48,12 @@ export function InvoiceInspector({ record, open, onOpenChange }: InvoiceInspecto
       setError(null);
       return;
     }
+    const targetId = record.invoice_id || record.id;
+    if (!targetId) return;
+
     setLoading(true);
     setError(null);
-    fetch(`/api/invoices/${record.invoice_id}`)
+    fetch(`/api/invoices/${targetId}`)
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();
@@ -120,6 +123,29 @@ export function InvoiceInspector({ record, open, onOpenChange }: InvoiceInspecto
                 <span>Por: {record.id ? "AGENTE" : "—"}</span>
               </div>
             </div>
+
+            {/* Aviso de acción pendiente si está escalada */}
+            {record.estado === "ESCALADA" && (
+              <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3.5 flex items-center justify-between gap-3 text-xs">
+                <div>
+                  <h4 className="font-semibold text-amber-700 dark:text-amber-400">
+                    Pendiente de aprobación
+                  </h4>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    Requiere revisión y firma humana en la bandeja de entrada.
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  asChild
+                  className="h-8 px-3 text-xs font-semibold shadow-xs shrink-0 bg-amber-600 hover:bg-amber-700 text-white dark:bg-amber-500 dark:hover:bg-amber-600"
+                >
+                  <a href="/bandeja" onClick={() => onOpenChange(false)}>
+                    Ir a bandeja
+                  </a>
+                </Button>
+              </div>
+            )}
 
             {/* Línea de tiempo */}
             {loading && (

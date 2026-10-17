@@ -1,4 +1,4 @@
-import { RefreshCw } from "lucide-react";
+import { Download, RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -71,15 +71,26 @@ export function AuditFeed() {
             Facturas procesadas recientemente
           </h3>
           <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">
+            <span className="text-xs text-muted-foreground hidden sm:inline">
               {data ? `${data.records.length} registradas` : ""}
             </span>
             <Button
               variant="outline"
               size="sm"
+              asChild
+              className="h-7 px-2.5 text-xs text-muted-foreground hover:text-foreground shadow-xs gap-1"
+            >
+              <a href="/api/report.csv" download>
+                <Download className="size-3.5" />
+                <span>Exportar CSV</span>
+              </a>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
               onClick={load}
               disabled={loading}
-              className="h-7 px-2 text-xs"
+              className="h-7 px-2.5 text-xs shadow-xs"
             >
               <RefreshCw className={`size-3.5 mr-1 ${loading ? "animate-spin" : ""}`} />
               <span>Refrescar</span>

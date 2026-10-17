@@ -1,5 +1,4 @@
 import { Eye } from "lucide-react";
-import { Link } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -103,9 +102,9 @@ export function AuditTable({ records, onSelectRecord, loading = false }: AuditTa
     return (
       <div className="flex flex-col items-center justify-center rounded-xl border border-border/80 bg-card shadow-xs py-12 px-4 text-center">
         <p className="text-sm text-muted-foreground">Sin registros</p>
-        <Link to="/subir" className="mt-2 text-xs text-primary hover:underline">
+        <a href="/subir" className="mt-2 text-xs text-primary hover:underline">
           Subir factura
-        </Link>
+        </a>
       </div>
     );
   }
@@ -193,13 +192,12 @@ export function AuditTable({ records, onSelectRecord, loading = false }: AuditTa
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onSelectRecord(rec);
-                      }}
-                      className="h-7 px-2 text-xs text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800 hover:bg-amber-50 dark:hover:bg-amber-950/30 ml-1"
+                      asChild
+                      className="h-7 px-2 text-xs text-amber-700 dark:text-amber-400 border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 ml-1 shadow-xs cursor-pointer"
                     >
-                      Revisar
+                      <a href="/bandeja" onClick={(e) => e.stopPropagation()}>
+                        Revisar
+                      </a>
                     </Button>
                   )}
                 </td>
