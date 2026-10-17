@@ -108,3 +108,13 @@ erDiagram
         string payload_json
         string status
     }
+    AI_EXPLANATIONS {
+        string id PK
+        string invoice_id FK
+        string decision_id FK
+        string policy_version FK
+        string model
+        string prompt_version
+        string explanation
+        string created_at
+    }

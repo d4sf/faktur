@@ -54,3 +54,13 @@ export interface AuditDetail {
     comment: string | null;
   } | null;
 }
+
+export interface AiExplanationResult {
+  id: string;
+  decision_id: string;
+  policy_version: string;
+  explanation: string;
+  model: string;
+  cached: boolean;
+  created_at: string;
+}
