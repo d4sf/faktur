@@ -6,6 +6,8 @@ import { loadEnv } from "../config/env.js";
 import { ExtractedInvoice, globalConfidence } from "../domain/extraction.js";
 import { toGeminiResponseSchema } from "../domain/geminiSchema.js";
 import { getAttempt, linkAttemptToInvoice } from "../repositories/ingest.js";
+import { insertDecision } from "../repositories/decisions.js";
+import { getActivePolicyRow } from "../repositories/policies.js";
 import { round2, toUsd } from "./fx.js";
 import { InvalidFileTypeError } from "./ingest.js";
 
@@ -127,16 +129,29 @@ export async function extractInvoice(
   return result.data;
 }
 
+export type PersistExtractionResult =
+  | { duplicate: false; invoice_id: string }
+  | {
+      duplicate: true;
+      invoice_id: null;
+      duplicate_of: string;
+      decision: { verdict: "FRENAR"; reason_code: "ERR_DUPLICATE_INVOICE"; explanation: string };
+    };
+
 /**
  * Persiste la extracción completa en una transacción: la factura nace en `EXTRAIDA` con la
  * tasa congelada, sus `line_items` y el intento enlazado. `invoices` exige todos los NOT NULL,
  * así que una fila parcial no puede existir.
+ *
+ * Antes del INSERT chequea el segundo nivel de dedup (S5): mismo `(vendor, invoice_number)` con
+ * otro hash. En ese caso no crea factura: marca el intento `DUPLICADA`, lo ancla a la canónica y
+ * escribe la decisión FRENAR anclada al intento, igual que el dedup por hash.
  */
 export function persistExtraction(
   attemptId: string,
   extracted: ExtractedInvoice,
   db: Database.Database,
-): { invoice_id: string } {
+): PersistExtractionResult {
   return db.transaction(() => {
     const attempt = getAttempt(attemptId);
     if (attempt === null) throw new Error("attempt_not_found");
@@ -145,6 +160,49 @@ export function persistExtraction(
     const vendor = db
       .prepare("SELECT id FROM vendors WHERE tax_id = ?")
       .get(extracted.vendor_tax_id ?? "") as { id: string } | undefined;
+
+    const logicalDuplicate =
+      vendor === undefined
+        ? undefined
+        : (db
+            .prepare(
+              "SELECT id, ingested_at FROM invoices WHERE vendor_id = ? AND invoice_number = ?",
+            )
+            .get(vendor.id, extracted.invoice_number) as
+            { id: string; ingested_at: string } | undefined);
+
+    if (logicalDuplicate !== undefined) {
+      db.prepare(
+        `UPDATE ingest_attempts SET attempt_status = 'DUPLICADA', duplicate_of_invoice_id = ?
+         WHERE id = ?`,
+      ).run(logicalDuplicate.id, attemptId);
+
+      const policy = getActivePolicyRow(db);
+      if (policy === null) throw new Error("no_active_policy");
+
+      const explanation = `La factura ${extracted.invoice_number} ya fue registrada el ${logicalDuplicate.ingested_at.slice(0, 10)}`;
+      insertDecision({
+        invoice_id: null,
+        ingest_attempt_id: attemptId,
+        verdict: "FRENAR",
+        reason_code: "ERR_DUPLICATE_INVOICE",
+        explanation,
+        policy_version: policy.version,
+        amount_usd_evaluated: 0,
+        decided_by: "AGENTE",
+      });
+
+      return {
+        duplicate: true as const,
+        invoice_id: null,
+        duplicate_of: logicalDuplicate.id,
+        decision: {
+          verdict: "FRENAR" as const,
+          reason_code: "ERR_DUPLICATE_INVOICE" as const,
+          explanation,
+        },
+      };
+    }
 
     const { total_usd, fx_rate_used } = toUsd(extracted.total_amount, extracted.currency, db);
     const invoiceId = randomUUID();
@@ -192,6 +250,6 @@ export function persistExtraction(
     }
 
     linkAttemptToInvoice(attemptId, invoiceId);
-    return { invoice_id: invoiceId };
+    return { duplicate: false as const, invoice_id: invoiceId };
   })();
 }

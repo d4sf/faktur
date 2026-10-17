@@ -145,3 +145,81 @@ test("POST /api/invoices/:id/decide responde 404 si la factura no existe", async
     await app.close();
   }
 });
+
+test("el segundo nivel de dedup: mismo vendor+numero con otro hash frena, no 500", async () => {
+  const app = await buildApp({ logLevel: "silent" });
+  const extracted = JSON.parse(PAYLOAD.toString("utf8")) as Record<string, unknown>;
+  const variant = Buffer.from(JSON.stringify({ ...extracted, issue_date: "2026-10-02" }));
+  const first = multipart(PAYLOAD);
+  const second = multipart(variant, { filename: "tc-01-resaved.json" });
+
+  try {
+    const a = await app.inject({
+      method: "POST",
+      url: "/api/invoices",
+      headers: { "content-type": first.contentType },
+      payload: first.body,
+    });
+    const b = await app.inject({
+      method: "POST",
+      url: "/api/invoices",
+      headers: { "content-type": second.contentType },
+      payload: second.body,
+    });
+
+    assert.equal(a.statusCode, 201, a.body);
+    assert.equal(b.statusCode, 200, `no debe filtrar SQLITE_CONSTRAINT: ${b.body}`);
+    assert.equal(b.json().verdict, "FRENAR");
+    assert.equal(b.json().reason_code, "ERR_DUPLICATE_INVOICE");
+    assert.equal((db.prepare("SELECT COUNT(*) AS n FROM invoices").get() as { n: number }).n, 1);
+    assert.equal(
+      (
+        db
+          .prepare(
+            "SELECT COUNT(*) AS n FROM decisions WHERE reason_code = 'ERR_DUPLICATE_INVOICE'",
+          )
+          .get() as { n: number }
+      ).n,
+      1,
+    );
+    const secondAttempt = db
+      .prepare("SELECT attempt_status FROM ingest_attempts WHERE file_name = 'tc-01-resaved.json'")
+      .get() as { attempt_status: string };
+    assert.equal(secondAttempt.attempt_status, "DUPLICADA");
+  } finally {
+    await app.close();
+  }
+});
+
+test("una moneda fuera de allowed_currencies se decide FRENAR, no 422", async () => {
+  const app = await buildApp({ logLevel: "silent" });
+  const spec = JSON.parse(
+    readFileSync(new URL("../../../specs/policy.spec.json", import.meta.url), "utf8"),
+  ) as Record<string, unknown>;
+  const rest = { ...spec };
+  delete rest.version;
+
+  try {
+    const policy = await app.inject({
+      method: "PUT",
+      url: "/api/policy",
+      payload: { ...rest, allowed_currencies: ["USD"] },
+    });
+    assert.equal(policy.statusCode, 201, policy.body);
+
+    const eur = readFileSync(new URL("../../../fixtures/TC-06.json", import.meta.url));
+    const form = multipart(eur, { filename: "tc-06.json" });
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/invoices",
+      headers: { "content-type": form.contentType },
+      payload: form.body,
+    });
+
+    assert.equal(res.statusCode, 201, res.body);
+    assert.equal(res.json().verdict, "FRENAR");
+    assert.equal(res.json().reason_code, "ERR_INVALID_DATA");
+  } finally {
+    await app.close();
+  }
+});

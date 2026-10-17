@@ -54,12 +54,12 @@ test("una moneda fuera de fx_rates lanza currency_not_allowed", () => {
   assert.throws(() => toUsd(100, "GBP", db), CurrencyNotAllowedError);
 });
 
-test("una moneda fuera de allowed_currencies lanza currency_not_allowed", () => {
+test("una moneda fuera de allowed_currencies se convierte igual; la frena el motor", () => {
   db.prepare("UPDATE policies SET allowed_currencies = ? WHERE version = 'v1'").run(
     JSON.stringify(["USD"]),
   );
 
-  assert.throws(() => toUsd(100, "EUR", db), CurrencyNotAllowedError);
+  assert.deepEqual(toUsd(100, "EUR", db), { total_usd: 108, fx_rate_used: 1.08 });
 });
 
 test("redondea a dos decimales en la frontera", () => {

@@ -12,3 +12,15 @@ test("GET /api/health responde ok", async () => {
 
   await app.close();
 });
+
+test("una ruta /api desconocida responde { error: not_found }, no el default de Fastify", async () => {
+  const app = await buildApp({ logLevel: "silent" });
+
+  try {
+    const response = await app.inject({ method: "GET", url: "/api/no-existe" });
+    assert.equal(response.statusCode, 404);
+    assert.deepEqual(response.json(), { error: "not_found" });
+  } finally {
+    await app.close();
+  }
+});

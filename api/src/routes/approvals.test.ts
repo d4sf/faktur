@@ -12,9 +12,15 @@ const TC04 = JSON.parse(
   readFileSync(new URL("../../../fixtures/TC-04.json", import.meta.url), "utf8"),
 ) as Record<string, unknown>;
 
+const TC11 = JSON.parse(
+  readFileSync(new URL("../../../fixtures/TC-11.json", import.meta.url), "utf8"),
+) as Record<string, unknown>;
+
 let db: Database.Database;
 
-function insertEscalation(withTaxId = true): {
+type EscalationMode = "normal" | "missing_tax_id" | "blocklisted_low_confidence";
+
+function insertEscalation(mode: EscalationMode = "normal"): {
   invoiceId: string;
   decisionId: string;
   approvalId: string;
@@ -22,11 +28,28 @@ function insertEscalation(withTaxId = true): {
   const invoiceId = randomUUID();
   const decisionId = randomUUID();
   const approvalId = randomUUID();
-  const vendor = db.prepare("SELECT id FROM vendors WHERE tax_id = 'GROWTH-AGENCY'").get() as {
+  const blocklisted = mode === "blocklisted_low_confidence";
+  const taxId = blocklisted ? "VENTA-POS-DUO" : "GROWTH-AGENCY";
+  const vendor = db.prepare("SELECT id FROM vendors WHERE tax_id = ?").get(taxId) as {
     id: string;
   };
-  const extracted = { ...TC04 };
-  if (!withTaxId) delete extracted.vendor_tax_id;
+
+  const extracted: Record<string, unknown> = blocklisted
+    ? {
+        ...TC11,
+        field_confidence: {
+          invoice_number: 0.95,
+          vendor_tax_id: 0.95,
+          total_amount: 0.95,
+          currency: 0.95,
+          due_date: 0.5,
+        },
+      }
+    : { ...TC04 };
+  if (mode === "missing_tax_id") delete extracted.vendor_tax_id;
+
+  const number = blocklisted ? "INV-VPD-200" : "INV-GA-3500";
+  const amount = blocklisted ? 200 : 3500;
 
   db.prepare(
     `INSERT INTO invoices (id, vendor_id, invoice_number, status, file_name, mime_type, file_hash,
@@ -36,20 +59,20 @@ function insertEscalation(withTaxId = true): {
   ).run(
     invoiceId,
     vendor.id,
-    "INV-GA-3500",
+    number,
     "PENDIENTE_APROBACION",
-    "tc-04.json",
+    blocklisted ? "tc-11.json" : "tc-04.json",
     "application/json",
     randomUUID().replace(/-/g, "").padEnd(64, "b"),
-    "2026-10-03",
-    "2026-10-25",
+    blocklisted ? "2026-10-10" : "2026-10-03",
+    blocklisted ? "2026-10-26" : "2026-10-25",
     "USD",
-    3300,
-    200,
-    3500,
+    blocklisted ? 190 : 3300,
+    blocklisted ? 10 : 200,
+    amount,
     1,
-    3500,
-    null,
+    amount,
+    blocklisted ? 0.5 : null,
     JSON.stringify(extracted),
     "2026-10-17T00:00:00.000Z",
   );
@@ -63,10 +86,12 @@ function insertEscalation(withTaxId = true): {
     invoiceId,
     null,
     "ESCALAR",
-    "ALERT_THRESHOLD_EXCEEDED",
-    "Supera el umbral de aprobación autónoma de $1.000",
+    blocklisted ? "ALERT_LOW_CONFIDENCE" : "ALERT_THRESHOLD_EXCEEDED",
+    blocklisted
+      ? "No se pudo leer due_date con confianza (0.5 < 0.7)"
+      : "Supera el umbral de aprobación autónoma de $1.000",
     "v1",
-    3500,
+    amount,
     "AGENTE",
     "2026-10-17T00:00:01.000Z",
   );
@@ -121,7 +146,7 @@ test("GET /api/approvals?status=pendiente lista el ESCALAR con proveedor y motiv
 });
 
 test("una aprobacion cuyo caso dispara una regla 1-3 responde 409 y no habilita PAGAR", async () => {
-  const escalation = insertEscalation(false);
+  const escalation = insertEscalation("missing_tax_id");
   const app = await buildApp({ logLevel: "silent" });
 
   try {
@@ -141,6 +166,25 @@ test("una aprobacion cuyo caso dispara una regla 1-3 responde 409 y no habilita 
       ).status,
       "PENDIENTE_APROBACION",
     );
+    assert.equal(count("SELECT COUNT(*) AS n FROM ledger_entries"), 0);
+  } finally {
+    await app.close();
+  }
+});
+
+test("la confianza baja no enmascara un proveedor bloqueado: sigue siendo 409", async () => {
+  const escalation = insertEscalation("blocklisted_low_confidence");
+  const app = await buildApp({ logLevel: "silent" });
+
+  try {
+    const res = await app.inject({
+      method: "POST",
+      url: `/api/approvals/${escalation.approvalId}`,
+      payload: { approve: true, resolved_by: "operador@blinka" },
+    });
+
+    assert.equal(res.statusCode, 409);
+    assert.deepEqual(res.json(), { error: "rules_block_approval" });
     assert.equal(count("SELECT COUNT(*) AS n FROM ledger_entries"), 0);
   } finally {
     await app.close();

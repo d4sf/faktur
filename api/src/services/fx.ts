@@ -14,19 +14,15 @@ export function round2(n: number): number {
 /**
  * Convierte a USD con la tasa vigente en `fx_rates` y la devuelve para congelarla en la fila.
  *
- * Si la moneda no está en la tabla o en `allowed_currencies` de la política activa, lanza
- * `currency_not_allowed`: la capa de decisión lo convierte en FRENAR, nunca en un 500.
+ * Solo lanza si la moneda no tiene tasa: sin número no hay factura que persistir. Una moneda
+ * con tasa pero fuera de `allowed_currencies` se persiste igual y el motor la frena con
+ * `ERR_INVALID_DATA` (RI-7), dejando la decisión auditable.
  */
 export function toUsd(
   amount: number,
   currency: string,
   db: Database.Database,
 ): { total_usd: number; fx_rate_used: number } {
-  const policy = db.prepare("SELECT allowed_currencies FROM policies WHERE is_active = 1").get() as
-    { allowed_currencies: string } | undefined;
-  const allowed: string[] = policy === undefined ? [] : JSON.parse(policy.allowed_currencies);
-  if (!allowed.includes(currency)) throw new CurrencyNotAllowedError(currency);
-
   const row = db.prepare("SELECT rate_to_usd FROM fx_rates WHERE currency = ?").get(currency) as
     { rate_to_usd: number } | undefined;
   if (row === undefined) throw new CurrencyNotAllowedError(currency);

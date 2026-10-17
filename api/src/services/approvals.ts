@@ -1,7 +1,6 @@
 import type Database from "better-sqlite3";
 
 import { ExtractedInvoice } from "../domain/extraction.js";
-import { evaluate } from "../domain/ruleEngine.js";
 import type { ApprovalStatus } from "../domain/audit.js";
 import {
   findLedgerByDecision,
@@ -31,23 +30,25 @@ export class ApprovalError extends Error {
   }
 }
 
-const HARD_STOPS = new Set(["ERR_INVALID_DATA", "ERR_DUPLICATE_INVOICE", "ERR_BLACKLISTED_VENDOR"]);
-
 /**
  * Re-chequea las reglas 1–3 con la `policy_version` **del caso**, no con la activa (S15).
- * El presupuesto no participa: aprobar una excepción por umbral o por saldo es justamente lo
- * que el humano está autorizando.
+ *
+ * Se evalúan las tres condiciones directamente en vez de correr el motor completo: la regla 1b
+ * (confianza baja → ESCALAR) precede a las reglas 2 y 3 y enmascararía un proveedor bloqueado o
+ * un duplicado, permitiendo aprobar un freno duro. El presupuesto tampoco participa: aprobar una
+ * excepción por umbral o por saldo es justamente lo que el humano autoriza.
  */
 function hardRulesBlock(invoiceId: string, policyVersion: string, db: Database.Database): boolean {
   const invoice = getInvoiceRow(invoiceId, db);
   if (invoice === null) return false;
 
   const extracted = ExtractedInvoice.parse(JSON.parse(invoice.extraction_json));
-  const vendor = db
-    .prepare("SELECT status, historical_avg_usd, category FROM vendors WHERE id = ?")
-    .get(invoice.vendor_id ?? "") as
-    | { status: "ALLOWLISTED" | "BLOCKLISTED"; historical_avg_usd: number; category: string }
-    | undefined;
+  const policy = getPolicySpecByVersion(db, policyVersion);
+
+  // Regla 1a: datos críticos ilegibles o moneda fuera de la política.
+  if (!extracted.vendor_tax_id || extracted.vendor_tax_id.trim() === "") return true;
+  if (!policy.allowed_currencies.includes(extracted.currency as never)) return true;
+
   const existingInvoices = db
     .prepare(
       `SELECT file_hash, vendor_id, invoice_number FROM invoices
@@ -59,31 +60,22 @@ function hardRulesBlock(invoiceId: string, policyVersion: string, db: Database.D
     invoice_number: string;
   }>;
 
-  const result = evaluate(
-    {
-      ...extracted,
-      file_hash: invoice.file_hash,
-      vendor_id: invoice.vendor_id,
-      total_usd: invoice.total_usd,
-      fx_rate_used: invoice.fx_rate_used,
-      extraction_confidence: invoice.extraction_confidence ?? undefined,
-    },
-    getPolicySpecByVersion(db, policyVersion),
-    {
-      vendor:
-        vendor === undefined
-          ? null
-          : {
-              status: vendor.status,
-              historical_avg_usd: vendor.historical_avg_usd,
-              category: vendor.category,
-            },
-      existingInvoices,
-      budgetState: { monthlySpent: 0, monthlyBudget: Number.MAX_SAFE_INTEGER, categorySpent: {} },
-    },
-  );
+  // Regla 2: hash conocido o (vendor, número) repetido.
+  if (existingInvoices.some((e) => e.file_hash === invoice.file_hash)) return true;
+  if (
+    invoice.vendor_id !== null &&
+    existingInvoices.some(
+      (e) => e.vendor_id === invoice.vendor_id && e.invoice_number === extracted.invoice_number,
+    )
+  ) {
+    return true;
+  }
 
-  return result.verdict === "FRENAR" && HARD_STOPS.has(result.reason_code);
+  // Regla 3: proveedor bloqueado.
+  const vendor = db
+    .prepare("SELECT status FROM vendors WHERE id = ?")
+    .get(invoice.vendor_id ?? "") as { status: "ALLOWLISTED" | "BLOCKLISTED" } | undefined;
+  return vendor?.status === "BLOCKLISTED";
 }
 
 /**

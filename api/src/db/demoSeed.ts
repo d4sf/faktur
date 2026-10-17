@@ -115,14 +115,19 @@ export function seedDemoSet(db: Database.Database): {
     }
 
     const extracted = ExtractedInvoice.parse(JSON.parse(buffer.toString("utf8")));
-    const { invoice_id } = persistExtraction(result.attempt_id, extracted, db);
-    const decision = decideInvoice(invoice_id, db);
+    const persisted = persistExtraction(result.attempt_id, extracted, db);
+    if (persisted.duplicate) {
+      verdicts[tc] = persisted.decision.verdict;
+      continue;
+    }
+    const invoiceId = persisted.invoice_id;
+    const decision = decideInvoice(invoiceId, db);
     verdicts[tc] = decision.verdict;
 
     if (RESOLVE_NEGATED.has(tc)) {
       const approval = db
         .prepare("SELECT id FROM approvals WHERE invoice_id = ? AND status = 'PENDIENTE'")
-        .get(invoice_id) as { id: string } | undefined;
+        .get(invoiceId) as { id: string } | undefined;
       if (approval !== undefined) {
         resolveApproval(approval.id, { approve: false, resolved_by: "demo-seed" }, db);
       }

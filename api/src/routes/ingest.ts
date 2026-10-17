@@ -32,8 +32,16 @@ export async function registerIngestRoutes(app: FastifyInstance): Promise<void> 
 
       try {
         const extracted = await extractInvoice({ buffer, mimeType: attempt.mime_type });
-        const { invoice_id } = persistExtraction(attempt.id, extracted, getDb());
-        return reply.code(200).send({ attempt_id: attempt.id, invoice_id });
+        const persisted = persistExtraction(attempt.id, extracted, getDb());
+        if (persisted.duplicate) {
+          return reply.code(200).send({
+            attempt_id: attempt.id,
+            invoice_id: persisted.duplicate_of,
+            status: "DUPLICADA",
+            ...persisted.decision,
+          });
+        }
+        return reply.code(200).send({ attempt_id: attempt.id, invoice_id: persisted.invoice_id });
       } catch (error) {
         if (error instanceof InvalidFileTypeError) {
           return reply.code(400).send({ error: "invalid_file_type" });

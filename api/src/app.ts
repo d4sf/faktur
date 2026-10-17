@@ -26,6 +26,18 @@ export interface BuildAppOptions {
 export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyInstance> {
   const app = Fastify({ logger: { level: options.logLevel ?? "info" } });
 
+  /**
+   * Ningún error inesperado puede filtrar el mensaje crudo de SQLite, una ruta del disco ni un
+   * stack. Las rutas traducen sus errores conocidos; esto es la red para el resto.
+   */
+  app.setErrorHandler((error, request, reply) => {
+    request.log.error({ err: error }, "unhandled error");
+    const statusCode = (error as { statusCode?: number }).statusCode;
+    const status =
+      statusCode !== undefined && statusCode >= 400 && statusCode < 500 ? statusCode : 500;
+    return reply.code(status).send({ error: "internal_error" });
+  });
+
   app.get("/api/health", async () => ({ status: "ok" }));
 
   await app.register(multipart, { limits: { fileSize: MAX_UPLOAD_BYTES, files: 1 } });
@@ -37,16 +49,17 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   await app.register(registerPolicyRoutes);
 
   const webDist = options.webDist ?? resolve(process.cwd(), "web/dist");
-  if (existsSync(webDist)) {
+  const hasWebDist = existsSync(webDist);
+  if (hasWebDist) {
     await app.register(fastifyStatic, { root: webDist });
-
-    app.setNotFoundHandler((request, reply) => {
-      if (request.raw.url?.startsWith("/api/")) {
-        return reply.code(404).send({ error: "not_found" });
-      }
-      return reply.sendFile("index.html");
-    });
   }
+
+  app.setNotFoundHandler((request, reply) => {
+    if (request.raw.url?.startsWith("/api/") || !hasWebDist) {
+      return reply.code(404).send({ error: "not_found" });
+    }
+    return reply.sendFile("index.html");
+  });
 
   return app;
 }

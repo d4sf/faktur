@@ -116,12 +116,20 @@ export async function registerInvoiceRoutes(app: FastifyInstance): Promise<void>
     try {
       const buffer = readFileSync(storedUploadPath(attempt.file_hash));
       const extracted = await extractInvoice({ buffer, mimeType: attempt.mime_type });
-      const { invoice_id } = persistExtraction(attempt.id, extracted, getDb());
-      const decision = decideInvoice(invoice_id, getDb());
+      const persisted = persistExtraction(attempt.id, extracted, getDb());
+      if (persisted.duplicate) {
+        return reply.code(200).send({
+          attempt_id: attempt.id,
+          invoice_id: persisted.duplicate_of,
+          status: "DUPLICADA",
+          ...persisted.decision,
+        });
+      }
+      const decision = decideInvoice(persisted.invoice_id, getDb());
 
       return reply.code(201).send({
         attempt_id: attempt.id,
-        invoice_id,
+        invoice_id: persisted.invoice_id,
         verdict: decision.verdict,
         reason_code: decision.reason_code,
         explanation: decision.explanation,
