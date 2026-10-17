@@ -6,7 +6,7 @@ import type Database from "better-sqlite3";
 
 import { buildApp } from "../app.js";
 import { closeDb, loadDb } from "../db/index.js";
-import { buildReportCsv } from "./report.js";
+import { buildReportCsv, reportFileName } from "./report.js";
 
 let db: Database.Database;
 
@@ -109,6 +109,10 @@ test("escapa comillas y saltos de linea dentro de motivo_legible", () => {
   assert.equal(csv.match(/"Motivo con/g)?.length, 1);
 });
 
+test("reportFileName fecha el archivo con el día de generación", () => {
+  assert.equal(reportFileName(new Date("2026-10-17T23:30:00Z")), "faktur-report-2026-10-17.csv");
+});
+
 test("GET /api/report.csv responde el CSV, no el fallback SPA", async () => {
   insertInvoice();
   const app = await buildApp({ logLevel: "silent" });
@@ -117,7 +121,10 @@ test("GET /api/report.csv responde el CSV, no el fallback SPA", async () => {
     const res = await app.inject({ method: "GET", url: "/api/report.csv" });
     assert.equal(res.statusCode, 200);
     assert.match(res.headers["content-type"]!, /text\/csv/);
-    assert.match(res.headers["content-disposition"]!, /faktur-report\.csv/);
+    assert.match(
+      res.headers["content-disposition"]!,
+      /attachment; filename="faktur-report-\d{4}-\d{2}-\d{2}\.csv"/,
+    );
     assert.doesNotMatch(res.body, /<html/i);
     assert.match(res.body, /Presupuesto insuficiente/);
   } finally {

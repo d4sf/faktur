@@ -86,18 +86,20 @@ export default function Reporte() {
 
   interface BackendAuditRecord {
     id: string;
-    invoice_number?: string | null;
-    vendor_id?: string | null;
-    issue_date?: string | null;
-    total_usd?: number;
+    invoice?: {
+      invoice_number?: string | null;
+      vendor_name?: string | null;
+      issue_date?: string | null;
+      total_amount?: number | null;
+      currency?: string | null;
+    };
+    amount_usd?: number;
     verdict?: "PAGAR" | "FRENAR" | "ESCALAR";
     reason_code?: string;
     explanation?: string;
-    decided_by?: string;
-    decided_at?: string;
-    policy_version?: string;
+    human_approved?: boolean | null;
+    created_at?: string;
     estado?: string;
-    status?: string;
   }
 
   /**
@@ -113,17 +115,17 @@ export default function Reporte() {
         if (Array.isArray(data.records) && data.records.length > 0) {
           const mapped: ReportRecord[] = (data.records as BackendAuditRecord[]).map((r) => ({
             id: r.id,
-            invoice_number: r.invoice_number || "S/F",
-            vendor_name: r.vendor_id || "Proveedor verificado",
-            issue_date: r.issue_date || "-",
-            total_usd: r.total_usd || 0,
-            verdict: r.verdict || "PAGAR",
-            reason_code: r.reason_code || "-",
-            explanation: r.explanation || "-",
-            decided_by: r.decided_by || "agente",
-            decided_at: r.decided_at || "-",
-            policy_version: r.policy_version || "v1",
-            estado: r.estado || r.status || "PROCESADA",
+            invoice_number: r.invoice?.invoice_number ?? "S/F",
+            vendor_name: r.invoice?.vendor_name ?? "Proveedor verificado",
+            issue_date: r.invoice?.issue_date ?? "-",
+            total_usd: r.amount_usd ?? 0,
+            verdict: r.verdict ?? "PAGAR",
+            reason_code: r.reason_code ?? "-",
+            explanation: r.explanation ?? "-",
+            decided_by: r.human_approved === true ? "humano" : "agente",
+            decided_at: r.created_at ?? "-",
+            policy_version: "—",
+            estado: r.estado ?? "PROCESADA",
           }));
           setRecords(mapped);
         } else {
@@ -183,7 +185,8 @@ export default function Reporte() {
             size="lg"
             className="h-10 px-4 text-xs font-semibold gap-2 shadow-xs bg-emerald-600 hover:bg-emerald-700 text-white"
           >
-            <a href="/api/report.csv" download="faktur-report.csv">
+            {/* Sin `download`: el nombre fechado lo fija el Content-Disposition de la API. */}
+            <a href="/api/report.csv">
               <Download className="size-4" />
               <span>Descargar reporte CSV</span>
             </a>
@@ -305,7 +308,10 @@ export default function Reporte() {
                       <VerdictBadge verdict={r.verdict} size="sm" />
                     </td>
                     <td className="px-4 py-3 text-muted-foreground font-mono text-[11px] truncate max-w-[140px]">
-                      {r.reason_code}
+                      <div>{r.reason_code}</div>
+                      <div className="font-sans text-[10px] text-muted-foreground truncate">
+                        {r.explanation}
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-muted-foreground capitalize">
                       <span className="inline-flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-[10px]">
