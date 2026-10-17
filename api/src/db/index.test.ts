@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { closeDb, getDb, loadDb } from "./index.js";
+import { closeDb, getDb, getDbPath, loadDb } from "./index.js";
 
 test("loadDb crea la base y getDb la devuelve", () => {
   closeDb();
@@ -21,6 +21,18 @@ test("loadDb es idempotente", () => {
 test("getDb lanza si no se ha cargado", () => {
   closeDb();
   assert.throws(() => getDb(), /no inicializada/i);
+});
+
+test("getDbPath devuelve la ruta con la que se abrió la base", () => {
+  closeDb();
+  loadDb(":memory:");
+  assert.equal(getDbPath(), ":memory:");
+  closeDb();
+});
+
+test("getDbPath lanza si no se ha cargado", () => {
+  closeDb();
+  assert.throws(() => getDbPath(), /no inicializada/i);
 });
 
 test("closeDb libera la instancia", () => {

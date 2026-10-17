@@ -4,6 +4,9 @@ import { applySchema } from "./schema.js";
 import { seed } from "./seed.js";
 
 let db: Database.Database | null = null;
+let dbPath: string | null = null;
+
+const NOT_LOADED = "DB no inicializada: llamar loadDb(path) primero";
 
 /**
  * Abre (o crea) la base en `path`, aplica el schema y siembra los datos iniciales.
@@ -18,6 +21,7 @@ export function loadDb(path: string): Database.Database {
   applySchema(instance);
   seed(instance);
   db = instance;
+  dbPath = path;
   return db;
 }
 
@@ -25,8 +29,16 @@ export function loadDb(path: string): Database.Database {
  * Devuelve la base cargada. Lanza si no se ha llamado `loadDb` antes.
  */
 export function getDb(): Database.Database {
-  if (!db) throw new Error("DB no inicializada: llamar loadDb(path) primero");
+  if (!db) throw new Error(NOT_LOADED);
   return db;
+}
+
+/**
+ * Devuelve la ruta con la que se abrió la base actual. Lanza si no hay base cargada.
+ */
+export function getDbPath(): string {
+  if (!db || dbPath === null) throw new Error(NOT_LOADED);
+  return dbPath;
 }
 
 /**
@@ -36,5 +48,6 @@ export function closeDb(): void {
   if (db) {
     db.close();
     db = null;
+    dbPath = null;
   }
 }
