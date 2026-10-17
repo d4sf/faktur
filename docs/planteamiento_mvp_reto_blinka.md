@@ -2,6 +2,14 @@
 
 > **Complementa** a `propuesta_t_cnica_reto_blinka_agentes_que_pagan_por_la_empresa.md`.
 > Ese documento es el "producto ideal"; **este es el camino más corto a un agente funcionando** con lo que ya sabemos del reto.
+>
+> **Implementación:** el plan de trabajo está en `docs/backlog_implementacion_mvp.md` (26 tareas) y el modelo de datos en `docs/propuesta_modelo_ER_faktur.md`. Este documento queda como registro de lo que se propuso; su texto no se editó. Tres puntos donde la realidad se desligó de acá:
+>
+> - **§9 (stack):** la opción A (Python + FastAPI + Streamlit) no se aplica. El ADR `0001` ya decidió TypeScript/Node + Fastify + React antes de que este documento se escribiera. La opción B es la que corresponde.
+> - **§5 (precedencia):** coincide con `diagramas/ds01` y es la que va. El único que discrepa es el PRD RF-4, que pone el presupuesto como freno duro.
+> - **§11 (set de demo):** son 11 casos, no 5 + 5. Se agregó TC-11 para el beneficiario bloqueado, que hasta ahora no tenía caso y dejaba la regla 3 sin demostrar.
+>
+> **§8 (Slack) sigue en pie:** la recomendación de `ConsoleNotifier` primero y webhook después no cambió.
 
 ---
 
