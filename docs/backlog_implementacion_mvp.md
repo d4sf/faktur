@@ -429,7 +429,7 @@ El runner tiene que **afirmar que el conjunto de `reason_code` que produjo es ig
 
 #### T10 · Cliente Gemini con salida estructurada
 
-**Síntesis.** `POST /api/invoices/{id}/extract` manda el archivo a `gemini-3.8-flash` con salida JSON por schema, `temperature=0` y prompt que normaliza fechas a `YYYY-MM-DD`. Traduce el schema de Zod de T2 al dialecto `response_schema` de esa generación, que es la parte no trivial: ese modelo no acepta `$ref` ni `anyOf`, así que hay que aplanar el schema y los tipos anidados a objetos planos antes de enviarlo. Valida la respuesta con Zod. Si la validación falla, no reintenta a ciegas: la factura queda frenada. Calcula `extraction_confidence` y guarda el JSON crudo para re-auditar sin volver a llamar al modelo. Fallback a JSON manual en pantalla si el PDF no se extrae.
+**Síntesis.** `POST /api/invoices/{id}/extract` manda el archivo a `gemini-3.8-flash` con salida JSON por schema, `temperature=0` y prompt que normaliza fechas a `YYYY-MM-DD`. Traduce el schema de Zod de T2 al dialecto `response_schema` de esa generación con `z.toJSONSchema` (T2 lo expone listo en `geminiSchema.ts`, sin `$schema`, `$defs` ni `$ref` de reutilización, que la API no acepta). Valida la respuesta con Zod. Si la validación falla, no reintenta a ciegas: la factura queda frenada. Calcula `extraction_confidence` y guarda el JSON crudo para re-auditar sin volver a llamar al modelo. Fallback a JSON manual en pantalla si el PDF no se extrae.
 
 **Por qué.** El LLM percibe, no decide. El schema estricto con `temperature=0` es lo que evita que una alucinación llegue al motor como dato duro.
 
@@ -759,7 +759,7 @@ El PRD (`docs/PRD_Faktur.md` RF-2.1) y el blueprint fijan `gemini-1.5-flash`, y 
 
 Se eligió `gemini-3.8-flash` por ser el más reciente de la línea flash (02/09/2026), sin fecha de apagado anunciada y con buena relación costo/calidad para extracción estructurada. Las alternativas eran `gemini-3.5-flash-lite` (más barato, algo menos exacto con escaneos sucios) y `gemini-2.5-flash` (solo para proyectos previos).
 
-**Consecuencia para T10:** el dialecto de `response_schema` cambió entre generaciones. `gemini-3.8-flash` no acepta `$ref` ni `anyOf`, así que T2 tiene que exponer el schema de `ExtractedInvoice` de forma aplanable y T10 tiene que aplanarlo antes de enviarlo, sin perder el `line_items[]` anidado. La validación de la respuesta sigue siendo con el schema Zod completo.
+**Consecuencia para T10:** T2 expone el schema de `ExtractedInvoice` ya convertido en `geminiSchema.ts` (sin `$schema`, `$defs` ni `$ref`), de modo que T10 solo lo envía. La validación de la respuesta sigue siendo con el schema Zod completo, que es el que manda.
 
 Como el modelo vive en `GEMINI_MODEL`, cambiarlo después es configuración y no refactor.
 
