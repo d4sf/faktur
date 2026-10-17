@@ -17,6 +17,10 @@ services:
         value: gemini-3.8-flash
       - key: NOTIFIER_WEBHOOK_URL
         sync: false
+      - key: ALLOW_DB_RESET
+        value: "true"
+      - key: ADMIN_TOKEN
+        sync: false
     disk:
       name: faktur-data
       mountPath: /app/data

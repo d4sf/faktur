@@ -81,5 +81,9 @@ borrar desde el contenedor, que corre como root:
 COMPOSE_ENV=prod bash ./scripts/compose.sh exec app rm -rf /app/data/*
 ```
 
+El camino normal ya no es `rm -rf`: el reset con confirmación desde `/datos` (o
+`POST /api/admin/db/reset`) borra la base y vacía `uploads/`. Perfiles,
+conteos y códigos de error en [`docs/datos-demo.md`](docs/datos-demo.md).
+
 La decisión de stack y su justificación están en
 `docs/decisiones/0001-stack-ts-node-react.md`.
