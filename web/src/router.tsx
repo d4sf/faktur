@@ -3,6 +3,7 @@ import { Navigate, createBrowserRouter, RouterProvider } from "react-router-dom"
 import AppShell from "@/components/layout/AppShell";
 import Aprobacion from "@/pages/Aprobacion";
 import Bandeja from "@/pages/Bandeja";
+import Datos from "@/pages/Datos";
 import Detalle from "@/pages/Detalle";
 import Procesando from "@/pages/Procesando";
 import Reglas from "@/pages/Reglas";
@@ -23,6 +24,7 @@ const router = createBrowserRouter([
       { path: "bandeja", element: <Bandeja /> },
       { path: "aprobacion/:id", element: <Aprobacion /> },
       { path: "reporte", element: <Reporte /> },
+      { path: "datos", element: <Datos /> },
       { path: "*", element: <Navigate to="/" replace /> },
     ],
   },

@@ -6,6 +6,7 @@
  */
 
 import {
+  Database,
   FileSpreadsheet,
   Inbox,
   LayoutDashboard,
@@ -39,6 +40,7 @@ const navItems = [
   { to: "/bandeja", label: "Bandeja de revisión", icon: Inbox },
   { to: "/reglas", label: "Reglas de política", icon: SlidersHorizontal },
   { to: "/reporte", label: "Reporte CSV", icon: FileSpreadsheet },
+  { to: "/datos", label: "Datos de demo", icon: Database },
 ];
 
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
