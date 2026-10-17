@@ -495,7 +495,7 @@ El runner tiene que **afirmar que el conjunto de `reason_code` que produjo es ig
 
 ---
 
-#### [ ] T14 · `GET /api/policy`, `PUT /api/policy` y preview
+#### [x] T14 · `GET /api/policy`, `PUT /api/policy` y preview
 
 **Síntesis.** Lee la política vigente con sus budgets por categoría. Un `PUT` valida la definición: si es inválida responde 422 sin crear versión; si es válida crea la N+1 inmutable, desactiva la anterior, guarda `created_by` y `comment`, y **congela las aprobaciones pendientes en la versión con la que se escalaron**. Un `POST /api/policy/preview` evalúa una política hipotética contra las facturas existentes **sin persistir nada**, para la simulación en vivo.
 

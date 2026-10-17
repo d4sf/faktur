@@ -9,6 +9,7 @@ import { registerApprovalRoutes } from "./routes/approvals.js";
 import { registerAuditRoutes } from "./routes/audit.js";
 import { registerIngestRoutes } from "./routes/ingest.js";
 import { registerInvoiceRoutes } from "./routes/invoices.js";
+import { registerPolicyRoutes } from "./routes/policies.js";
 import { registerReportRoutes } from "./routes/report.js";
 import { MAX_UPLOAD_BYTES } from "./services/ingest.js";
 
@@ -33,6 +34,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   await app.register(registerIngestRoutes);
   await app.register(registerApprovalRoutes);
   await app.register(registerAuditRoutes);
+  await app.register(registerPolicyRoutes);
 
   const webDist = options.webDist ?? resolve(process.cwd(), "web/dist");
   if (existsSync(webDist)) {

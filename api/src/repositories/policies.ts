@@ -62,3 +62,50 @@ export function getPolicySpecByVersion(db: Database.Database, version: string): 
   if (row === null) throw new Error("policy_not_found");
   return specFromRow(db, row);
 }
+
+export type CandidatePolicy = Omit<PolicySpec, "version">;
+
+/**
+ * Crea la versión N+1 inmutable y desactiva la anterior en la misma transacción. La versión
+ * anterior no se edita: las decisiones ya tomadas siguen apuntando a ella (S16).
+ */
+export function createPolicyVersion(
+  db: Database.Database,
+  candidate: CandidatePolicy,
+): { version: string } {
+  return db.transaction(() => {
+    const max = db
+      .prepare("SELECT COALESCE(MAX(CAST(SUBSTR(version, 2) AS INTEGER)), 0) AS n FROM policies")
+      .get() as { n: number };
+    const version = `v${max.n + 1}`;
+
+    db.prepare("UPDATE policies SET is_active = 0 WHERE is_active = 1").run();
+    db.prepare(
+      `INSERT INTO policies (version, auto_approval_threshold_usd, monthly_budget_usd,
+        vendor_drift_factor, min_extraction_confidence, allowed_currencies, is_active,
+        created_at, created_by, comment)
+       VALUES (?,?,?,?,?,?,?,?,?,?)`,
+    ).run(
+      version,
+      candidate.auto_approval_threshold_usd,
+      candidate.monthly_budget_usd,
+      candidate.vendor_drift_factor,
+      candidate.min_extraction_confidence,
+      JSON.stringify(candidate.allowed_currencies),
+      1,
+      candidate.created_at,
+      candidate.created_by,
+      candidate.comment,
+    );
+
+    const insertBudget = db.prepare(
+      `INSERT INTO policy_category_budgets (policy_version, category, budget_usd)
+       VALUES (?,?,?)`,
+    );
+    for (const [category, budget] of Object.entries(candidate.category_budgets)) {
+      insertBudget.run(version, category, budget);
+    }
+
+    return { version };
+  })();
+}
