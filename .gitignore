@@ -7,5 +7,6 @@ dist
 .DS_Store
 data/*
 !data/.gitkeep
-.superpowers.agents/
+.superpowers
+.agents/
 skills-lock.json
