@@ -17,7 +17,6 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { VerdictBadge } from "@/components/ui/VerdictBadge";
 import { formatReasonTitle } from "@/lib/invoiceSubmit";
@@ -266,7 +265,7 @@ export default function Reporte() {
           </span>
         </div>
 
-        <Card className="rounded-2xl border border-border/80 overflow-hidden shadow-xs">
+        <div className="rounded-2xl border border-border/80 bg-card overflow-hidden shadow-xs">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="border-b border-border bg-muted/20 text-muted-foreground">
@@ -470,7 +469,7 @@ export default function Reporte() {
               </div>
             </div>
           )}
-        </Card>
+        </div>
       </div>
     </div>
   );

@@ -135,8 +135,8 @@ export function AuditTable({ records, onSelectRecord, loading = false }: AuditTa
   if (loading) {
     return (
       <div className="overflow-hidden rounded-xl border border-border/80 bg-card shadow-xs">
-        <div className="overflow-x-auto pb-1 [scrollbar-width:thin] [scrollbar-color:var(--border)_transparent] [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-muted/30 [&::-webkit-scrollbar-thumb]:bg-muted-foreground/30 hover:[&::-webkit-scrollbar-thumb]:bg-muted-foreground/50 [&::-webkit-scrollbar-thumb]:rounded-full">
-          <table className="w-full text-left text-xs min-w-[780px]">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
             <thead className="border-b border-border bg-muted/30 text-muted-foreground">
               <tr>
                 <th className="px-4 py-3 font-semibold uppercase tracking-wider text-[10px]">
@@ -208,8 +208,8 @@ export function AuditTable({ records, onSelectRecord, loading = false }: AuditTa
 
   return (
     <div className="overflow-hidden rounded-xl border border-border/80 bg-card shadow-xs">
-      <div className="overflow-x-auto pb-1 [scrollbar-width:thin] [scrollbar-color:var(--border)_transparent] [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-muted/30 [&::-webkit-scrollbar-thumb]:bg-muted-foreground/30 hover:[&::-webkit-scrollbar-thumb]:bg-muted-foreground/50 [&::-webkit-scrollbar-thumb]:rounded-full">
-        <table className="w-full text-left text-xs min-w-[780px]">
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-xs">
           <thead className="border-b border-border bg-muted/30 text-muted-foreground">
             <tr>
               <th className="px-4 py-3 font-semibold uppercase tracking-wider text-[10px] whitespace-nowrap">
