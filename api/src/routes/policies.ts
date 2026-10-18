@@ -18,7 +18,11 @@ export async function registerPolicyRoutes(app: FastifyInstance): Promise<void> 
     }
   });
 
-  app.post("/api/policy/preview", async (request, reply) => {
+  const previewLimit = app.rateLimits?.policyPreview;
+  app.post(
+    "/api/policy/preview",
+    previewLimit ? { config: { rateLimit: { max: previewLimit.max, timeWindow: previewLimit.timeWindow } } } : {},
+    async (request, reply) => {
     try {
       return { affected: previewPolicy(request.body, getDb()) };
     } catch (error) {

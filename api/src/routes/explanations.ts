@@ -9,8 +9,10 @@ import {
 } from "../services/aiExplanation.js";
 
 export async function registerExplanationRoutes(app: FastifyInstance): Promise<void> {
+  const explainLimit = app.rateLimits?.explain;
   app.post<{ Params: { id: string }; Body: { regenerate?: unknown } }>(
     "/api/invoices/:id/explain",
+    explainLimit ? { config: { rateLimit: { max: explainLimit.max, timeWindow: explainLimit.timeWindow } } } : {},
     async (request, reply) => {
       const body = (request.body ?? {}) as { regenerate?: unknown };
       if (body.regenerate !== undefined && typeof body.regenerate !== "boolean") {

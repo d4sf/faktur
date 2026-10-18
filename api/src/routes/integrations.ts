@@ -39,7 +39,11 @@ export async function registerIntegrationRoutes(app: FastifyInstance): Promise<v
     return { configured: false };
   });
 
-  app.post<{ Body: { url?: unknown } }>("/api/integrations/slack/test", async (request, reply) => {
+  const webhookTestLimit = app.rateLimits?.webhookTest;
+  app.post<{ Body: { url?: unknown } }>(
+    "/api/integrations/slack/test",
+    webhookTestLimit ? { config: { rateLimit: { max: webhookTestLimit.max, timeWindow: webhookTestLimit.timeWindow } } } : {},
+    async (request, reply) => {
     const body = (request.body ?? {}) as { url?: unknown };
     let url: string | null = null;
     if (body.url !== undefined) {

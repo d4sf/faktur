@@ -61,7 +61,11 @@ export async function registerAdminRoutes(
     };
   });
 
-  app.post("/api/admin/db/reset", async (request, reply) => {
+  const adminLimit = app.rateLimits?.admin;
+  app.post(
+    "/api/admin/db/reset",
+    adminLimit ? { config: { rateLimit: { max: adminLimit.max, timeWindow: adminLimit.timeWindow } } } : {},
+    async (request, reply) => {
     const reason = blockReason(options);
     if (reason === "disabled") {
       return reply.code(403).send({ error: "db_reset_disabled" });

@@ -86,7 +86,11 @@ export async function registerInvoiceRoutes(app: FastifyInstance): Promise<void>
    * Flujo completo: hash → intento → extracción → persistencia → decisión.
    * Un reenvío duplicado responde 200 con su FRENAR, nunca un 409 ni un 500.
    */
-  app.post("/api/invoices", async (request, reply) => {
+  const uploadLimit = app.rateLimits?.upload;
+  app.post(
+    "/api/invoices",
+    uploadLimit ? { config: { rateLimit: { max: uploadLimit.max, timeWindow: uploadLimit.timeWindow } } } : {},
+    async (request, reply) => {
     let file;
     try {
       file = await request.file();
