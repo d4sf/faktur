@@ -13,9 +13,12 @@ import { registerExplanationRoutes } from "./routes/explanations.js";
 import { registerIngestRoutes } from "./routes/ingest.js";
 import { registerIntegrationRoutes } from "./routes/integrations.js";
 import { registerInvoiceRoutes } from "./routes/invoices.js";
+import { registerMaintenanceRoutes } from "./routes/maintenance.js";
 import { registerPolicyRoutes } from "./routes/policies.js";
 import { registerReportRoutes } from "./routes/report.js";
 import { MAX_UPLOAD_BYTES } from "./services/ingest.js";
+import { MAINTENANCE_HTML, isMaintenanceMode } from "./services/maintenance.js";
+import { getDb } from "./db/index.js";
 
 export type RateLimitBucket = { max: number; timeWindow: number };
 
@@ -96,6 +99,16 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   const rateLimits = resolveConfig(options);
   app.decorate("rateLimits", rateLimits);
 
+  app.addHook("onRequest", async (request, reply) => {
+    if (request.url.startsWith("/api/")) return;
+    try {
+      if (!isMaintenanceMode(getDb())) return;
+    } catch {
+      return;
+    }
+    return reply.type("text/html").code(200).send(MAINTENANCE_HTML);
+  });
+
   app.get("/api/health", async () => ({ status: "ok" }));
 
   if (rateLimits !== null) {
@@ -123,6 +136,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   await app.register(registerAdminRoutes, options.admin ?? { enabled: false, production: false });
   await app.register(registerExplanationRoutes, { rateLimits });
   await app.register(registerIntegrationRoutes, { rateLimits });
+  await app.register(registerMaintenanceRoutes);
 
   const webDist = options.webDist ?? resolve(process.cwd(), "web/dist");
   const hasWebDist = existsSync(webDist);
