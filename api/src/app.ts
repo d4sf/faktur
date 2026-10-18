@@ -9,6 +9,7 @@ import Fastify, { type FastifyInstance } from "fastify";
 import { registerApprovalRoutes } from "./routes/approvals.js";
 import { registerAdminRoutes } from "./routes/admin.js";
 import { registerAuditRoutes } from "./routes/audit.js";
+import { registerBillingRoutes } from "./routes/billing.js";
 import { registerExplanationRoutes } from "./routes/explanations.js";
 import { registerIngestRoutes } from "./routes/ingest.js";
 import { registerIntegrationRoutes } from "./routes/integrations.js";
@@ -132,6 +133,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   await app.register(registerIngestRoutes, { rateLimits });
   await app.register(registerApprovalRoutes, { rateLimits });
   await app.register(registerAuditRoutes);
+  await app.register(registerBillingRoutes);
   await app.register(registerPolicyRoutes, { rateLimits });
   await app.register(registerAdminRoutes, options.admin ?? { enabled: false, production: false });
   await app.register(registerExplanationRoutes, { rateLimits });
