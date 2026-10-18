@@ -159,12 +159,18 @@ export function AuditTable({ records, onSelectRecord, loading = false }: AuditTa
                 <td className="px-4 py-3 font-mono font-medium text-foreground whitespace-nowrap">
                   {rec.invoice.invoice_number}
                 </td>
-                <td className="px-4 py-3">
-                  <div className="font-medium text-foreground">
+                <td className="px-4 py-3 max-w-[200px]">
+                  <div
+                    className="font-medium text-foreground truncate"
+                    title={rec.invoice.vendor_name ?? "—"}
+                  >
                     {rec.invoice.vendor_name ?? "—"}
                   </div>
                   {rec.invoice.vendor_tax_id && (
-                    <div className="text-[10px] text-muted-foreground font-mono">
+                    <div
+                      className="text-[10px] text-muted-foreground font-mono truncate"
+                      title={rec.invoice.vendor_tax_id}
+                    >
                       ID: {rec.invoice.vendor_tax_id}
                     </div>
                   )}
