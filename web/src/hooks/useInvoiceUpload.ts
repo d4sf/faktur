@@ -180,7 +180,15 @@ export function useInvoiceUpload() {
       setProcessingMessage(stage.message);
       setProcessingElapsed(stage.elapsedSeconds ?? 0);
       setIsDelayed(stage.isDelayed ?? false);
-      setEvaluatedRuleIndex(stage.progress <= 20 ? 0 : 6);
+      const p = stage.progress;
+      const ruleIdx =
+        p <= 20 ? 0 :
+        p <= 35 ? 1 :
+        p <= 60 ? 2 :
+        p <= 78 ? 3 :
+        p <= 88 ? 4 :
+        p <= 92 ? 5 : 6;
+      setEvaluatedRuleIndex(ruleIdx);
     };
 
     setPendingFile(file);

@@ -33,13 +33,13 @@ function body(result: IngestResult): Record<string, unknown> {
   };
 }
 
-function errorReply(error: unknown): { status: number; code: string } | null {
+function errorReply(error: unknown): { status: number; code: string; detail?: string } | null {
   if (error instanceof InvalidFileTypeError) return { status: 400, code: "invalid_file_type" };
   if (error instanceof ExtractionNotConfiguredError) {
     return { status: 503, code: "extraction_not_configured" };
   }
   if (error instanceof ExtractionUnavailableError) {
-    return { status: 503, code: "extraction_unavailable" };
+    return { status: 503, code: "extraction_unavailable", detail: (error as Error).message };
   }
   if (error instanceof ExtractionInvalidError) return { status: 422, code: "extraction_invalid" };
   if (error instanceof CurrencyNotAllowedError) {
@@ -116,7 +116,12 @@ export async function registerInvoiceRoutes(app: FastifyInstance): Promise<void>
           return reply.code(413).send({ error: "file_too_large" });
         }
         const mapped = errorReply(error);
-        if (mapped !== null) return reply.code(mapped.status).send({ error: mapped.code });
+        if (mapped !== null) {
+          return reply.code(mapped.status).send({
+            error: mapped.code,
+            ...(mapped.detail ? { detail: mapped.detail } : {}),
+          });
+        }
         throw error;
       }
 
@@ -127,8 +132,8 @@ export async function registerInvoiceRoutes(app: FastifyInstance): Promise<void>
 
       try {
         const buffer = readFileSync(storedUploadPath(attempt.file_hash));
-        const extracted = await extractInvoice({ buffer, mimeType: attempt.mime_type });
-        const persisted = persistExtraction(attempt.id, extracted, getDb());
+        const { extracted, raw } = await extractInvoice({ buffer, mimeType: attempt.mime_type });
+        const persisted = persistExtraction(attempt.id, extracted, getDb(), raw);
         if (persisted.duplicate) {
           return reply.code(200).send({
             attempt_id: attempt.id,
@@ -155,7 +160,10 @@ export async function registerInvoiceRoutes(app: FastifyInstance): Promise<void>
         if (mapped.code === "extraction_invalid" || mapped.code === "currency_not_allowed") {
           updateAttemptStatus(attempt.id, "RECHAZADA");
         }
-        return reply.code(mapped.status).send({ error: mapped.code });
+        return reply.code(mapped.status).send({
+          error: mapped.code,
+          ...(mapped.detail ? { detail: mapped.detail } : {}),
+        });
       }
     },
   );

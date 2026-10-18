@@ -23,12 +23,13 @@ export type InvoiceRow = {
   total_usd: number;
   extraction_confidence: number | null;
   extraction_json: string;
+  extraction_raw: string | null;
   ingested_at: string;
 };
 
 export const INVOICE_COLUMNS = `id, vendor_id, invoice_number, status, file_name, mime_type,
   file_hash, issue_date, due_date, currency, subtotal, tax_amount, total_amount, fx_rate_used,
-  total_usd, extraction_confidence, extraction_json, ingested_at`;
+  total_usd, extraction_confidence, extraction_json, extraction_raw, ingested_at`;
 
 export function getInvoiceRow(id: string, db: Database.Database): InvoiceRow | null {
   const row = db

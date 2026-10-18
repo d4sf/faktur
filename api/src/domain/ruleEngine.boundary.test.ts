@@ -62,6 +62,8 @@ test("Límite de umbral: exactamente $1,000.00 USD califica para PAGAR (no super
   const invoice = createBaseInvoice({
     total_amount: 1000,
     total_usd: 1000,
+    subtotal: 980,
+    tax_amount: 20,
   });
   const context = createBaseContext({
     vendor: { status: "ALLOWLISTED", historical_avg_usd: 1000, category: "Infraestructura" },
@@ -76,6 +78,8 @@ test("Límite de umbral: $1,000.01 USD supera el umbral autónomo y debe ESCALAR
   const invoice = createBaseInvoice({
     total_amount: 1000.01,
     total_usd: 1000.01,
+    subtotal: 980.01,
+    tax_amount: 20,
   });
   const context = createBaseContext({
     vendor: { status: "ALLOWLISTED", historical_avg_usd: 1000, category: "Infraestructura" },
@@ -223,6 +227,8 @@ test("Resistencia a inyección: texto malicioso en concepto o folio no altera la
     ],
     total_amount: 3500,
     total_usd: 3500,
+    subtotal: 3480,
+    tax_amount: 20,
   });
   const context = createBaseContext({
     vendor: { status: "ALLOWLISTED", historical_avg_usd: 3000, category: "Marketing" },

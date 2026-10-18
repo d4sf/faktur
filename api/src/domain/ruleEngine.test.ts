@@ -273,6 +273,23 @@ test("regla 7: monto en el umbral exacto → no dispara", () => {
   assert.notEqual(r.reason_code, "ALERT_THRESHOLD_EXCEEDED");
 });
 
+test("sanity check: subtotal + tax ≠ total → ESCALAR ALERT_LOW_CONFIDENCE", () => {
+  const r = evaluate(inv({ total_usd: 420, subtotal: 100, tax_amount: 20 }), policy, ctx());
+  assert.equal(r.verdict, "ESCALAR");
+  assert.equal(r.reason_code, "ALERT_LOW_CONFIDENCE");
+  assert.match(r.explanation, /no cuadra/);
+});
+
+test("sanity check: due_date anterior a issue_date → ESCALAR", () => {
+  const r = evaluate(
+    inv({ total_usd: 420, issue_date: "2026-10-15", due_date: "2026-10-01" }),
+    policy,
+    ctx(),
+  );
+  assert.equal(r.verdict, "ESCALAR");
+  assert.equal(r.reason_code, "ALERT_LOW_CONFIDENCE");
+});
+
 test("regla 8: pasa todo → PAGAR SUCCESS_TOUCHLESS_STP", () => {
   const r = evaluate(inv({ total_usd: 420 }), policy, ctx());
   assert.equal(r.verdict, "PAGAR");

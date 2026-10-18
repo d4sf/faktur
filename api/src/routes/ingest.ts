@@ -37,8 +37,8 @@ export async function registerIngestRoutes(app: FastifyInstance): Promise<void> 
       }
 
       try {
-        const extracted = await extractInvoice({ buffer, mimeType: attempt.mime_type });
-        const persisted = persistExtraction(attempt.id, extracted, getDb());
+        const { extracted, raw } = await extractInvoice({ buffer, mimeType: attempt.mime_type });
+        const persisted = persistExtraction(attempt.id, extracted, getDb(), raw);
         if (persisted.duplicate) {
           return reply.code(200).send({
             attempt_id: attempt.id,
@@ -53,10 +53,10 @@ export async function registerIngestRoutes(app: FastifyInstance): Promise<void> 
           return reply.code(400).send({ error: "invalid_file_type" });
         }
         if (error instanceof ExtractionNotConfiguredError) {
-          return reply.code(503).send({ error: "extraction_not_configured" });
+          return reply.code(503).send({ error: "extraction_not_configured", detail: (error as Error).message });
         }
         if (error instanceof ExtractionUnavailableError) {
-          return reply.code(503).send({ error: "extraction_unavailable" });
+          return reply.code(503).send({ error: "extraction_unavailable", detail: (error as Error).message });
         }
         if (error instanceof ExtractionInvalidError) {
           updateAttemptStatus(attempt.id, "RECHAZADA");

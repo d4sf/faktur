@@ -24,7 +24,7 @@ test("EUR 5000 -> 5400.00 y la tasa queda congelada", async () => {
   assert.equal(total_usd, 5400);
   assert.equal(fx_rate_used, 1.08);
 
-  const extracted = await extractInvoice({
+  const { extracted } = await extractInvoice({
     buffer: readFileSync(new URL("../../../fixtures/TC-06.json", import.meta.url)),
     mimeType: "application/json",
   });

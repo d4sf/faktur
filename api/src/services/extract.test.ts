@@ -31,7 +31,7 @@ function callerReturning(payload: unknown): GeminiCaller {
 }
 
 test("una respuesta valida se normaliza a ExtractedInvoice y descarta campos extra", async () => {
-  const result = await extractInvoice(
+  const { extracted: result } = await extractInvoice(
     { buffer: PDF, mimeType: "application/pdf" },
     callerReturning({ ...VALID, campo_inventado: "se descarta" }),
   );
@@ -56,7 +56,19 @@ test("manda temperature 0 y el response schema al modelo", async () => {
   assert.equal(typeof config.responseSchema, "object");
 });
 
-test("una respuesta invalida no se reintenta ni se adivina", async () => {
+test("el retry recupera una respuesta que falló la validación la primera vez", async () => {
+  let calls = 0;
+  const caller: GeminiCaller = async () => {
+    calls += 1;
+    if (calls === 1) return { text: JSON.stringify({ invoice_number: "INV-X" }) }; // inválido
+    return { text: JSON.stringify({ ...VALID }) }; // válido
+  };
+  const result = await extractInvoice({ buffer: PDF, mimeType: "application/pdf" }, caller);
+  assert.equal(result.extracted.invoice_number, "INV-GA-3500");
+  assert.equal(calls, 2);
+});
+
+test("una respuesta invalida reintenta una vez y luego falla", async () => {
   await assert.rejects(
     extractInvoice(
       { buffer: PDF, mimeType: "application/pdf" },
@@ -83,7 +95,7 @@ test("sin API key y sin caller responde extraction_not_configured, no un 500 opa
 test("un JSON mock valida localmente sin red ni API key", async () => {
   const buffer = readFileSync(new URL("../../../fixtures/TC-01.json", import.meta.url));
 
-  const result = await extractInvoice({ buffer, mimeType: "application/json" });
+  const { extracted: result } = await extractInvoice({ buffer, mimeType: "application/json" });
 
   assert.equal(result.invoice_number, "INV-9022");
   assert.equal(result.total_amount, 420);
@@ -93,7 +105,7 @@ test("persiste una extraccion sin vendor_tax_id con line_items e intento enlazad
   const db = loadDb(":memory:");
 
   try {
-    const extracted = await extractInvoice({
+    const { extracted } = await extractInvoice({
       buffer: readFileSync(new URL("../../../fixtures/TC-08.json", import.meta.url)),
       mimeType: "application/json",
     });
