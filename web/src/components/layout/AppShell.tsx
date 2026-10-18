@@ -128,11 +128,13 @@ export default function AppShell() {
         >
           <SidebarHeader className="flex h-14 justify-center border-b border-sidebar-border px-4 transition-[padding] duration-300 ease-in-out group-data-[collapsible=icon]:px-2">
             <div className="flex items-center gap-3 overflow-hidden">
-              <div className="size-8 shrink-0 flex items-center justify-center rounded-lg bg-[#185338] text-white font-bold text-sm select-none transition-transform duration-300 ease-in-out hover:scale-105">
-                F
-              </div>
+              <img
+                src="/logo.svg"
+                alt="FLUSH Logo"
+                className="size-8 shrink-0 object-contain rounded-lg transition-transform duration-300 ease-in-out hover:scale-105"
+              />
               <div className="flex flex-col min-w-0 overflow-hidden whitespace-nowrap transition-[opacity,max-width,transform] duration-300 ease-in-out group-data-[collapsible=icon]:max-w-0 group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:-translate-x-2 max-w-[180px] opacity-100 translate-x-0">
-                <span className="text-sm font-bold leading-tight tracking-tight text-sidebar-foreground truncate font-logo">
+                <span className="text-base font-bold leading-tight tracking-tight text-sidebar-foreground truncate font-logo">
                   FLUSH
                 </span>
                 <span className="text-[11px] leading-tight text-muted-foreground font-normal truncate">
@@ -168,7 +170,19 @@ export default function AppShell() {
                 <SheetContent side="left" className="w-72 p-0 flex flex-col justify-between">
                   <div>
                     <SheetHeader className="border-b border-border p-4 text-left">
-                      <SheetTitle className="text-base font-bold font-logo">FLUSH</SheetTitle>
+                      <div className="flex items-center gap-2.5">
+                        <img
+                          src="/logo.svg"
+                          alt="FLUSH Logo"
+                          className="size-8 shrink-0 object-contain rounded-lg"
+                        />
+                        <div>
+                          <SheetTitle className="text-lg font-bold font-logo leading-tight">
+                            FLUSH
+                          </SheetTitle>
+                          <p className="text-[11px] text-muted-foreground">Revisión de facturas</p>
+                        </div>
+                      </div>
                     </SheetHeader>
                     <nav className="p-3">
                       <NavLinks />
