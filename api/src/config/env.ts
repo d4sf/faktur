@@ -9,7 +9,12 @@ import { z } from "zod";
  * vacía y `.url()` revienta el arranque por una variable que el usuario cree
  * apagada.
  */
-const BLANK_IS_UNDEFINED = ["GEMINI_API_KEY", "NOTIFIER_WEBHOOK_URL", "ADMIN_TOKEN"] as const;
+const BLANK_IS_UNDEFINED = [
+  "GEMINI_API_KEY",
+  "NOTIFIER_WEBHOOK_URL",
+  "ADMIN_TOKEN",
+  "MAINTENANCE_SECRET",
+] as const;
 
 const schema = z.object({
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
@@ -35,6 +40,7 @@ const schema = z.object({
     .default("false")
     .transform((value) => value === "true"),
   ADMIN_TOKEN: z.string().min(1).optional(),
+  MAINTENANCE_SECRET: z.string().min(1).optional(),
 });
 
 export type Env = z.infer<typeof schema>;
