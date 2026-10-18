@@ -227,20 +227,28 @@ async function buildInvoice(
   if (result.invoice_id) {
     const detailResponse = await fetchImpl(`/api/invoices/${result.invoice_id}`).catch(() => null);
     if (detailResponse !== null && detailResponse.ok) {
-      const detail = (await readJson(detailResponse)) as {
-        audit_record?: Record<string, unknown>;
-        vendor?: { display_name?: string; tax_id?: string };
-      } | null;
-      const record = detail?.audit_record;
-      if (record) {
-        invoice.invoice_number = (record.invoice_number as string) ?? invoice.invoice_number;
-        invoice.vendor_name = detail?.vendor?.display_name ?? invoice.vendor_name;
-        invoice.vendor_tax_id = detail?.vendor?.tax_id ?? invoice.vendor_tax_id;
-        invoice.issue_date = (record.issue_date as string) ?? invoice.issue_date;
-        invoice.due_date = (record.due_date as string) ?? invoice.due_date;
-        invoice.currency = (record.currency as string) ?? invoice.currency;
-        invoice.total_amount = (record.total_amount as number) ?? invoice.total_amount;
-        invoice.total_usd = (record.total_usd as number) ?? invoice.total_usd;
+      const detail = (await readJson(detailResponse)) as Record<string, unknown> | null;
+      const invObj =
+        (detail?.invoice as Record<string, unknown> | undefined) ??
+        (detail?.audit_record as Record<string, unknown> | undefined) ??
+        detail;
+      const vendorObj = detail?.vendor as Record<string, string> | undefined;
+
+      if (invObj) {
+        invoice.invoice_number = (invObj.invoice_number as string) ?? invoice.invoice_number;
+        invoice.vendor_name =
+          (invObj.vendor_name as string) ?? vendorObj?.display_name ?? invoice.vendor_name;
+        invoice.vendor_tax_id =
+          (invObj.vendor_tax_id as string) ?? vendorObj?.tax_id ?? invoice.vendor_tax_id;
+        invoice.issue_date = (invObj.issue_date as string) ?? invoice.issue_date;
+        invoice.due_date = (invObj.due_date as string) ?? invoice.due_date;
+        invoice.currency = (invObj.currency as string) ?? invoice.currency;
+        invoice.total_amount = (invObj.total_amount as number) ?? invoice.total_amount;
+        invoice.total_usd =
+          (detail?.amount_usd as number) ??
+          (invObj.total_usd as number) ??
+          (invObj.total_amount as number) ??
+          invoice.total_usd;
       }
     }
   }
@@ -307,7 +315,7 @@ export function createInvoiceSubmitter(deps: InvoiceSubmitterDeps = {}) {
         } else if (elapsedSeconds < 16) {
           reportStage(
             92,
-            "Inferencia multimodal exhaustiva en curso (Gemini IA)…",
+            "Parseando estructura y datos del documento con IA…",
             elapsedSeconds,
             true,
           );

@@ -194,7 +194,7 @@ export function InvoiceFilePreview({
                         : "bg-muted-foreground/40",
                     )}
                   />
-                  <span>2. IA Gemini</span>
+                  <span>2. Parseo IA</span>
                 </div>
                 <div
                   className={cn(

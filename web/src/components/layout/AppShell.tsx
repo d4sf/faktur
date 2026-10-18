@@ -117,11 +117,11 @@ export default function AppShell() {
           <SidebarHeader className="flex h-14 justify-center border-b border-sidebar-border px-4 transition-[padding] duration-300 ease-in-out group-data-[collapsible=icon]:px-2">
             <div className="flex items-center gap-3 overflow-hidden">
               <div className="size-8 shrink-0 flex items-center justify-center rounded-lg bg-[#185338] text-white font-bold text-sm select-none transition-transform duration-300 ease-in-out hover:scale-105">
-                B
+                F
               </div>
               <div className="flex flex-col min-w-0 overflow-hidden whitespace-nowrap transition-[opacity,max-width,transform] duration-300 ease-in-out group-data-[collapsible=icon]:max-w-0 group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:-translate-x-2 max-w-[180px] opacity-100 translate-x-0">
                 <span className="text-sm font-bold leading-tight tracking-tight text-sidebar-foreground truncate">
-                  Blinka PayAgent
+                  Faktur
                 </span>
                 <span className="text-[11px] leading-tight text-muted-foreground font-normal truncate">
                   Revisión de facturas
@@ -156,7 +156,7 @@ export default function AppShell() {
                 <SheetContent side="left" className="w-72 p-0 flex flex-col justify-between">
                   <div>
                     <SheetHeader className="border-b border-border p-4 text-left">
-                      <SheetTitle className="text-base font-bold">Blinka PayAgent</SheetTitle>
+                      <SheetTitle className="text-base font-bold">Faktur</SheetTitle>
                     </SheetHeader>
                     <nav className="p-3">
                       <NavLinks />
