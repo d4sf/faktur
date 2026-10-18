@@ -1,18 +1,15 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test } from "node:test";
 
-import type Database from "better-sqlite3";
-
 import { buildApp } from "../app.js";
 import { closeDb, loadDb } from "../db/index.js";
 
-let db: Database.Database;
 let previousDataDir: string | undefined;
 
 beforeEach(() => {
   previousDataDir = process.env.DATA_DIR;
   process.env.DATA_DIR = "/tmp/opencode/integrations-test";
-  db = loadDb(":memory:");
+  loadDb(":memory:");
 });
 
 afterEach(() => {
