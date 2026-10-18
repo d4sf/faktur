@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 
 import type { FastifyInstance } from "fastify";
+import "@fastify/rate-limit";
 
 import { getDb } from "../db/index.js";
 import { getAttempt, updateAttemptStatus } from "../repositories/ingest.js";

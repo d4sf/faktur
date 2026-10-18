@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import "@fastify/rate-limit";
 import { z } from "zod";
 
 import { getDb, getDbPath } from "../db/index.js";

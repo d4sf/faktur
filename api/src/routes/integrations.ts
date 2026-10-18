@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import "@fastify/rate-limit";
 
 import { getDb } from "../db/index.js";
 import {
