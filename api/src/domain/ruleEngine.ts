@@ -1,4 +1,4 @@
-import { ExtractedInvoice } from "./extraction.js";
+import { ExtractedInvoice, sanityCheck } from "./extraction.js";
 import { ReasonCode, Verdict } from "./decision.js";
 import { PolicySpec } from "./policy.js";
 
@@ -107,6 +107,16 @@ export function evaluate(
       verdict: "ESCALAR",
       reason_code: "ALERT_LOW_CONFIDENCE",
       explanation: `No se pudo leer ${field} con confianza (${value} < ${policy.min_extraction_confidence})`,
+    };
+  }
+
+  // Regla 1c: sanity check de los datos extraídos (montos que no cuadran, fechas inconsistentes)
+  const sanity = sanityCheck(invoice);
+  if (!sanity.ok) {
+    return {
+      verdict: "ESCALAR",
+      reason_code: "ALERT_LOW_CONFIDENCE",
+      explanation: `Los datos extraídos son inconsistentes: ${sanity.reason}`,
     };
   }
 

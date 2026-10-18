@@ -97,7 +97,7 @@ export type FieldConfidence = z.infer<typeof FieldConfidence>;
  */
 export const ExtractedInvoice = z.object({
   invoice_number: z.string().trim().min(1),
-  total_amount: z.number().nonnegative(),
+  total_amount: z.number().positive(),
   currency: Currency,
 
   vendor_name: z.string().trim().min(1).optional(),
@@ -127,4 +127,26 @@ export type ExtractedInvoice = z.infer<typeof ExtractedInvoice>;
 export function globalConfidence(f: FieldConfidence | undefined): number | undefined {
   if (f === undefined) return undefined;
   return Math.min(...Object.values(f));
+}
+
+/**
+ * Sanity check post-extracción: verifica que los números cuadren y las fechas
+ * sean consistentes. Devuelve `{ ok: false, reason }` si algo no cierra.
+ *
+ * No es un freno duro: una falla escala (ALERT_LOW_CONFIDENCE) en vez de frenar,
+ * porque puede ser un error de aritmética del modelo, no del documento.
+ */
+export function sanityCheck(e: ExtractedInvoice): { ok: boolean; reason?: string } {
+  if (e.total_amount <= 0) {
+    return { ok: false, reason: "el total debe ser mayor a cero" };
+  }
+  if (e.subtotal !== undefined && e.tax_amount !== undefined) {
+    if (Math.abs(e.total_amount - (e.subtotal + e.tax_amount)) > 0.02) {
+      return { ok: false, reason: "subtotal + impuesto no cuadra con el total" };
+    }
+  }
+  if (e.issue_date !== undefined && e.due_date !== undefined && e.due_date < e.issue_date) {
+    return { ok: false, reason: "la fecha de vencimiento es anterior a la de emisión" };
+  }
+  return { ok: true };
 }
