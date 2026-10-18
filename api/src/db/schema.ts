@@ -171,6 +171,12 @@ CREATE TABLE IF NOT EXISTS ai_explanations (
 
 CREATE INDEX IF NOT EXISTS idx_ai_explanations_decision_id ON ai_explanations(decision_id);
 CREATE INDEX IF NOT EXISTS idx_ai_explanations_invoice_id ON ai_explanations(invoice_id);
+
+CREATE TABLE IF NOT EXISTS settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
 `;
 
 export function applySchema(db: Database.Database): void {

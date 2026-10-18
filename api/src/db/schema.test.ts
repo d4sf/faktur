@@ -4,7 +4,7 @@ import Database from "better-sqlite3";
 
 import { applySchema } from "./schema.js";
 
-test("applySchema crea las 13 tablas", () => {
+test("applySchema crea las 14 tablas", () => {
   const db = new Database(":memory:");
   db.pragma("foreign_keys = ON");
   applySchema(db);
@@ -25,6 +25,7 @@ test("applySchema crea las 13 tablas", () => {
     "notifications",
     "policies",
     "policy_category_budgets",
+    "settings",
     "vendors",
   ]);
   db.close();
