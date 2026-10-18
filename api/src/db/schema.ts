@@ -46,6 +46,7 @@ CREATE TABLE IF NOT EXISTS invoices (
   total_usd REAL NOT NULL,
   extraction_confidence REAL,
   extraction_json TEXT NOT NULL,
+  extraction_raw TEXT,
   ingested_at TEXT NOT NULL,
   UNIQUE(vendor_id, invoice_number)
 );
@@ -190,5 +191,10 @@ export function applySchema(db: Database.Database): void {
       `ALTER TABLE policies ADD COLUMN min_extraction_confidence REAL NOT NULL DEFAULT 0.7
          CHECK (min_extraction_confidence >= 0 AND min_extraction_confidence <= 1)`,
     );
+  }
+
+  const invoiceColumns = db.pragma("table_info(invoices)") as Array<{ name: string }>;
+  if (!invoiceColumns.some((column) => column.name === "extraction_raw")) {
+    db.exec("ALTER TABLE invoices ADD COLUMN extraction_raw TEXT");
   }
 }

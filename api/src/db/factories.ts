@@ -52,6 +52,7 @@ export interface InvoiceRow {
   total_usd: number;
   extraction_confidence: number | null;
   extraction_json: string;
+  extraction_raw: string | null;
   ingested_at: string;
 }
 
@@ -167,6 +168,7 @@ export function invoiceFactory(db: Database.Database, overrides?: Partial<Invoic
     total_usd: 100,
     extraction_confidence: null,
     extraction_json: "{}",
+    extraction_raw: null,
     ingested_at: NOW,
   };
 
