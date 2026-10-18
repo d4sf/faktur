@@ -45,19 +45,19 @@ origen.
 
 ### Variables de entorno principales (`.env`)
 
-| Variable | Default | Descripción |
-|---|---|---|
-| `GEMINI_API_KEY` | — | Clave de Gemini. Sin ella, `/extract` responde 503; el resto funciona. |
-| `GEMINI_MODEL` | `gemini-3.8-flash` | Modelo de extracción. |
-| `DATA_DIR` | `/app/data` | Directorio de la base SQLite y uploads. |
-| `PORT` | `3000` | Puerto interno de la API. |
-| `LOG_LEVEL` | `info` | Nivel de log de Fastify. |
-| `NOTIFIER_WEBHOOK_URL` | — | Webhook genérico (fallback si no hay Slack configurado). |
-| `RATE_LIMIT_MAX` | `120` | Límite global por IP (req/min). |
-| `RATE_LIMIT_UPLOAD_MAX` | `10` | Límite de uploads por IP. |
-| `RATE_LIMIT_EXPLAIN_MAX` | `5` | Límite de explicaciones con IA por IP. |
-| `ALLOW_DB_RESET` | `false` | Habilita el reset de base desde `/datos` (solo dev). |
-| `ADMIN_TOKEN` | — | Token para `POST /api/admin/db/reset` en producción. |
+| Variable                 | Default            | Descripción                                                            |
+| ------------------------ | ------------------ | ---------------------------------------------------------------------- |
+| `GEMINI_API_KEY`         | —                  | Clave de Gemini. Sin ella, `/extract` responde 503; el resto funciona. |
+| `GEMINI_MODEL`           | `gemini-3.8-flash` | Modelo de extracción.                                                  |
+| `DATA_DIR`               | `/app/data`        | Directorio de la base SQLite y uploads.                                |
+| `PORT`                   | `3000`             | Puerto interno de la API.                                              |
+| `LOG_LEVEL`              | `info`             | Nivel de log de Fastify.                                               |
+| `NOTIFIER_WEBHOOK_URL`   | —                  | Webhook genérico (fallback si no hay Slack configurado).               |
+| `RATE_LIMIT_MAX`         | `120`              | Límite global por IP (req/min).                                        |
+| `RATE_LIMIT_UPLOAD_MAX`  | `10`               | Límite de uploads por IP.                                              |
+| `RATE_LIMIT_EXPLAIN_MAX` | `5`                | Límite de explicaciones con IA por IP.                                 |
+| `ALLOW_DB_RESET`         | `false`            | Habilita el reset de base desde `/datos` (solo dev).                   |
+| `ADMIN_TOKEN`            | —                  | Token para `POST /api/admin/db/reset` en producción.                   |
 
 ### Producción (Docker)
 
@@ -160,22 +160,48 @@ Subir factura (PDF/imagen/JSON)
 - El webhook se dispara en ESCALAR, NEGADA y FRENAR (no en PAGAR).
 - Más detalle: `docs/testing-slack-integration.md`.
 
+### Facturación (demo)
+
+`/facturacion` muestra los tres planes del modelo de negocio (Starter $99/100 facturas,
+Growth $299/500, Scale $799/2.000) y permite elegir el plan actual.
+
+- El plan se guarda en la tabla `settings` (key `billing_plan`) vía `PUT /api/billing/plan`.
+- El consumo cuenta las facturas ingeridas desde el día 1 del mes calendario **UTC** y muestra
+  el excedente calculado; no se cobra.
+- **No hay cobro real**: no existe pasarela de pago ni emisión de facturas al cliente.
+
+### Roles de demo
+
+La app **no tiene autenticación**. El selector al pie del sidebar cambia el usuario de demo y
+los permisos se aplican en el cliente (navegación, rutas y botones).
+
+| Usuario                               | Rol              | Puede ver / hacer                          |
+| :------------------------------------ | :--------------- | :----------------------------------------- |
+| Valentina Ríos (`cfo@flush.demo`)     | CFO / Controller | Todo, incluida facturación e integraciones |
+| Martín Salas (`analista@flush.demo`)  | Analista AP      | Tablero, subir y ver facturas              |
+| Carla Méndez (`aprobador@flush.demo`) | Aprobador        | Tablero, ver facturas y aprobar/negar      |
+| Diego Paredes (`auditor@flush.demo`)  | Auditor          | Tablero, ver facturas y reporte CSV        |
+
+El autor de una aprobación queda en `approvals.resolved_by` con el nombre del usuario de la
+sesión. **Limitación conocida:** el API no valida el rol; un `curl` directo puede saltar los
+permisos del cliente. No es seguridad multiusuario.
+
 ### Los 12 casos de prueba (TC-01..TC-12)
 
-| TC | Proveedor | Monto | Moneda | Dispara | Veredicto |
-|:--|:--|---:|:--|:--:|:--|
-| TC-01 | CloudServers Inc | $420 | USD | — | 🟢 PAGAR |
-| TC-02 | DevStudio Latam | $850 | USD | — | 🟢 PAGAR |
-| TC-03 | CloudServers Inc | $420 | USD | regla 2 | 🔴 FRENAR |
-| TC-04 | Growth Agency | $3.500 | USD | regla 7 | 🟡 ESCALAR |
-| TC-05 | Nuevo Redactor | $350 | USD | regla 4 | 🟡 ESCALAR |
-| TC-06 | Legal Global | €5.000 | EUR | regla 6 | 🟡 ESCALAR |
-| TC-07 | Freelance Design | $1.200 | USD | regla 5 | 🟡 ESCALAR |
-| TC-08 | Entidad Fantasma | $900 | USD | regla 1 | 🔴 FRENAR |
-| TC-09 | SaaS Tools Ltd | $120 | USD | — | 🟢 PAGAR |
-| TC-10 | DevStudio Latam | $950 | USD | regla 6 | 🟡 ESCALAR |
-| TC-11 | Venta Pos Duo | $200 | USD | regla 3 | 🔴 FRENAR |
-| TC-12 | SaaS Tools Ltd | $120 | USD | regla 1 | 🟡 ESCALAR |
+| TC    | Proveedor        |  Monto | Moneda | Dispara | Veredicto  |
+| :---- | :--------------- | -----: | :----- | :-----: | :--------- |
+| TC-01 | CloudServers Inc |   $420 | USD    |    —    | 🟢 PAGAR   |
+| TC-02 | DevStudio Latam  |   $850 | USD    |    —    | 🟢 PAGAR   |
+| TC-03 | CloudServers Inc |   $420 | USD    | regla 2 | 🔴 FRENAR  |
+| TC-04 | Growth Agency    | $3.500 | USD    | regla 7 | 🟡 ESCALAR |
+| TC-05 | Nuevo Redactor   |   $350 | USD    | regla 4 | 🟡 ESCALAR |
+| TC-06 | Legal Global     | €5.000 | EUR    | regla 6 | 🟡 ESCALAR |
+| TC-07 | Freelance Design | $1.200 | USD    | regla 5 | 🟡 ESCALAR |
+| TC-08 | Entidad Fantasma |   $900 | USD    | regla 1 | 🔴 FRENAR  |
+| TC-09 | SaaS Tools Ltd   |   $120 | USD    |    —    | 🟢 PAGAR   |
+| TC-10 | DevStudio Latam  |   $950 | USD    | regla 6 | 🟡 ESCALAR |
+| TC-11 | Venta Pos Duo    |   $200 | USD    | regla 3 | 🔴 FRENAR  |
+| TC-12 | SaaS Tools Ltd   |   $120 | USD    | regla 1 | 🟡 ESCALAR |
 
 Se validan sin LLM ni red con `npm run test` (runner contra `ground_truth.json`).
 
@@ -190,23 +216,23 @@ Se validan sin LLM ni red con `npm run test` (runner contra `ground_truth.json`)
 
 ### Endpoints principales
 
-| Método | Ruta | Descripción |
-|---|---|---|
-| `GET` | `/api/health` | Health check |
-| `POST` | `/api/invoices` | Subir factura (multipart) |
-| `POST` | `/api/invoices/:id/decide` | Decidir (corre el motor) |
-| `GET` | `/api/invoices` | Listado con filtros |
-| `GET` | `/api/invoices/:id` | Detalle + línea de tiempo |
-| `POST` | `/api/invoices/:id/explain` | Explicación con IA (post-MVP) |
-| `GET` | `/api/approvals` | Bandeja HITL |
-| `POST` | `/api/approvals/:id` | Resolver aprobación |
-| `GET` | `/api/policy` / `PUT` | Leer / actualizar política (versionada) |
-| `POST` | `/api/policy/preview` | Simular política hipotética |
-| `GET` | `/api/audit-trail` | Métricas + registros |
-| `GET` | `/api/report.csv` | Reporte CSV reproducible |
-| `GET/PUT/DELETE` | `/api/integrations/slack` | Configurar webhook de Slack (post-MVP) |
-| `POST` | `/api/integrations/slack/test` | Probar webhook (post-MVP) |
-| `GET/POST` | `/api/admin/db` / `reset` | Administración del dataset (dev) |
+| Método           | Ruta                           | Descripción                             |
+| ---------------- | ------------------------------ | --------------------------------------- |
+| `GET`            | `/api/health`                  | Health check                            |
+| `POST`           | `/api/invoices`                | Subir factura (multipart)               |
+| `POST`           | `/api/invoices/:id/decide`     | Decidir (corre el motor)                |
+| `GET`            | `/api/invoices`                | Listado con filtros                     |
+| `GET`            | `/api/invoices/:id`            | Detalle + línea de tiempo               |
+| `POST`           | `/api/invoices/:id/explain`    | Explicación con IA (post-MVP)           |
+| `GET`            | `/api/approvals`               | Bandeja HITL                            |
+| `POST`           | `/api/approvals/:id`           | Resolver aprobación                     |
+| `GET`            | `/api/policy` / `PUT`          | Leer / actualizar política (versionada) |
+| `POST`           | `/api/policy/preview`          | Simular política hipotética             |
+| `GET`            | `/api/audit-trail`             | Métricas + registros                    |
+| `GET`            | `/api/report.csv`              | Reporte CSV reproducible                |
+| `GET/PUT/DELETE` | `/api/integrations/slack`      | Configurar webhook de Slack (post-MVP)  |
+| `POST`           | `/api/integrations/slack/test` | Probar webhook (post-MVP)               |
+| `GET/POST`       | `/api/admin/db` / `reset`      | Administración del dataset (dev)        |
 
 ---
 
@@ -217,19 +243,19 @@ El plan de trabajo y las decisiones de producto están en
 26 tareas, 20 specs, grafo de dependencias y un apartado §7 con las decisiones
 tomadas y por qué.
 
-| Documento | Qué es |
-|---|---|
-| `docs/decisiones/0001-stack-ts-node-react.md` | Por qué TS/Node + React y no Python |
-| `docs/decisiones/0003-ai-explanation.md` | Explicación con IA (post-MVP) |
-| `docs/decisiones/0004-slack-integration.md` | Integración con Slack (post-MVP) |
-| `docs/decisiones/0005-rate-limiting.md` | Rate limiting y throttling |
-| `docs/propuesta_modelo_ER_faktur.md` | Modelo de datos: entidades, integridad, casos |
-| `diagramas/` | ER, secuencia, estados y flujo de decisión |
-| `docs/PRD_Faktur.md` | Requisitos del producto (propuesto el 17/10/2026) |
-| `docs/planteamiento_mvp_reto_blinka.md` | El camino más corto a un agente funcionando |
-| `docs/testing-ai-explanation.md` | Guía de pruebas de la explicación con IA |
-| `docs/testing-slack-integration.md` | Guía de pruebas de la integración con Slack |
-| `docs/testing-rate-limiting.md` | Guía de pruebas de rate limiting |
+| Documento                                     | Qué es                                            |
+| --------------------------------------------- | ------------------------------------------------- |
+| `docs/decisiones/0001-stack-ts-node-react.md` | Por qué TS/Node + React y no Python               |
+| `docs/decisiones/0003-ai-explanation.md`      | Explicación con IA (post-MVP)                     |
+| `docs/decisiones/0004-slack-integration.md`   | Integración con Slack (post-MVP)                  |
+| `docs/decisiones/0005-rate-limiting.md`       | Rate limiting y throttling                        |
+| `docs/propuesta_modelo_ER_faktur.md`          | Modelo de datos: entidades, integridad, casos     |
+| `diagramas/`                                  | ER, secuencia, estados y flujo de decisión        |
+| `docs/PRD_Faktur.md`                          | Requisitos del producto (propuesto el 17/10/2026) |
+| `docs/planteamiento_mvp_reto_blinka.md`       | El camino más corto a un agente funcionando       |
+| `docs/testing-ai-explanation.md`              | Guía de pruebas de la explicación con IA          |
+| `docs/testing-slack-integration.md`           | Guía de pruebas de la integración con Slack       |
+| `docs/testing-rate-limiting.md`               | Guía de pruebas de rate limiting                  |
 
 Los dos últimos del primer bloque son registros de lo que se propuso: llevan
 arriba una tabla con lo que se decidió después y su texto original no se edita.
