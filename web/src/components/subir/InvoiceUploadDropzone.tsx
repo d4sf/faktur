@@ -102,7 +102,7 @@ export function InvoiceUploadDropzone({
     <div className="flex min-h-[65vh] flex-col items-center justify-center text-center">
       <div className="w-full max-w-xl space-y-6">
         <div className="space-y-2">
-          <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+          <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl font-logo">
             Subir factura
           </h2>
           <p className="text-sm text-muted-foreground">

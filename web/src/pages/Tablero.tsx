@@ -9,7 +9,7 @@ export default function Tablero() {
     <div className="space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-1">
-          <h2 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+          <h2 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl font-logo">
             Tablero de control
           </h2>
           <p className="text-sm text-muted-foreground">

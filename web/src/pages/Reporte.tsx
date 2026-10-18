@@ -108,7 +108,7 @@ export default function Reporte() {
       {/* Encabezado con Botón de Descarga Principal */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b border-border pb-5">
         <div className="min-w-0">
-          <h2 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+          <h2 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl font-logo">
             Reporte y auditoría CSV
           </h2>
           <p className="text-xs text-muted-foreground mt-1">
@@ -154,7 +154,7 @@ export default function Reporte() {
                 <Skeleton className="h-8 w-28 bg-white/20" />
               </div>
             ) : (
-              <div className="text-3xl font-extrabold tracking-tight mt-1.5">
+              <div className="text-3xl font-extrabold tracking-tight mt-1.5 font-logo">
                 {metrics.total_processed}{" "}
                 <span className="text-base font-normal text-emerald-200/80">facturas</span>
               </div>
@@ -174,7 +174,7 @@ export default function Reporte() {
                 <Skeleton className="h-8 w-20" />
               </div>
             ) : (
-              <div className="text-3xl font-extrabold tracking-tight text-foreground mt-1.5">
+              <div className="text-3xl font-extrabold tracking-tight text-foreground mt-1.5 font-logo">
                 {metrics.touchless_rate}
                 <span className="text-lg font-normal text-muted-foreground">%</span>
               </div>
@@ -196,7 +196,7 @@ export default function Reporte() {
                 <Skeleton className="h-8 w-32" />
               </div>
             ) : (
-              <div className="text-3xl font-extrabold tracking-tight text-foreground mt-1.5">
+              <div className="text-3xl font-extrabold tracking-tight text-foreground mt-1.5 font-logo">
                 ${metrics.budget_remaining.toLocaleString("en-US", { minimumFractionDigits: 2 })}
               </div>
             )}
@@ -215,7 +215,7 @@ export default function Reporte() {
                 <Skeleton className="h-8 w-28" />
               </div>
             ) : (
-              <div className="text-3xl font-extrabold tracking-tight text-foreground mt-1.5">
+              <div className="text-3xl font-extrabold tracking-tight text-foreground mt-1.5 font-logo">
                 ${metrics.threshold_limit.toLocaleString("en-US", { minimumFractionDigits: 2 })}
               </div>
             )}

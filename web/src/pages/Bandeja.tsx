@@ -64,7 +64,7 @@ export default function Bandeja() {
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b border-border pb-5">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2.5">
-                <h2 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+                <h2 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl font-logo">
                   Bandeja de revisión
                 </h2>
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500 dark:bg-amber-600 text-white px-2.5 py-0.5 text-xs font-bold shadow-xs select-none whitespace-nowrap shrink-0">

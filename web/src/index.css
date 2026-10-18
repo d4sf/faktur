@@ -39,6 +39,7 @@
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.985 0 0);
   --radius: 0.75rem;
+  --font-logo: "Iceland", cursive;
   --sidebar: hsl(0 0% 98%);
   --sidebar-foreground: hsl(240 5.3% 26.1%);
   --sidebar-primary: #185338;
@@ -102,4 +103,8 @@
     -moz-appearance: textfield;
     appearance: textfield;
   }
+}
+
+.font-logo {
+  font-family: var(--font-logo);
 }
