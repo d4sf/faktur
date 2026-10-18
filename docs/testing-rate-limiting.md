@@ -23,6 +23,16 @@ Verificar health:
 curl -s http://127.0.0.1:3000/api/health   # {"status":"ok"}
 ```
 
+> **Importante:** las variables `RATE_LIMIT_*` se leen al arrancar el contenedor.
+> `compose.yml` ya las pasa desde `.env`. Si cambiás alguna, recreá el contenedor:
+> ```bash
+> COMPOSE_ENV=dev bash ./scripts/compose.sh up -d --force-recreate app
+> ```
+> Verificá que quedaron cargadas:
+> ```bash
+> bash ./scripts/compose.sh exec app sh -c 'echo "MAX=$RATE_LIMIT_MAX WINDOW=$RATE_LIMIT_WINDOW_MS"'
+> ```
+
 ---
 
 ## 1. Pruebas automatizadas
