@@ -249,11 +249,12 @@ async function buildInvoice(
     const detailResponse = await fetchImpl(`/api/invoices/${result.invoice_id}`).catch(() => null);
     if (detailResponse !== null && detailResponse.ok) {
       const detail = (await readJson(detailResponse)) as Record<string, unknown> | null;
+      const recordObj = (detail?.record as Record<string, unknown> | undefined) ?? detail;
       const invObj =
+        (recordObj?.invoice as Record<string, unknown> | undefined) ??
         (detail?.invoice as Record<string, unknown> | undefined) ??
-        (detail?.audit_record as Record<string, unknown> | undefined) ??
-        detail;
-      const vendorObj = detail?.vendor as Record<string, string> | undefined;
+        (detail?.audit_record as Record<string, unknown> | undefined);
+      const vendorObj = (recordObj?.vendor as Record<string, string> | undefined) ?? (detail?.vendor as Record<string, string> | undefined);
 
       if (invObj) {
         invoice.invoice_number = (invObj.invoice_number as string) ?? invoice.invoice_number;
@@ -266,6 +267,7 @@ async function buildInvoice(
         invoice.currency = (invObj.currency as string) ?? invoice.currency;
         invoice.total_amount = (invObj.total_amount as number) ?? invoice.total_amount;
         invoice.total_usd =
+          (recordObj?.amount_usd as number) ??
           (detail?.amount_usd as number) ??
           (invObj.total_usd as number) ??
           (invObj.total_amount as number) ??
