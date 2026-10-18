@@ -39,21 +39,32 @@ export async function registerIntegrationRoutes(app: FastifyInstance): Promise<v
     return { configured: false };
   });
 
-  app.post<{ Body: { url?: unknown } }>("/api/integrations/slack/test", async (request, reply) => {
-    const body = (request.body ?? {}) as { url?: unknown };
-    let url: string | null = null;
-    if (body.url !== undefined) {
-      if (typeof body.url !== "string" || body.url.trim() === "") {
-        return reply.code(400).send({ error: "invalid_body" });
+  const webhookTestLimit = app.rateLimits?.webhookTest;
+  app.post<{ Body: { url?: unknown } }>(
+    "/api/integrations/slack/test",
+    webhookTestLimit
+      ? {
+          config: {
+            rateLimit: { max: webhookTestLimit.max, timeWindow: webhookTestLimit.timeWindow },
+          },
+        }
+      : {},
+    async (request, reply) => {
+      const body = (request.body ?? {}) as { url?: unknown };
+      let url: string | null = null;
+      if (body.url !== undefined) {
+        if (typeof body.url !== "string" || body.url.trim() === "") {
+          return reply.code(400).send({ error: "invalid_body" });
+        }
+        url = body.url.trim();
+      } else {
+        url = getSlackWebhookUrl(getDb());
       }
-      url = body.url.trim();
-    } else {
-      url = getSlackWebhookUrl(getDb());
-    }
-    if (url === null) {
-      return reply.code(400).send({ error: "no_url_configured" });
-    }
-    const result = await testSlackWebhook(url);
-    return reply.code(result.ok ? 200 : 502).send(result);
-  });
+      if (url === null) {
+        return reply.code(400).send({ error: "no_url_configured" });
+      }
+      const result = await testSlackWebhook(url);
+      return reply.code(result.ok ? 200 : 502).send(result);
+    },
+  );
 }

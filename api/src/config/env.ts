@@ -20,6 +20,16 @@ const schema = z.object({
   GEMINI_MODEL: z.string().min(1).default("gemini-3.8-flash"),
   GEMINI_API_KEY: z.string().min(1).optional(),
   NOTIFIER_WEBHOOK_URL: z.string().url().optional(),
+  RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(120),
+  RATE_LIMIT_WINDOW_MS: z.coerce.number().int().min(1000).default(60000),
+  RATE_LIMIT_UPLOAD_MAX: z.coerce.number().int().min(1).default(10),
+  RATE_LIMIT_UPLOAD_WINDOW_MS: z.coerce.number().int().min(1000).default(60000),
+  RATE_LIMIT_EXPLAIN_MAX: z.coerce.number().int().min(1).default(5),
+  RATE_LIMIT_EXPLAIN_WINDOW_MS: z.coerce.number().int().min(1000).default(60000),
+  RATE_LIMIT_ADMIN_MAX: z.coerce.number().int().min(1).default(3),
+  RATE_LIMIT_ADMIN_WINDOW_MS: z.coerce.number().int().min(1000).default(60000),
+  RATE_LIMIT_WEBHOOK_TEST_MAX: z.coerce.number().int().min(1).default(5),
+  RATE_LIMIT_WEBHOOK_TEST_WINDOW_MS: z.coerce.number().int().min(1000).default(60000),
   ALLOW_DB_RESET: z
     .enum(["true", "false"])
     .default("false")

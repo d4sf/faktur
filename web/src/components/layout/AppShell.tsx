@@ -16,6 +16,7 @@ import {
   Webhook,
 } from "lucide-react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { useRef } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -47,6 +48,17 @@ const navItems = [
 
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const location = useLocation();
+  const lastNav = useRef(0);
+
+  const handleNavigate = (e: { preventDefault: () => void }) => {
+    const now = Date.now();
+    if (now - lastNav.current < 300) {
+      e.preventDefault();
+      return;
+    }
+    lastNav.current = now;
+    onNavigate?.();
+  };
 
   return (
     <SidebarMenu className="gap-1">
@@ -75,7 +87,7 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
               <NavLink
                 to={item.to}
                 end={item.to === "/"}
-                onClick={onNavigate}
+                onClick={handleNavigate}
                 className="flex w-full items-center gap-3 overflow-hidden transition-[width,padding,gap] duration-300 ease-in-out group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:!p-0"
               >
                 <Icon
