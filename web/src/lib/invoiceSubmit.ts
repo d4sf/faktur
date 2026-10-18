@@ -49,6 +49,8 @@ const ERROR_MESSAGES: Record<string, string> = {
 export interface SubmitStage {
   progress: number;
   message: string;
+  elapsedSeconds?: number;
+  isDelayed?: boolean;
 }
 
 /**
@@ -225,20 +227,28 @@ async function buildInvoice(
   if (result.invoice_id) {
     const detailResponse = await fetchImpl(`/api/invoices/${result.invoice_id}`).catch(() => null);
     if (detailResponse !== null && detailResponse.ok) {
-      const detail = (await readJson(detailResponse)) as {
-        audit_record?: Record<string, unknown>;
-        vendor?: { display_name?: string; tax_id?: string };
-      } | null;
-      const record = detail?.audit_record;
-      if (record) {
-        invoice.invoice_number = (record.invoice_number as string) ?? invoice.invoice_number;
-        invoice.vendor_name = detail?.vendor?.display_name ?? invoice.vendor_name;
-        invoice.vendor_tax_id = detail?.vendor?.tax_id ?? invoice.vendor_tax_id;
-        invoice.issue_date = (record.issue_date as string) ?? invoice.issue_date;
-        invoice.due_date = (record.due_date as string) ?? invoice.due_date;
-        invoice.currency = (record.currency as string) ?? invoice.currency;
-        invoice.total_amount = (record.total_amount as number) ?? invoice.total_amount;
-        invoice.total_usd = (record.total_usd as number) ?? invoice.total_usd;
+      const detail = (await readJson(detailResponse)) as Record<string, unknown> | null;
+      const invObj =
+        (detail?.invoice as Record<string, unknown> | undefined) ??
+        (detail?.audit_record as Record<string, unknown> | undefined) ??
+        detail;
+      const vendorObj = detail?.vendor as Record<string, string> | undefined;
+
+      if (invObj) {
+        invoice.invoice_number = (invObj.invoice_number as string) ?? invoice.invoice_number;
+        invoice.vendor_name =
+          (invObj.vendor_name as string) ?? vendorObj?.display_name ?? invoice.vendor_name;
+        invoice.vendor_tax_id =
+          (invObj.vendor_tax_id as string) ?? vendorObj?.tax_id ?? invoice.vendor_tax_id;
+        invoice.issue_date = (invObj.issue_date as string) ?? invoice.issue_date;
+        invoice.due_date = (invObj.due_date as string) ?? invoice.due_date;
+        invoice.currency = (invObj.currency as string) ?? invoice.currency;
+        invoice.total_amount = (invObj.total_amount as number) ?? invoice.total_amount;
+        invoice.total_usd =
+          (detail?.amount_usd as number) ??
+          (invObj.total_usd as number) ??
+          (invObj.total_amount as number) ??
+          invoice.total_usd;
       }
     }
   }
@@ -262,40 +272,101 @@ async function buildInvoice(
  */
 export function createInvoiceSubmitter(deps: InvoiceSubmitterDeps = {}) {
   let inFlight = false;
+  let activeAbortController: AbortController | null = null;
+
+  const abort = () => {
+    if (activeAbortController) {
+      activeAbortController.abort();
+      activeAbortController = null;
+    }
+    inFlight = false;
+  };
 
   const submit = async (file: File): Promise<SubmitOutcome> => {
     if (inFlight) return { status: "skipped" };
     inFlight = true;
+    activeAbortController = new AbortController();
 
     const fetchImpl = deps.fetchImpl ?? globalThis.fetch;
-    const stage = (progress: number, message: string) => deps.onStage?.({ progress, message });
+    const reportStage = (
+      progress: number,
+      message: string,
+      elapsedSeconds = 0,
+      isDelayed = false,
+    ) => deps.onStage?.({ progress, message, elapsedSeconds, isDelayed });
+
+    let progressTimer: ReturnType<typeof setInterval> | null = null;
+    let elapsedSeconds = 0;
 
     try {
-      stage(20, "Analizando documento…");
+      reportStage(20, "Analizando documento…", 0, false);
+
+      progressTimer = setInterval(() => {
+        elapsedSeconds += 1;
+
+        if (elapsedSeconds < 3) {
+          reportStage(35, "Extrayendo entidades con IA multimodal…", elapsedSeconds, false);
+        } else if (elapsedSeconds < 6) {
+          reportStage(60, "Interpretando ítems, fechas e impuestos…", elapsedSeconds, false);
+        } else if (elapsedSeconds < 9) {
+          reportStage(78, "Normalizando moneda FX y validando proveedor…", elapsedSeconds, false);
+        } else if (elapsedSeconds < 12) {
+          reportStage(88, "Evaluando orden de precedencia de 8 reglas…", elapsedSeconds, false);
+        } else if (elapsedSeconds < 16) {
+          reportStage(
+            92,
+            "Parseando estructura y datos del documento con IA…",
+            elapsedSeconds,
+            true,
+          );
+        } else {
+          const dynamicProgress = Math.min(97, 92 + Math.floor((elapsedSeconds - 16) / 4));
+          reportStage(
+            dynamicProgress,
+            "El análisis está demorando más de lo habitual. Esperando respuesta del servidor…",
+            elapsedSeconds,
+            true,
+          );
+        }
+      }, 1000);
 
       const formData = new FormData();
       formData.append("file", file);
 
-      const response = await fetchImpl("/api/invoices", { method: "POST", body: formData });
+      const response = await fetchImpl("/api/invoices", {
+        method: "POST",
+        body: formData,
+        signal: activeAbortController.signal,
+      });
       const payload = await readJson(response);
+
+      if (progressTimer) {
+        clearInterval(progressTimer);
+        progressTimer = null;
+      }
 
       if (!response.ok) {
         return { status: "error", message: describeError(response.status, payload) };
       }
 
-      stage(85, "Evaluando reglas deterministas de política…");
+      reportStage(99, "Evaluando reglas deterministas de política…", elapsedSeconds, false);
 
       const invoice = await buildInvoice(file, (payload ?? {}) as IngestResponse, fetchImpl);
       return { status: "completed", invoice };
-    } catch {
+    } catch (error) {
+      if ((error as { name?: string })?.name === "AbortError") {
+        return { status: "skipped" };
+      }
       return {
         status: "error",
         message: "No se pudo conectar con el agente. Revisá la conexión y reintentá.",
       };
     } finally {
+      if (progressTimer) clearInterval(progressTimer);
+      activeAbortController = null;
       inFlight = false;
     }
   };
 
-  return { submit, isSubmitting: () => inFlight };
+  return { submit, abort, isSubmitting: () => inFlight };
 }

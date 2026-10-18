@@ -40,7 +40,7 @@ export function NextStepCard({ invoice, onReset }: NextStepCardProps) {
           {isEscalar &&
             (isResolved
               ? "Próximo paso: Caso cerrado por el revisor"
-              : "Próximo paso: Revisión y decisión en el chat")}
+              : "Próximo paso: Revisión y decisión humana")}
         </span>
       </div>
 
@@ -51,7 +51,7 @@ export function NextStepCard({ invoice, onReset }: NextStepCardProps) {
           "El pago ha sido cancelado automáticamente por violar una regla crítica de auditoría. Se recomienda notificar al proveedor para rectificar el documento o regularizar su situación."}
         {isEscalar &&
           !isResolved &&
-          "Se requiere autorización humana debido a una excepción en los umbrales de compra. Conversa con el agente PayAgent en el chat a continuación para aprobar o rechazar."}
+          "Se requiere autorización humana debido a una excepción en las políticas. Revisa el análisis y la explicación con IA a continuación para aprobar o rechazar."}
         {isEscalar &&
           isResolved &&
           `Resolución manual completada (${

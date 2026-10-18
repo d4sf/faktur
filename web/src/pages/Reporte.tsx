@@ -10,6 +10,7 @@ import { Download, RefreshCw, Search } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { VerdictBadge } from "@/components/ui/VerdictBadge";
 import { formatReasonTitle } from "@/lib/invoiceSubmit";
 import { AuditMetricsData } from "@/types/invoice";
@@ -29,59 +30,9 @@ interface ReportRecord {
   estado: string;
 }
 
-const FALLBACK_RECORDS: ReportRecord[] = [
-  {
-    id: "inv-tc-01",
-    invoice_number: "INV-AWS-8821",
-    vendor_name: "Amazon Web Services",
-    issue_date: "2026-10-01",
-    total_usd: 450,
-    verdict: "PAGAR",
-    reason_code: "SUCCESS_TOUCHLESS_STP",
-    explanation: "Cumple todas las políticas: pago directo al proveedor.",
-    decided_by: "agente",
-    decided_at: "2026-10-01 10:15",
-    policy_version: "v1",
-    estado: "PAGADA",
-  },
-  {
-    id: "inv-tc-04",
-    invoice_number: "INV-GA-3500",
-    vendor_name: "Growth Agency",
-    issue_date: "2026-10-03",
-    total_usd: 3500,
-    verdict: "ESCALAR",
-    reason_code: "ALERT_THRESHOLD_EXCEEDED",
-    explanation: "Supera el umbral de aprobación autónoma de $1,000 USD (Regla 7).",
-    decided_by: "agente",
-    decided_at: "2026-10-03 12:40",
-    policy_version: "v1",
-    estado: "PENDIENTE",
-  },
-  {
-    id: "inv-tc-11",
-    invoice_number: "INV-BLK-9912",
-    vendor_name: "Blacklisted Services Ltd",
-    issue_date: "2026-10-08",
-    total_usd: 1200,
-    verdict: "FRENAR",
-    reason_code: "ERR_BLACKLISTED_VENDOR",
-    explanation: "El beneficiario figura en la lista de entidades bloqueadas por auditoría.",
-    decided_by: "agente",
-    decided_at: "2026-10-08 14:05",
-    policy_version: "v1",
-    estado: "FRENADA",
-  },
-];
-
 export default function Reporte() {
   const [records, setRecords] = useState<ReportRecord[]>([]);
-  const [metrics, setMetrics] = useState<AuditMetricsData>({
-    budget_remaining: 3550,
-    threshold_limit: 1000,
-    total_processed: 3,
-    touchless_rate: 33.3,
-  });
+  const [metrics, setMetrics] = useState<AuditMetricsData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [searchTerm, setSearchTerm] = useState<string>("");
 
@@ -113,7 +64,7 @@ export default function Reporte() {
       if (res.ok) {
         const data = await res.json();
         if (data.metrics) setMetrics(data.metrics);
-        if (Array.isArray(data.records) && data.records.length > 0) {
+        if (Array.isArray(data.records)) {
           const mapped: ReportRecord[] = (data.records as BackendAuditRecord[]).map((r) => ({
             id: r.id,
             invoice_number: r.invoice?.invoice_number ?? "S/F",
@@ -129,14 +80,10 @@ export default function Reporte() {
             estado: r.estado ?? "PROCESADA",
           }));
           setRecords(mapped);
-        } else {
-          setRecords(FALLBACK_RECORDS);
         }
-      } else {
-        setRecords(FALLBACK_RECORDS);
       }
     } catch {
-      setRecords(FALLBACK_RECORDS);
+      // En caso de fallo de red aislado se preservan los registros cargados
     } finally {
       setLoading(false);
     }
@@ -202,10 +149,16 @@ export default function Reporte() {
         <div className="rounded-2xl bg-[#185338] text-white p-5 shadow-xs flex flex-col justify-between min-h-[130px]">
           <div>
             <span className="text-xs font-medium text-emerald-100/90">Total procesado</span>
-            <div className="text-3xl font-extrabold tracking-tight mt-1.5">
-              {metrics.total_processed}{" "}
-              <span className="text-base font-normal text-emerald-200/80">facturas</span>
-            </div>
+            {loading || !metrics ? (
+              <div className="h-9 flex items-center mt-1.5">
+                <Skeleton className="h-8 w-28 bg-white/20" />
+              </div>
+            ) : (
+              <div className="text-3xl font-extrabold tracking-tight mt-1.5">
+                {metrics.total_processed}{" "}
+                <span className="text-base font-normal text-emerald-200/80">facturas</span>
+              </div>
+            )}
           </div>
           <p className="text-[11px] font-medium text-emerald-200 mt-2">
             Volumen acumulado en el ciclo actual
@@ -216,10 +169,16 @@ export default function Reporte() {
         <div className="rounded-2xl bg-card border border-border/80 p-5 shadow-xs flex flex-col justify-between min-h-[130px] hover:border-border transition-colors">
           <div>
             <span className="text-xs font-medium text-muted-foreground">Tasa autónoma STP</span>
-            <div className="text-3xl font-extrabold tracking-tight text-foreground mt-1.5">
-              {metrics.touchless_rate}
-              <span className="text-lg font-normal text-muted-foreground">%</span>
-            </div>
+            {loading || !metrics ? (
+              <div className="h-9 flex items-center mt-1.5">
+                <Skeleton className="h-8 w-20" />
+              </div>
+            ) : (
+              <div className="text-3xl font-extrabold tracking-tight text-foreground mt-1.5">
+                {metrics.touchless_rate}
+                <span className="text-lg font-normal text-muted-foreground">%</span>
+              </div>
+            )}
           </div>
           <p className="text-[11px] font-medium text-muted-foreground mt-2">
             Pase directo sin firma humana
@@ -232,9 +191,15 @@ export default function Reporte() {
             <span className="text-xs font-medium text-muted-foreground">
               Presupuesto disponible
             </span>
-            <div className="text-3xl font-extrabold tracking-tight text-foreground mt-1.5">
-              ${metrics.budget_remaining.toLocaleString("en-US", { minimumFractionDigits: 2 })}
-            </div>
+            {loading || !metrics ? (
+              <div className="h-9 flex items-center mt-1.5">
+                <Skeleton className="h-8 w-32" />
+              </div>
+            ) : (
+              <div className="text-3xl font-extrabold tracking-tight text-foreground mt-1.5">
+                ${metrics.budget_remaining.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+              </div>
+            )}
           </div>
           <p className="text-[11px] font-medium text-muted-foreground mt-2">
             De $5,000.00 USD global
@@ -245,9 +210,15 @@ export default function Reporte() {
         <div className="rounded-2xl bg-card border border-border/80 p-5 shadow-xs flex flex-col justify-between min-h-[130px] hover:border-border transition-colors">
           <div>
             <span className="text-xs font-medium text-muted-foreground">Umbral de aprobación</span>
-            <div className="text-3xl font-extrabold tracking-tight text-foreground mt-1.5">
-              ${metrics.threshold_limit.toLocaleString("en-US", { minimumFractionDigits: 2 })}
-            </div>
+            {loading || !metrics ? (
+              <div className="h-9 flex items-center mt-1.5">
+                <Skeleton className="h-8 w-28" />
+              </div>
+            ) : (
+              <div className="text-3xl font-extrabold tracking-tight text-foreground mt-1.5">
+                ${metrics.threshold_limit.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+              </div>
+            )}
           </div>
           <p className="text-[11px] font-medium text-muted-foreground mt-2">
             Límite para auto-pago (Regla 7)
@@ -269,7 +240,9 @@ export default function Reporte() {
             />
           </div>
           <span className="text-xs text-muted-foreground">
-            Mostrando {filteredRecords.length} registros auditables
+            {loading
+              ? "Cargando registros auditables…"
+              : `Mostrando ${filteredRecords.length} registros auditables`}
           </span>
         </div>
 
@@ -305,43 +278,83 @@ export default function Reporte() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/60">
-                {filteredRecords.map((r) => (
-                  <tr key={r.id} className="hover:bg-muted/20 transition-colors">
-                    <td className="px-4 py-3 font-mono font-medium text-foreground">
-                      {r.invoice_number}
-                    </td>
-                    <td className="px-4 py-3 font-medium text-foreground">{r.vendor_name}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{r.issue_date}</td>
-                    <td className="px-4 py-3 font-semibold text-foreground font-mono">
-                      ${r.total_usd.toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                    </td>
-                    <td className="px-4 py-3">
-                      <VerdictBadge verdict={r.verdict} size="sm" />
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground text-[11px] truncate max-w-[160px]">
-                      <div
-                        className="font-medium text-foreground truncate"
-                        title={`Código: ${r.reason_code}`}
-                      >
-                        {formatReasonTitle(r.reason_code)}
-                      </div>
-                      <div
-                        className="text-[10px] text-muted-foreground truncate"
-                        title={r.explanation}
-                      >
-                        {r.explanation}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground capitalize">
-                      <span className="inline-flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-[10px]">
-                        {r.decided_by}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 font-mono text-[10px] text-muted-foreground">
-                      {r.policy_version}
+                {loading ? (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <tr key={i}>
+                      <td className="px-4 py-3">
+                        <Skeleton className="h-4 w-24" />
+                      </td>
+                      <td className="px-4 py-3">
+                        <Skeleton className="h-4 w-32" />
+                      </td>
+                      <td className="px-4 py-3">
+                        <Skeleton className="h-4 w-20" />
+                      </td>
+                      <td className="px-4 py-3">
+                        <Skeleton className="h-4 w-20" />
+                      </td>
+                      <td className="px-4 py-3">
+                        <Skeleton className="h-4 w-16" />
+                      </td>
+                      <td className="px-4 py-3">
+                        <Skeleton className="h-4 w-40" />
+                      </td>
+                      <td className="px-4 py-3">
+                        <Skeleton className="h-4 w-14" />
+                      </td>
+                      <td className="px-4 py-3">
+                        <Skeleton className="h-4 w-8" />
+                      </td>
+                    </tr>
+                  ))
+                ) : filteredRecords.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={8}
+                      className="px-4 py-10 text-center text-muted-foreground text-xs"
+                    >
+                      No se encontraron registros de auditoría
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  filteredRecords.map((r) => (
+                    <tr key={r.id} className="hover:bg-muted/20 transition-colors">
+                      <td className="px-4 py-3 font-mono font-medium text-foreground">
+                        {r.invoice_number}
+                      </td>
+                      <td className="px-4 py-3 font-medium text-foreground">{r.vendor_name}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{r.issue_date}</td>
+                      <td className="px-4 py-3 font-semibold text-foreground font-mono">
+                        ${r.total_usd.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                      </td>
+                      <td className="px-4 py-3">
+                        <VerdictBadge verdict={r.verdict} size="sm" />
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground text-[11px] truncate max-w-[160px]">
+                        <div
+                          className="font-medium text-foreground truncate"
+                          title={`Código: ${r.reason_code}`}
+                        >
+                          {formatReasonTitle(r.reason_code)}
+                        </div>
+                        <div
+                          className="text-[10px] text-muted-foreground truncate"
+                          title={r.explanation}
+                        >
+                          {r.explanation}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground capitalize">
+                        <span className="inline-flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-[10px]">
+                          {r.decided_by}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 font-mono text-[10px] text-muted-foreground">
+                        {r.policy_version}
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>

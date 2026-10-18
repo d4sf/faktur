@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { memo, useState } from "react";
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Eye } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -35,6 +35,92 @@ function formatDate(s: string): string {
     return s;
   }
 }
+
+interface AuditTableRowProps {
+  rec: AuditRecordView;
+  onSelectRecord: (record: AuditRecordView) => void;
+}
+
+const AuditTableRow = memo(function AuditTableRow({ rec, onSelectRecord }: AuditTableRowProps) {
+  return (
+    <tr
+      className="hover:bg-muted/30 transition-colors cursor-pointer"
+      onClick={() => onSelectRecord(rec)}
+    >
+      <td className="px-4 py-3 font-mono font-medium text-foreground whitespace-nowrap">
+        {rec.invoice.invoice_number}
+      </td>
+      <td className="px-4 py-3 max-w-[200px]">
+        <div
+          className="font-medium text-foreground truncate"
+          title={rec.invoice.vendor_name ?? "—"}
+        >
+          {rec.invoice.vendor_name ?? "—"}
+        </div>
+        {rec.invoice.vendor_tax_id && (
+          <div
+            className="text-[10px] text-muted-foreground font-mono truncate"
+            title={rec.invoice.vendor_tax_id}
+          >
+            ID: {rec.invoice.vendor_tax_id}
+          </div>
+        )}
+      </td>
+      <td className="hidden px-4 py-3 text-muted-foreground md:table-cell">
+        {formatDate(rec.invoice.issue_date ?? rec.created_at)}
+      </td>
+      <td className="hidden px-4 py-3 font-semibold text-foreground md:table-cell">
+        <div>{formatUsd(rec.amount_usd)}</div>
+        {rec.invoice.currency !== "USD" && (
+          <div className="text-[10px] font-normal text-muted-foreground">
+            {formatOriginal(rec.invoice.total_amount, rec.invoice.currency)}
+          </div>
+        )}
+      </td>
+      <td className="px-4 py-3">
+        <VerdictBadge verdict={rec.verdict} size="sm" />
+        <div className="mt-0.5 text-[10px] text-muted-foreground">{rec.estado}</div>
+      </td>
+      <td className="px-4 py-3 text-muted-foreground max-w-xs">
+        <div
+          className="truncate text-xs font-semibold text-foreground"
+          title={`Código: ${rec.reason_code}`}
+        >
+          {formatReasonTitle(rec.reason_code)}
+        </div>
+        <div className="truncate text-[11px] text-muted-foreground mt-0.5">{rec.explanation}</div>
+      </td>
+      <td className="px-4 py-3 text-right whitespace-nowrap">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            onSelectRecord(rec);
+          }}
+          className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+        >
+          <Eye className="size-3.5 mr-1" />
+          <span>Ver detalle</span>
+        </Button>
+        {rec.estado === "ESCALADA" && (
+          <Button
+            size="sm"
+            asChild
+            className="h-7 px-3 text-xs font-semibold bg-amber-600 hover:bg-amber-700 text-white ml-1.5 rounded-lg shadow-xs cursor-pointer transition-colors"
+          >
+            <a
+              href={`/bandeja?invoice_id=${encodeURIComponent(rec.invoice_id || rec.id)}`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              Revisar
+            </a>
+          </Button>
+        )}
+      </td>
+    </tr>
+  );
+});
 
 export function AuditTable({ records, onSelectRecord, loading = false }: AuditTableProps) {
   const [pageSize, setPageSize] = useState<number>(10);
@@ -151,79 +237,7 @@ export function AuditTable({ records, onSelectRecord, loading = false }: AuditTa
           </thead>
           <tbody className="divide-y divide-border/60">
             {currentRecords.map((rec) => (
-              <tr
-                key={rec.id}
-                className="hover:bg-muted/30 transition-colors cursor-pointer"
-                onClick={() => onSelectRecord(rec)}
-              >
-                <td className="px-4 py-3 font-mono font-medium text-foreground whitespace-nowrap">
-                  {rec.invoice.invoice_number}
-                </td>
-                <td className="px-4 py-3">
-                  <div className="font-medium text-foreground">
-                    {rec.invoice.vendor_name ?? "—"}
-                  </div>
-                  {rec.invoice.vendor_tax_id && (
-                    <div className="text-[10px] text-muted-foreground font-mono">
-                      ID: {rec.invoice.vendor_tax_id}
-                    </div>
-                  )}
-                </td>
-                <td className="hidden px-4 py-3 text-muted-foreground md:table-cell">
-                  {formatDate(rec.invoice.issue_date ?? rec.created_at)}
-                </td>
-                <td className="hidden px-4 py-3 font-semibold text-foreground md:table-cell">
-                  <div>{formatUsd(rec.amount_usd)}</div>
-                  {rec.invoice.currency !== "USD" && (
-                    <div className="text-[10px] font-normal text-muted-foreground">
-                      {formatOriginal(rec.invoice.total_amount, rec.invoice.currency)}
-                    </div>
-                  )}
-                </td>
-                <td className="px-4 py-3">
-                  <VerdictBadge verdict={rec.verdict} size="sm" />
-                  <div className="mt-0.5 text-[10px] text-muted-foreground">{rec.estado}</div>
-                </td>
-                <td className="px-4 py-3 text-muted-foreground max-w-xs">
-                  <div
-                    className="truncate text-xs font-semibold text-foreground"
-                    title={`Código: ${rec.reason_code}`}
-                  >
-                    {formatReasonTitle(rec.reason_code)}
-                  </div>
-                  <div className="truncate text-[11px] text-muted-foreground mt-0.5">
-                    {rec.explanation}
-                  </div>
-                </td>
-                <td className="px-4 py-3 text-right whitespace-nowrap">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onSelectRecord(rec);
-                    }}
-                    className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
-                  >
-                    <Eye className="size-3.5 mr-1" />
-                    <span>Ver detalle</span>
-                  </Button>
-                  {rec.estado === "ESCALADA" && (
-                    <Button
-                      size="sm"
-                      asChild
-                      className="h-7 px-3 text-xs font-semibold bg-amber-600 hover:bg-amber-700 text-white ml-1.5 rounded-lg shadow-xs cursor-pointer transition-colors"
-                    >
-                      <a
-                        href={`/bandeja?invoice_id=${encodeURIComponent(rec.invoice_id || rec.id)}`}
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        Revisar
-                      </a>
-                    </Button>
-                  )}
-                </td>
-              </tr>
+              <AuditTableRow key={rec.id} rec={rec} onSelectRecord={onSelectRecord} />
             ))}
           </tbody>
         </table>
