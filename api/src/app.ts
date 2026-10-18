@@ -10,6 +10,7 @@ import { registerAdminRoutes } from "./routes/admin.js";
 import { registerAuditRoutes } from "./routes/audit.js";
 import { registerExplanationRoutes } from "./routes/explanations.js";
 import { registerIngestRoutes } from "./routes/ingest.js";
+import { registerIntegrationRoutes } from "./routes/integrations.js";
 import { registerInvoiceRoutes } from "./routes/invoices.js";
 import { registerPolicyRoutes } from "./routes/policies.js";
 import { registerReportRoutes } from "./routes/report.js";
@@ -47,6 +48,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   await app.register(registerReportRoutes);
   await app.register(registerInvoiceRoutes);
   await app.register(registerExplanationRoutes);
+  await app.register(registerIntegrationRoutes);
   await app.register(registerIngestRoutes);
   await app.register(registerApprovalRoutes);
   await app.register(registerAuditRoutes);
