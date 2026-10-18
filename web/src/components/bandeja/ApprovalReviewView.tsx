@@ -20,6 +20,8 @@ interface ApprovalReviewViewProps {
   onCloseNotification: () => void;
   onBack: () => void;
   onResolve: (approved: boolean, justification: string) => void;
+  /** `false` para roles sin `approval:resolve`: oculta aprobar/rechazar. */
+  canResolve?: boolean;
 }
 
 export function ApprovalReviewView({
@@ -29,6 +31,7 @@ export function ApprovalReviewView({
   onCloseNotification,
   onBack,
   onResolve,
+  canResolve = true,
 }: ApprovalReviewViewProps) {
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
@@ -121,7 +124,7 @@ export function ApprovalReviewView({
                 <NextStepCard invoice={invoice} onReset={onBack} />
 
                 {/* Chat interactivo con el asistente PayAgent para consultar y decidir */}
-                <PayAgentChat invoice={invoice} onResolve={onResolve} />
+                <PayAgentChat invoice={invoice} onResolve={onResolve} readOnly={!canResolve} />
               </div>
             </CardContent>
           </Card>

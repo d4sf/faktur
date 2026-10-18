@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ApprovalCard } from "@/components/bandeja/ApprovalCard";
 import { ApprovalReviewView } from "@/components/bandeja/ApprovalReviewView";
+import { useSession } from "@/components/session/SessionProvider";
 import { useApprovalQueue } from "@/hooks/useApprovalQueue";
 import type { SystemRule } from "@/types/invoice";
 
@@ -27,6 +28,7 @@ const SYSTEM_RULES: SystemRule[] = [
 ];
 
 export default function Bandeja() {
+  const { can } = useSession();
   const {
     approvals,
     filteredApprovals,
@@ -57,6 +59,7 @@ export default function Bandeja() {
             window.history.replaceState({}, "", "/bandeja");
           }}
           onResolve={handleResolveHuman}
+          canResolve={can("approval:resolve")}
         />
       ) : (
         <div className="space-y-6 animate-in fade-in duration-200">

@@ -5,19 +5,11 @@
  * y el contenedor principal para el renderizado de rutas mediante Outlet.
  */
 
-import {
-  Database,
-  FileSpreadsheet,
-  Inbox,
-  LayoutDashboard,
-  Menu,
-  SlidersHorizontal,
-  UploadCloud,
-  Webhook,
-} from "lucide-react";
+import { Menu } from "lucide-react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useRef } from "react";
 
+import { useSession } from "@/components/session/SessionProvider";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import {
@@ -34,20 +26,15 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { NAV_ITEMS, visibleNavItems } from "@/lib/nav";
+import { ROLE_LABELS } from "@/lib/roles";
+import { DEMO_USERS } from "@/lib/session";
 import { cn } from "@/lib/utils";
-
-const navItems = [
-  { to: "/", label: "Tablero", icon: LayoutDashboard },
-  { to: "/subir", label: "Subir factura", icon: UploadCloud },
-  { to: "/bandeja", label: "Bandeja de revisión", icon: Inbox },
-  { to: "/reglas", label: "Reglas de política", icon: SlidersHorizontal },
-  { to: "/reporte", label: "Reporte CSV", icon: FileSpreadsheet },
-  { to: "/datos", label: "Datos de demo", icon: Database },
-  { to: "/integraciones", label: "Integraciones", icon: Webhook },
-];
 
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const location = useLocation();
+  const { user } = useSession();
+  const items = visibleNavItems(user.role);
   const lastNav = useRef(0);
 
   const handleNavigate = (e: { preventDefault: () => void }) => {
@@ -62,7 +49,7 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
 
   return (
     <SidebarMenu className="gap-1">
-      {navItems.map((item) => {
+      {items.map((item) => {
         const Icon = item.icon;
         const isActive =
           item.to === "/" ? location.pathname === "/" : location.pathname.startsWith(item.to);
@@ -113,9 +100,48 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
+function initials(name: string): string {
+  return name
+    .split(" ")
+    .map((part) => part[0])
+    .slice(0, 2)
+    .join("");
+}
+
+function UserSwitcher() {
+  const { user, switchUser } = useSession();
+
+  return (
+    <div className="space-y-1.5 group-data-[collapsible=icon]:hidden">
+      <div className="flex items-center gap-2 overflow-hidden">
+        <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#185338] text-[10px] font-bold text-white">
+          {initials(user.name)}
+        </div>
+        <div className="min-w-0 leading-tight">
+          <p className="truncate text-xs font-semibold text-sidebar-foreground">{user.name}</p>
+          <p className="truncate text-[10px] text-muted-foreground">{ROLE_LABELS[user.role]}</p>
+        </div>
+      </div>
+      <select
+        aria-label="Cambiar usuario de demo"
+        value={user.id}
+        onChange={(event) => switchUser(event.target.value)}
+        className="w-full rounded-lg border border-border bg-background px-2 py-1.5 text-[11px] text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+      >
+        {DEMO_USERS.map((candidate) => (
+          <option key={candidate.id} value={candidate.id}>
+            {candidate.name} — {ROLE_LABELS[candidate.role]}
+          </option>
+        ))}
+      </select>
+      <p className="text-[9px] text-muted-foreground">Sesión de demo — sin autenticación</p>
+    </div>
+  );
+}
+
 export default function AppShell() {
   const location = useLocation();
-  const currentItem = navItems.find((item) =>
+  const currentItem = NAV_ITEMS.find((item) =>
     item.to === "/" ? location.pathname === "/" : location.pathname.startsWith(item.to),
   );
 
@@ -153,7 +179,10 @@ export default function AppShell() {
           </SidebarContent>
 
           <SidebarFooter className="border-t border-sidebar-border/60 p-3 group-data-[collapsible=icon]:p-1.5 transition-all duration-300">
-            <ThemeToggle />
+            <div className="space-y-2">
+              <UserSwitcher />
+              <ThemeToggle />
+            </div>
           </SidebarFooter>
         </Sidebar>
 
@@ -189,7 +218,10 @@ export default function AppShell() {
                     </nav>
                   </div>
                   <div className="border-t border-border p-4">
-                    <ThemeToggle />
+                    <div className="space-y-3">
+                      <UserSwitcher />
+                      <ThemeToggle />
+                    </div>
                   </div>
                 </SheetContent>
               </Sheet>

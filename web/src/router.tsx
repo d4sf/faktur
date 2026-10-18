@@ -1,7 +1,9 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, type ReactNode } from "react";
 import { Navigate, createBrowserRouter, RouterProvider } from "react-router-dom";
 
 import AppShell from "@/components/layout/AppShell";
+import { RequirePermission } from "@/components/auth/RequirePermission";
+import type { Permission } from "@/lib/roles";
 import Tablero from "@/pages/Tablero";
 
 // Lazy-loaded routes para code splitting enterprise y reducción del bundle inicial
@@ -12,6 +14,7 @@ const Reglas = lazy(() => import("@/pages/Reglas"));
 const Bandeja = lazy(() => import("@/pages/Bandeja"));
 const Aprobacion = lazy(() => import("@/pages/Aprobacion"));
 const Reporte = lazy(() => import("@/pages/Reporte"));
+const Facturacion = lazy(() => import("@/pages/Facturacion"));
 const Datos = lazy(() => import("@/pages/Datos"));
 const Integraciones = lazy(() => import("@/pages/Integraciones"));
 
@@ -24,83 +27,63 @@ function RouteLoadingFallback() {
   );
 }
 
+/**
+ * Envuelve una ruta con el permiso que exige. El permiso se aplica en el cliente: el API no
+ * valida rol (limitación conocida del MVP).
+ */
+function guarded(permission: Permission, element: ReactNode) {
+  return <RequirePermission permission={permission}>{element}</RequirePermission>;
+}
+
+function lazyPage(element: ReactNode) {
+  return <Suspense fallback={<RouteLoadingFallback />}>{element}</Suspense>;
+}
+
 const router = createBrowserRouter([
   {
     path: "/",
     element: <AppShell />,
     children: [
-      { index: true, element: <Tablero /> },
+      { index: true, element: guarded("dashboard:view", <Tablero />) },
       {
         path: "subir",
-        element: (
-          <Suspense fallback={<RouteLoadingFallback />}>
-            <Subir />
-          </Suspense>
-        ),
+        element: guarded("invoice:upload", lazyPage(<Subir />)),
       },
       {
         path: "procesando",
-        element: (
-          <Suspense fallback={<RouteLoadingFallback />}>
-            <Procesando />
-          </Suspense>
-        ),
+        element: guarded("invoice:upload", lazyPage(<Procesando />)),
       },
       {
         path: "factura/:id",
-        element: (
-          <Suspense fallback={<RouteLoadingFallback />}>
-            <Detalle />
-          </Suspense>
-        ),
+        element: guarded("invoice:view", lazyPage(<Detalle />)),
       },
       {
         path: "reglas",
-        element: (
-          <Suspense fallback={<RouteLoadingFallback />}>
-            <Reglas />
-          </Suspense>
-        ),
+        element: guarded("policy:edit", lazyPage(<Reglas />)),
       },
       {
         path: "bandeja",
-        element: (
-          <Suspense fallback={<RouteLoadingFallback />}>
-            <Bandeja />
-          </Suspense>
-        ),
+        element: guarded("approval:resolve", lazyPage(<Bandeja />)),
       },
       {
         path: "aprobacion/:id",
-        element: (
-          <Suspense fallback={<RouteLoadingFallback />}>
-            <Aprobacion />
-          </Suspense>
-        ),
+        element: guarded("approval:resolve", lazyPage(<Aprobacion />)),
       },
       {
         path: "reporte",
-        element: (
-          <Suspense fallback={<RouteLoadingFallback />}>
-            <Reporte />
-          </Suspense>
-        ),
+        element: guarded("report:view", lazyPage(<Reporte />)),
+      },
+      {
+        path: "facturacion",
+        element: guarded("billing:view", lazyPage(<Facturacion />)),
       },
       {
         path: "datos",
-        element: (
-          <Suspense fallback={<RouteLoadingFallback />}>
-            <Datos />
-          </Suspense>
-        ),
+        element: guarded("demo:reset", lazyPage(<Datos />)),
       },
       {
         path: "integraciones",
-        element: (
-          <Suspense fallback={<RouteLoadingFallback />}>
-            <Integraciones />
-          </Suspense>
-        ),
+        element: guarded("integrations:manage", lazyPage(<Integraciones />)),
       },
       { path: "*", element: <Navigate to="/" replace /> },
     ],

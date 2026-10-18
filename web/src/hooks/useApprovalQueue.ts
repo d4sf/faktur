@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useSession } from "@/components/session/SessionProvider";
 import { formatReasonTitle } from "@/lib/invoiceSubmit";
 import type { InvoiceData, PendingApproval } from "@/types/invoice";
 
@@ -44,6 +45,7 @@ interface AuditRecordResponse {
 
 export function useApprovalQueue() {
   const [searchParams] = useSearchParams();
+  const { user } = useSession();
   const [approvals, setApprovals] = useState<PendingApproval[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [searchTerm, setSearchTerm] = useState<string>("");
@@ -202,7 +204,7 @@ export function useApprovalQueue() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             approve: isApproved,
-            resolved_by: "Revisor (Bandeja Web)",
+            resolved_by: user.name,
             comment,
           }),
         });
