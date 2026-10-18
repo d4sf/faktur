@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, CheckCircle2, Loader2, UserCheck, X, XCircle } from "lucide-react";
+import { Check, CheckCircle2, Loader2, X, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatNaturalExplanation, formatReasonTitle } from "@/lib/invoiceSubmit";
 import { InvoiceData } from "@/types/invoice";
@@ -85,16 +85,11 @@ export function PayAgentChat({ invoice, onResolve }: PayAgentChatProps) {
     <div className="rounded-xl border border-border bg-card shadow-xs overflow-hidden space-y-4 p-5">
       {/* Cabecera del panel de decisión */}
       <div className="flex items-center justify-between border-b border-border/60 pb-3">
-        <div className="flex items-center gap-2.5">
-          <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
-            <UserCheck className="size-4" />
-          </div>
-          <div>
-            <h5 className="text-xs font-bold text-foreground">Resolución Humana Requerida</h5>
-            <p className="text-[11px] text-muted-foreground">
-              Excepción en políticas · Autorización manual de pago
-            </p>
-          </div>
+        <div>
+          <h5 className="text-xs font-bold text-foreground">Resolución Humana Requerida</h5>
+          <p className="text-[11px] text-muted-foreground">
+            Excepción en políticas · Autorización manual de pago
+          </p>
         </div>
         <span className="rounded-md bg-muted px-2 py-0.5 text-[10px] font-mono text-muted-foreground">
           Folio: {invoice.invoice_number}

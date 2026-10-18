@@ -6,7 +6,15 @@
  */
 
 import { useEffect, useState } from "react";
-import { Download, RefreshCw, Search } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  Download,
+  RefreshCw,
+  Search,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -35,6 +43,8 @@ export default function Reporte() {
   const [metrics, setMetrics] = useState<AuditMetricsData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [searchTerm, setSearchTerm] = useState<string>("");
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(10);
 
   interface BackendAuditRecord {
     id: string;
@@ -102,6 +112,13 @@ export default function Reporte() {
       formatReasonTitle(r.reason_code).toLowerCase().includes(q)
     );
   });
+
+  const totalRecords = filteredRecords.length;
+  const totalPages = Math.max(1, Math.ceil(totalRecords / pageSize));
+  const validPage = Math.min(currentPage, totalPages);
+  const startIndex = (validPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, totalRecords);
+  const currentRecords = filteredRecords.slice(startIndex, endIndex);
 
   return (
     <div className="space-y-6">
@@ -234,7 +251,10 @@ export default function Reporte() {
             <input
               type="text"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1);
+              }}
               placeholder="Filtrar por folio, proveedor o código..."
               className="w-full rounded-xl border border-border bg-card pl-9 pr-3 py-2 text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary shadow-xs"
             />
@@ -317,7 +337,7 @@ export default function Reporte() {
                     </td>
                   </tr>
                 ) : (
-                  filteredRecords.map((r) => (
+                  currentRecords.map((r) => (
                     <tr key={r.id} className="hover:bg-muted/20 transition-colors">
                       <td className="px-4 py-3 font-mono font-medium text-foreground">
                         {r.invoice_number}
@@ -358,6 +378,98 @@ export default function Reporte() {
               </tbody>
             </table>
           </div>
+
+          {/* Barra de paginación */}
+          {totalRecords > 0 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-border/80 bg-muted/20 px-4 py-3 text-xs text-muted-foreground">
+              {/* Selector de filas por página y rango actual */}
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] font-medium">Mostrar:</span>
+                  <select
+                    value={pageSize}
+                    onChange={(e) => {
+                      setPageSize(Number(e.target.value));
+                      setCurrentPage(1);
+                    }}
+                    className="h-7 rounded-lg border border-border bg-background px-2 text-xs font-semibold text-foreground shadow-xs focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
+                  >
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                  </select>
+                </div>
+
+                <span className="hidden sm:inline-block text-border">|</span>
+
+                <span>
+                  Mostrando{" "}
+                  <strong className="font-semibold text-foreground">{startIndex + 1}</strong> a{" "}
+                  <strong className="font-semibold text-foreground">{endIndex}</strong> de{" "}
+                  <strong className="font-semibold text-foreground">{totalRecords}</strong> facturas
+                </span>
+              </div>
+
+              {/* Navegación de páginas */}
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-medium mr-1">
+                  Página <strong className="text-foreground">{validPage}</strong> de{" "}
+                  <strong className="text-foreground">{totalPages}</strong>
+                </span>
+
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setCurrentPage(1)}
+                    disabled={validPage === 1}
+                    className="size-7 rounded-lg shadow-xs disabled:opacity-40"
+                    title="Primera página"
+                  >
+                    <ChevronsLeft className="size-3.5" />
+                    <span className="sr-only">Primera página</span>
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={validPage === 1}
+                    className="size-7 rounded-lg shadow-xs disabled:opacity-40"
+                    title="Página anterior"
+                  >
+                    <ChevronLeft className="size-3.5" />
+                    <span className="sr-only">Página anterior</span>
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={validPage === totalPages}
+                    className="size-7 rounded-lg shadow-xs disabled:opacity-40"
+                    title="Página siguiente"
+                  >
+                    <ChevronRight className="size-3.5" />
+                    <span className="sr-only">Página siguiente</span>
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setCurrentPage(totalPages)}
+                    disabled={validPage === totalPages}
+                    className="size-7 rounded-lg shadow-xs disabled:opacity-40"
+                    title="Última página"
+                  >
+                    <ChevronsRight className="size-3.5" />
+                    <span className="sr-only">Última página</span>
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
         </Card>
       </div>
     </div>
