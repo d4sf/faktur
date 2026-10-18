@@ -23,8 +23,14 @@ const app = await buildApp({
     upload: { max: env.RATE_LIMIT_UPLOAD_MAX, timeWindow: env.RATE_LIMIT_UPLOAD_WINDOW_MS },
     explain: { max: env.RATE_LIMIT_EXPLAIN_MAX, timeWindow: env.RATE_LIMIT_EXPLAIN_WINDOW_MS },
     admin: { max: env.RATE_LIMIT_ADMIN_MAX, timeWindow: env.RATE_LIMIT_ADMIN_WINDOW_MS },
-    webhookTest: { max: env.RATE_LIMIT_WEBHOOK_TEST_MAX, timeWindow: env.RATE_LIMIT_WEBHOOK_TEST_WINDOW_MS },
-    policyPreview: { max: env.RATE_LIMIT_EXPLAIN_MAX, timeWindow: env.RATE_LIMIT_EXPLAIN_WINDOW_MS },
+    webhookTest: {
+      max: env.RATE_LIMIT_WEBHOOK_TEST_MAX,
+      timeWindow: env.RATE_LIMIT_WEBHOOK_TEST_WINDOW_MS,
+    },
+    policyPreview: {
+      max: env.RATE_LIMIT_EXPLAIN_MAX,
+      timeWindow: env.RATE_LIMIT_EXPLAIN_WINDOW_MS,
+    },
   },
 });
 

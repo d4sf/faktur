@@ -89,72 +89,75 @@ export async function registerInvoiceRoutes(app: FastifyInstance): Promise<void>
   const uploadLimit = app.rateLimits?.upload;
   app.post(
     "/api/invoices",
-    uploadLimit ? { config: { rateLimit: { max: uploadLimit.max, timeWindow: uploadLimit.timeWindow } } } : {},
+    uploadLimit
+      ? { config: { rateLimit: { max: uploadLimit.max, timeWindow: uploadLimit.timeWindow } } }
+      : {},
     async (request, reply) => {
-    let file;
-    try {
-      file = await request.file();
-    } catch (error) {
-      if ((error as { code?: string }).code === "FST_REQ_FILE_TOO_LARGE") {
-        return reply.code(413).send({ error: "file_too_large" });
+      let file;
+      try {
+        file = await request.file();
+      } catch (error) {
+        if ((error as { code?: string }).code === "FST_REQ_FILE_TOO_LARGE") {
+          return reply.code(413).send({ error: "file_too_large" });
+        }
+        return reply.code(400).send({ error: "invalid_multipart" });
       }
-      return reply.code(400).send({ error: "invalid_multipart" });
-    }
 
-    if (file === undefined) return reply.code(400).send({ error: "missing_file" });
-    if (file.file.truncated) return reply.code(413).send({ error: "file_too_large" });
+      if (file === undefined) return reply.code(400).send({ error: "missing_file" });
+      if (file.file.truncated) return reply.code(413).send({ error: "file_too_large" });
 
-    let result: IngestResult;
-    try {
-      const buffer = await file.toBuffer();
-      result = ingestFile({ buffer, fileName: file.filename, mimeType: file.mimetype });
-    } catch (error) {
-      if ((error as { code?: string }).code === "FST_REQ_FILE_TOO_LARGE") {
-        return reply.code(413).send({ error: "file_too_large" });
+      let result: IngestResult;
+      try {
+        const buffer = await file.toBuffer();
+        result = ingestFile({ buffer, fileName: file.filename, mimeType: file.mimetype });
+      } catch (error) {
+        if ((error as { code?: string }).code === "FST_REQ_FILE_TOO_LARGE") {
+          return reply.code(413).send({ error: "file_too_large" });
+        }
+        const mapped = errorReply(error);
+        if (mapped !== null) return reply.code(mapped.status).send({ error: mapped.code });
+        throw error;
       }
-      const mapped = errorReply(error);
-      if (mapped !== null) return reply.code(mapped.status).send({ error: mapped.code });
-      throw error;
-    }
 
-    if (result.status === "DUPLICADA") return reply.code(200).send(body(result));
+      if (result.status === "DUPLICADA") return reply.code(200).send(body(result));
 
-    const attempt = getAttempt(result.attempt_id);
-    if (attempt === null) return reply.code(404).send({ error: "not_found" });
+      const attempt = getAttempt(result.attempt_id);
+      if (attempt === null) return reply.code(404).send({ error: "not_found" });
 
-    try {
-      const buffer = readFileSync(storedUploadPath(attempt.file_hash));
-      const extracted = await extractInvoice({ buffer, mimeType: attempt.mime_type });
-      const persisted = persistExtraction(attempt.id, extracted, getDb());
-      if (persisted.duplicate) {
-        return reply.code(200).send({
+      try {
+        const buffer = readFileSync(storedUploadPath(attempt.file_hash));
+        const extracted = await extractInvoice({ buffer, mimeType: attempt.mime_type });
+        const persisted = persistExtraction(attempt.id, extracted, getDb());
+        if (persisted.duplicate) {
+          return reply.code(200).send({
+            attempt_id: attempt.id,
+            invoice_id: persisted.duplicate_of,
+            status: "DUPLICADA",
+            ...persisted.decision,
+          });
+        }
+        const decision = decideInvoice(persisted.invoice_id, getDb());
+        if (decision.verdict === "ESCALAR") {
+          notifyApprovalChange({ type: "NEW_APPROVAL", id: persisted.invoice_id });
+        }
+
+        return reply.code(201).send({
           attempt_id: attempt.id,
-          invoice_id: persisted.duplicate_of,
-          status: "DUPLICADA",
-          ...persisted.decision,
+          invoice_id: persisted.invoice_id,
+          verdict: decision.verdict,
+          reason_code: decision.reason_code,
+          explanation: decision.explanation,
         });
+      } catch (error) {
+        const mapped = errorReply(error);
+        if (mapped === null) throw error;
+        if (mapped.code === "extraction_invalid" || mapped.code === "currency_not_allowed") {
+          updateAttemptStatus(attempt.id, "RECHAZADA");
+        }
+        return reply.code(mapped.status).send({ error: mapped.code });
       }
-      const decision = decideInvoice(persisted.invoice_id, getDb());
-      if (decision.verdict === "ESCALAR") {
-        notifyApprovalChange({ type: "NEW_APPROVAL", id: persisted.invoice_id });
-      }
-
-      return reply.code(201).send({
-        attempt_id: attempt.id,
-        invoice_id: persisted.invoice_id,
-        verdict: decision.verdict,
-        reason_code: decision.reason_code,
-        explanation: decision.explanation,
-      });
-    } catch (error) {
-      const mapped = errorReply(error);
-      if (mapped === null) throw error;
-      if (mapped.code === "extraction_invalid" || mapped.code === "currency_not_allowed") {
-        updateAttemptStatus(attempt.id, "RECHAZADA");
-      }
-      return reply.code(mapped.status).send({ error: mapped.code });
-    }
-  });
+    },
+  );
 
   app.post<{ Params: { id: string } }>("/api/invoices/:id/decide", async (request, reply) => {
     try {

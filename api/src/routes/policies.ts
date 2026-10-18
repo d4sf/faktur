@@ -21,15 +21,18 @@ export async function registerPolicyRoutes(app: FastifyInstance): Promise<void> 
   const previewLimit = app.rateLimits?.policyPreview;
   app.post(
     "/api/policy/preview",
-    previewLimit ? { config: { rateLimit: { max: previewLimit.max, timeWindow: previewLimit.timeWindow } } } : {},
+    previewLimit
+      ? { config: { rateLimit: { max: previewLimit.max, timeWindow: previewLimit.timeWindow } } }
+      : {},
     async (request, reply) => {
-    try {
-      return { affected: previewPolicy(request.body, getDb()) };
-    } catch (error) {
-      if (error instanceof InvalidPolicyError) {
-        return reply.code(422).send({ error: "invalid_policy" });
+      try {
+        return { affected: previewPolicy(request.body, getDb()) };
+      } catch (error) {
+        if (error instanceof InvalidPolicyError) {
+          return reply.code(422).send({ error: "invalid_policy" });
+        }
+        throw error;
       }
-      throw error;
-    }
-  });
+    },
+  );
 }

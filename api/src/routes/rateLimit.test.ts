@@ -19,7 +19,10 @@ afterEach(() => {
 });
 
 test("global: el (max+1)-ésimo request devuelve 429 con Retry-After y data (rick astley)", async () => {
-  const app = await buildApp({ logLevel: "silent", rateLimit: { global: { max: 2, timeWindow: 60000 } } });
+  const app = await buildApp({
+    logLevel: "silent",
+    rateLimit: { global: { max: 2, timeWindow: 60000 } },
+  });
   try {
     const a = await app.inject({ method: "GET", url: "/api/audit-trail" });
     const b = await app.inject({ method: "GET", url: "/api/audit-trail" });
@@ -38,7 +41,10 @@ test("global: el (max+1)-ésimo request devuelve 429 con Retry-After y data (ric
 });
 
 test("health: no se limita", async () => {
-  const app = await buildApp({ logLevel: "silent", rateLimit: { global: { max: 1, timeWindow: 60000 } } });
+  const app = await buildApp({
+    logLevel: "silent",
+    rateLimit: { global: { max: 1, timeWindow: 60000 } },
+  });
   try {
     for (let i = 0; i < 5; i++) {
       const res = await app.inject({ method: "GET", url: "/api/health" });

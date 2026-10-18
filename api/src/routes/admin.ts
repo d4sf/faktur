@@ -64,26 +64,29 @@ export async function registerAdminRoutes(
   const adminLimit = app.rateLimits?.admin;
   app.post(
     "/api/admin/db/reset",
-    adminLimit ? { config: { rateLimit: { max: adminLimit.max, timeWindow: adminLimit.timeWindow } } } : {},
+    adminLimit
+      ? { config: { rateLimit: { max: adminLimit.max, timeWindow: adminLimit.timeWindow } } }
+      : {},
     async (request, reply) => {
-    const reason = blockReason(options);
-    if (reason === "disabled") {
-      return reply.code(403).send({ error: "db_reset_disabled" });
-    }
-    if (reason === "missing_token") {
-      return reply.code(403).send({ error: "db_reset_token_missing" });
-    }
+      const reason = blockReason(options);
+      if (reason === "disabled") {
+        return reply.code(403).send({ error: "db_reset_disabled" });
+      }
+      if (reason === "missing_token") {
+        return reply.code(403).send({ error: "db_reset_token_missing" });
+      }
 
-    if (options.token !== undefined && request.headers["x-admin-token"] !== options.token) {
-      return reply.code(401).send({ error: "admin_token_invalid" });
-    }
+      if (options.token !== undefined && request.headers["x-admin-token"] !== options.token) {
+        return reply.code(401).send({ error: "admin_token_invalid" });
+      }
 
-    const parsed = resetRequestSchema.safeParse(request.body);
-    if (!parsed.success || !isSeedProfile(parsed.data.profile)) {
-      return reply.code(422).send({ error: "invalid_reset_request" });
-    }
+      const parsed = resetRequestSchema.safeParse(request.body);
+      if (!parsed.success || !isSeedProfile(parsed.data.profile)) {
+        return reply.code(422).send({ error: "invalid_reset_request" });
+      }
 
-    const result = resetDatabase({ dbPath: getDbPath(), profile: parsed.data.profile });
-    return reply.code(200).send(result);
-  });
+      const result = resetDatabase({ dbPath: getDbPath(), profile: parsed.data.profile });
+      return reply.code(200).send(result);
+    },
+  );
 }

@@ -18,7 +18,9 @@ export async function registerIngestRoutes(app: FastifyInstance): Promise<void> 
   const extractLimit = app.rateLimits?.upload;
   app.post<{ Params: { id: string } }>(
     "/api/ingest-attempts/:id/extract",
-    extractLimit ? { config: { rateLimit: { max: extractLimit.max, timeWindow: extractLimit.timeWindow } } } : {},
+    extractLimit
+      ? { config: { rateLimit: { max: extractLimit.max, timeWindow: extractLimit.timeWindow } } }
+      : {},
     async (request, reply) => {
       const attempt = getAttempt(request.params.id);
       if (attempt === null) return reply.code(404).send({ error: "not_found" });

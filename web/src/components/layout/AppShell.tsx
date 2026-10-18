@@ -50,7 +50,7 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const location = useLocation();
   const lastNav = useRef(0);
 
-  const handleNavigate = (e: any) => {
+  const handleNavigate = (e: { preventDefault: () => void }) => {
     const now = Date.now();
     if (now - lastNav.current < 300) {
       e.preventDefault();
