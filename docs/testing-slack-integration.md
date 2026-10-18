@@ -247,7 +247,7 @@ Verificar en Slack/webhook.site que llegó un mensaje con:
 - Monto de la factura
 - (Si hay explicación con IA cacheada, se incluye)
 
-### 4.4 Caso 3 — FRENAR NO dispara webhook
+### 4.4 Caso 3 — FRENAR SÍ dispara webhook
 
 Subir una factura que frene (TC-08, Entidad Fantasma):
 
@@ -257,7 +257,9 @@ curl -s -X POST http://127.0.0.1:3000/api/invoices \
 # Esperado: verdict "FRENAR"
 ```
 
-Verificar que **NO** llegó ningún mensaje a Slack/webhook.site.
+Verificar que **SÍ** llegó un mensaje a Slack/webhook.site con el motivo "Falta el identificador fiscal del beneficiario".
+
+> Nota: los reenvíos duplicados (DUPLICADA) también disparan el webhook, usando la factura canónica como contexto.
 
 ### 4.5 Caso 4 — PAGAR NO dispara webhook
 

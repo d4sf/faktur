@@ -780,7 +780,7 @@ El agente conversacional es un buen extra de pitch, pero va **después** de que 
 Dos adiciones aditivas, documentadas en ADRs y planes propios, que no contradicen el MVP:
 
 - **Explicación con IA** (ADR `0003`, plan `docs/superpowers/plans/2026-10-17-ai-explanation.md`): botón en el sheet de detalle que genera una explicación en lenguaje natural de una decisión no aprobada, persistida y cacheada en `ai_explanations`, sin alterar el veredicto determinista.
-- **Integración con Slack** (ADR `0004`, plan `docs/superpowers/plans/2026-10-17-slack-integration.md`): pantalla para pegar la URL de un incoming webhook y notificar en ESCALAR y NEGADA, con mensaje `text` simple y botón de prueba. Reutiliza el outbox y envía la explicación con IA solo si está cacheada.
+- **Integración con Slack** (ADR `0004`, plan `docs/superpowers/plans/2026-10-17-slack-integration.md`): pantalla para pegar la URL de un incoming webhook y notificar en ESCALAR, NEGADA y FRENAR, con mensaje `text` simple y botón de prueba. Reutiliza el outbox y envía la explicación con IA solo si está cacheada.
 
 ---
 
