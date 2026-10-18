@@ -270,8 +270,26 @@ export function createInvoiceSubmitter(deps: InvoiceSubmitterDeps = {}) {
     const fetchImpl = deps.fetchImpl ?? globalThis.fetch;
     const stage = (progress: number, message: string) => deps.onStage?.({ progress, message });
 
+    let progressTimer: ReturnType<typeof setInterval> | null = null;
     try {
       stage(20, "Analizando documento…");
+
+      let currentProgress = 20;
+      progressTimer = setInterval(() => {
+        if (currentProgress < 45) {
+          currentProgress = 45;
+          stage(45, "Extrayendo entidades con IA multimodal…");
+        } else if (currentProgress < 70) {
+          currentProgress = 70;
+          stage(70, "Normalizando moneda FX y validando ítems…");
+        } else if (currentProgress < 85) {
+          currentProgress = 85;
+          stage(85, "Evaluando orden de precedencia de 8 reglas…");
+        } else if (currentProgress < 95) {
+          currentProgress = 95;
+          stage(95, "Generando veredicto y traza de auditoría…");
+        }
+      }, 700);
 
       const formData = new FormData();
       formData.append("file", file);
@@ -279,11 +297,16 @@ export function createInvoiceSubmitter(deps: InvoiceSubmitterDeps = {}) {
       const response = await fetchImpl("/api/invoices", { method: "POST", body: formData });
       const payload = await readJson(response);
 
+      if (progressTimer) {
+        clearInterval(progressTimer);
+        progressTimer = null;
+      }
+
       if (!response.ok) {
         return { status: "error", message: describeError(response.status, payload) };
       }
 
-      stage(85, "Evaluando reglas deterministas de política…");
+      stage(98, "Evaluando reglas deterministas de política…");
 
       const invoice = await buildInvoice(file, (payload ?? {}) as IngestResponse, fetchImpl);
       return { status: "completed", invoice };
@@ -293,6 +316,7 @@ export function createInvoiceSubmitter(deps: InvoiceSubmitterDeps = {}) {
         message: "No se pudo conectar con el agente. Revisá la conexión y reintentá.",
       };
     } finally {
+      if (progressTimer) clearInterval(progressTimer);
       inFlight = false;
     }
   };
