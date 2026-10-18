@@ -137,8 +137,8 @@ export default function Reglas() {
   return (
     <div className="space-y-6">
       {/* 1. Encabezado */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-1">
-        <div>
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-1">
+        <div className="min-w-0">
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
             Reglas de política
           </h1>
@@ -147,9 +147,9 @@ export default function Reglas() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2 self-start sm:self-auto">
-          <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#185338] text-white text-xs font-semibold shadow-xs">
-            <Lock className="size-3.5" />
+        <div className="flex flex-wrap items-center gap-2 self-start md:self-auto shrink-0">
+          <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#185338] text-white text-xs font-semibold shadow-xs shrink-0 whitespace-nowrap">
+            <Lock className="size-3.5 shrink-0" />
             <span>
               {activeVersion} {policy ? "Activa" : "Congelada"}
             </span>
@@ -159,9 +159,9 @@ export default function Reglas() {
             href="/api/policy"
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-card border border-border/80 text-foreground text-xs font-semibold shadow-xs hover:bg-muted/50 transition-colors"
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-card border border-border/80 text-foreground text-xs font-semibold shadow-xs hover:bg-muted/50 transition-colors shrink-0 whitespace-nowrap"
           >
-            <FileCode2 className="size-3.5 text-muted-foreground" />
+            <FileCode2 className="size-3.5 text-muted-foreground shrink-0" />
             <span>Spec JSON</span>
           </a>
 
@@ -170,7 +170,7 @@ export default function Reglas() {
             variant={isEditing ? "secondary" : "default"}
             size="sm"
             onClick={() => setIsEditing((prev) => !prev)}
-            className="rounded-full text-xs font-semibold gap-1.5 h-8 px-3.5 shadow-xs cursor-pointer"
+            className="rounded-full text-xs font-semibold gap-1.5 h-8 px-3.5 shadow-xs shrink-0 whitespace-nowrap cursor-pointer"
           >
             {isEditing ? (
               <>
@@ -292,10 +292,10 @@ export default function Reglas() {
         </div>
 
         <div className="overflow-x-auto mt-2">
-          <table className="w-full text-left text-xs">
+          <table className="w-full text-left text-xs min-w-[640px]">
             <thead className="border-b border-border/60 text-muted-foreground">
               <tr>
-                <th className="py-3 px-3 font-semibold uppercase tracking-wider text-[10px] whitespace-nowrap">
+                <th className="sticky left-0 bg-card z-10 py-3 px-3 font-semibold uppercase tracking-wider text-[10px] whitespace-nowrap shadow-[1px_0_0_0_var(--border)]">
                   Regla
                 </th>
                 <th className="py-3 px-3 font-semibold uppercase tracking-wider text-[10px]">
@@ -315,17 +315,21 @@ export default function Reglas() {
             <tbody className="divide-y divide-border/40">
               {POLICY_RULES.map((rule) => (
                 <tr key={rule.ruleNumber} className="hover:bg-muted/30 transition-colors">
-                  <td className="py-3.5 px-3 font-mono font-bold text-foreground whitespace-nowrap">
+                  <td className="sticky left-0 bg-card z-10 py-3.5 px-3 font-mono font-bold text-foreground whitespace-nowrap shadow-[1px_0_0_0_var(--border)]">
                     {rule.ruleNumber}
                   </td>
-                  <td className="py-3.5 px-3 font-medium text-foreground whitespace-nowrap">
+                  <td className="py-3.5 px-3 font-medium text-foreground min-w-[140px] max-w-[200px]">
                     {rule.name}
                   </td>
                   <td className="py-3.5 px-3 whitespace-nowrap">
                     <VerdictBadge verdict={rule.verdict} size="sm" />
                   </td>
-                  <td className="py-3.5 px-3 text-muted-foreground max-w-xs">{rule.condition}</td>
-                  <td className="py-3.5 px-3 text-muted-foreground max-w-xs">{rule.action}</td>
+                  <td className="py-3.5 px-3 text-muted-foreground min-w-[180px] max-w-xs">
+                    {rule.condition}
+                  </td>
+                  <td className="py-3.5 px-3 text-muted-foreground min-w-[180px] max-w-xs">
+                    {rule.action}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -344,7 +348,7 @@ export default function Reglas() {
           </p>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mt-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 mt-4">
           {categoryItems.map((cat) => {
             const isBlocked = cat.status === "Bloqueado";
 
@@ -353,13 +357,17 @@ export default function Reglas() {
                 key={cat.category}
                 className="rounded-xl border border-border/70 bg-card p-3.5 space-y-1.5 hover:border-border transition-colors"
               >
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-semibold text-foreground">{cat.category}</span>
-                  <div className="flex items-center gap-1.5">
+                <div className="flex items-center justify-between gap-2 text-xs">
+                  <span className="font-semibold text-foreground truncate" title={cat.category}>
+                    {cat.category}
+                  </span>
+                  <div className="flex items-center gap-1.5 shrink-0">
                     <span
-                      className={`size-1.5 rounded-full ${isBlocked ? "bg-rose-500" : "bg-emerald-500"}`}
+                      className={`size-1.5 rounded-full shrink-0 ${isBlocked ? "bg-rose-500" : "bg-emerald-500"}`}
                     />
-                    <span className="text-[11px] text-muted-foreground">{cat.status}</span>
+                    <span className="text-[11px] text-muted-foreground whitespace-nowrap">
+                      {cat.status}
+                    </span>
                   </div>
                 </div>
                 <p className="font-mono text-xs font-bold text-foreground pt-0.5">{cat.budget}</p>

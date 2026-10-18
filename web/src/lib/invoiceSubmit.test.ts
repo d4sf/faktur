@@ -5,6 +5,8 @@ import {
   createInvoiceSubmitter,
   describeError,
   determineFailingRuleId,
+  formatReasonTitle,
+  formatTimelineDetail,
   MAX_UPLOAD_BYTES,
   pickDroppedFile,
   validateInvoiceFile,
@@ -263,4 +265,19 @@ test("una caída de red se reporta como error de conexión", async () => {
     status: "error",
     message: "No se pudo conectar con el agente. Revisá la conexión y reintentá.",
   });
+});
+
+test("formatReasonTitle traduce códigos técnicos a lenguaje natural en español", () => {
+  assert.equal(formatReasonTitle("ALERT_LOW_CONFIDENCE"), "Confianza insuficiente en lectura");
+  assert.equal(formatReasonTitle("SUCCESS_TOUCHLESS_STP"), "Aprobación autónoma directa");
+  assert.equal(formatReasonTitle("ALERT_THRESHOLD_EXCEEDED"), "Supera umbral de aprobación");
+  assert.equal(formatReasonTitle("ERR_BLACKLISTED_VENDOR"), "Proveedor en lista negra");
+  assert.equal(formatReasonTitle(undefined), "Evaluación completada");
+});
+
+test("formatTimelineDetail reemplaza códigos técnicos dentro de los detalles de la línea de tiempo", () => {
+  const input = "ESCALAR ALERT_LOW_CONFIDENCE: No se pudo leer due_date con confianza (0.5 < 0.7)";
+  const expected =
+    "ESCALAR · Confianza insuficiente en lectura: No se pudo leer due_date con confianza (0.5 < 0.7)";
+  assert.equal(formatTimelineDetail(input), expected);
 });

@@ -1,4 +1,5 @@
 import { VerdictBadge } from "@/components/ui/VerdictBadge";
+import { formatReasonTitle } from "@/lib/invoiceSubmit";
 import type { AffectedInvoice } from "@/types/policy";
 import type { AuditRecordView } from "@/types/audit";
 
@@ -81,8 +82,10 @@ export function SimulationResults({ records, affected, stale }: SimulationResult
                       <td className="px-4 py-3">
                         <VerdictBadge verdict={aff.after} size="sm" />
                       </td>
-                      <td className="px-4 py-3 text-muted-foreground max-w-xs truncate">
-                        <div className="truncate text-[11px] font-mono">{aff.reason_code}</div>
+                      <td className="px-4 py-3 text-foreground text-xs max-w-xs truncate">
+                        <div className="truncate font-medium" title={`Código: ${aff.reason_code}`}>
+                          {formatReasonTitle(aff.reason_code)}
+                        </div>
                       </td>
                     </tr>
                   );

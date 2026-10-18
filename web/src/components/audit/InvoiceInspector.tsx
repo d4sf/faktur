@@ -12,7 +12,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { VerdictBadge } from "@/components/ui/VerdictBadge";
-import { formatReasonTitle } from "@/lib/invoiceSubmit";
+import { formatReasonTitle, formatTimelineDetail } from "@/lib/invoiceSubmit";
 import type { AuditDetail, AuditRecordView } from "@/types/audit";
 
 interface InvoiceInspectorProps {
@@ -203,11 +203,11 @@ export function InvoiceInspector({ record, open, onOpenChange }: InvoiceInspecto
             >
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <div className={`text-xs font-bold ${verdictTheme.code}`}>
+                  <div
+                    className={`text-xs font-bold ${verdictTheme.code}`}
+                    title={`Código: ${record.reason_code}`}
+                  >
                     {formatReasonTitle(record.reason_code)}
-                  </div>
-                  <div className="text-[10px] text-muted-foreground font-mono mt-0.5">
-                    {record.reason_code}
                   </div>
                 </div>
                 <span className="text-[10px] text-muted-foreground uppercase font-mono tracking-wider shrink-0">
@@ -282,11 +282,11 @@ export function InvoiceInspector({ record, open, onOpenChange }: InvoiceInspecto
                   className="h-8 px-3 text-xs font-semibold shadow-xs shrink-0 bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition-colors cursor-pointer"
                 >
                   <a
-                    href="/bandeja"
+                    href={`/bandeja?invoice_id=${encodeURIComponent(record.invoice_id || record.id)}`}
                     onClick={() => onOpenChange(false)}
                     className="flex items-center gap-1.5"
                   >
-                    <span>Ir a bandeja</span>
+                    <span>Ir a revisión</span>
                     <ArrowRight className="size-3.5" />
                   </a>
                 </Button>
@@ -324,7 +324,9 @@ export function InvoiceInspector({ record, open, onOpenChange }: InvoiceInspecto
                           {formatDate(event.at)}
                         </div>
                         <div className="text-xs font-semibold text-foreground">{event.type}</div>
-                        <div className="text-[11px] text-muted-foreground">{event.detail}</div>
+                        <div className="text-[11px] text-muted-foreground">
+                          {formatTimelineDetail(event.detail)}
+                        </div>
                       </div>
                     );
                   })}

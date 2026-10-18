@@ -7,11 +7,28 @@
 import { AlertTriangle, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { VerdictBadge } from "@/components/ui/VerdictBadge";
+import { formatReasonTitle } from "@/lib/invoiceSubmit";
 import { PendingApproval } from "@/types/invoice";
 
 interface ApprovalCardProps {
   item: PendingApproval;
   onReview: (item: PendingApproval) => void;
+}
+
+function formatDate(isoString: string): string {
+  try {
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return isoString;
+    return d.toLocaleString("es-AR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return isoString;
+  }
 }
 
 export function ApprovalCard({ item, onReview }: ApprovalCardProps) {
@@ -21,15 +38,18 @@ export function ApprovalCard({ item, onReview }: ApprovalCardProps) {
       <div className="p-5 space-y-4 flex-1">
         {/* Cabecera con folio, proveedor y etiqueta de estado (no botón) */}
         <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
+          <div className="min-w-0 flex-1">
+            <span
+              className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider block truncate max-w-[200px]"
+              title={item.invoice_id}
+            >
               {item.invoice_id}
             </span>
             <h4 className="font-bold text-foreground truncate text-sm">
               {item.vendor_name || "Proveedor sin nombre"}
             </h4>
           </div>
-          <VerdictBadge verdict="ESCALAR" size="sm" variant="pill" />
+          <VerdictBadge verdict="ESCALAR" size="sm" variant="pill" className="shrink-0" />
         </div>
 
         {/* Importe a autorizar */}
@@ -42,9 +62,12 @@ export function ApprovalCard({ item, onReview }: ApprovalCardProps) {
 
         {/* Razón de escalación */}
         <div className="space-y-1.5 text-xs">
-          <div className="flex items-center gap-1.5 text-amber-700 dark:text-amber-400 font-semibold text-[11px]">
+          <div
+            className="flex items-center gap-1.5 text-amber-700 dark:text-amber-400 font-semibold text-[11px]"
+            title={`Código: ${item.reason_code}`}
+          >
             <AlertTriangle className="size-3.5 shrink-0" />
-            <span>{item.reason_code}</span>
+            <span>{formatReasonTitle(item.reason_code)}</span>
           </div>
           <p className="text-muted-foreground text-[11px] leading-relaxed line-clamp-2">
             {item.explanation}
@@ -53,15 +76,15 @@ export function ApprovalCard({ item, onReview }: ApprovalCardProps) {
       </div>
 
       {/* Pie de tarjeta: misma distancia arriba y abajo (py-3 simétrico) */}
-      <div className="border-t border-border/60 bg-muted/10 px-5 py-3 flex items-center justify-between">
-        <span className="text-[10px] text-muted-foreground flex items-center gap-1.5">
+      <div className="border-t border-border/60 bg-muted/10 px-5 py-3 flex flex-wrap items-center justify-between gap-2">
+        <span className="text-[10px] text-muted-foreground flex items-center gap-1.5 shrink-0">
           <Clock className="size-3" />
-          <span>{item.requested_at}</span>
+          <span>{formatDate(item.requested_at)}</span>
         </span>
         <Button
           size="sm"
           onClick={() => onReview(item)}
-          className="h-8 px-4 text-xs font-semibold shadow-xs"
+          className="h-8 px-4 text-xs font-semibold shadow-xs shrink-0 cursor-pointer"
         >
           <span>Revisar caso</span>
         </Button>

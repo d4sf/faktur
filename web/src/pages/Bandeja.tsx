@@ -7,12 +7,13 @@
 
 import { useEffect, useState } from "react";
 import { Check, RefreshCw, Search, X } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ApprovalCard } from "@/components/bandeja/ApprovalCard";
 import { ApprovalReviewView } from "@/components/bandeja/ApprovalReviewView";
+import { formatReasonTitle } from "@/lib/invoiceSubmit";
 import { InvoiceData, PendingApproval, SystemRule } from "@/types/invoice";
 
 const SYSTEM_RULES: SystemRule[] = [
@@ -72,10 +73,24 @@ interface AuditRecordResponse {
     total_amount?: number | null;
     total_usd?: number | null;
     line_items?: Array<{ concept?: string }>;
+    invoice?: {
+      invoice_number?: string;
+      vendor_name?: string;
+      vendor_tax_id?: string;
+      issue_date?: string;
+      due_date?: string;
+      currency?: string;
+      total_amount?: number;
+      total_usd?: number;
+    };
+    amount_usd?: number;
+    reason_code?: string;
+    explanation?: string;
   };
 }
 
 export default function Bandeja() {
+  const [searchParams] = useSearchParams();
   const [approvals, setApprovals] = useState<PendingApproval[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [searchTerm, setSearchTerm] = useState<string>("");
@@ -169,18 +184,19 @@ export default function Bandeja() {
     }
 
     const rec = auditData?.record;
+    const inv = rec?.invoice;
     setSelectedInvoice({
       id: item.invoice_id,
       fileName: `${item.invoice_id}.pdf`,
       fileSize: "215 KB",
-      invoice_number: rec?.invoice_number || item.invoice_id.toUpperCase(),
-      vendor_name: item.vendor_name || rec?.vendor_id || "Proveedor registrado",
-      vendor_tax_id: rec?.vendor_id || "TAX-ID-PROV",
-      issue_date: rec?.issue_date || new Date().toISOString().split("T")[0],
-      due_date: rec?.due_date || "-",
-      currency: rec?.currency || "USD",
-      total_amount: rec?.total_amount || item.amount_usd,
-      total_usd: rec?.total_usd || item.amount_usd,
+      invoice_number: inv?.invoice_number || rec?.invoice_number || item.invoice_id.toUpperCase(),
+      vendor_name: item.vendor_name || inv?.vendor_name || rec?.vendor_id || "Proveedor registrado",
+      vendor_tax_id: inv?.vendor_tax_id || rec?.vendor_id || "TAX-ID-PROV",
+      issue_date: inv?.issue_date || rec?.issue_date || new Date().toISOString().split("T")[0],
+      due_date: inv?.due_date || rec?.due_date || "-",
+      currency: inv?.currency || rec?.currency || "USD",
+      total_amount: inv?.total_amount || rec?.total_amount || item.amount_usd,
+      total_usd: inv?.total_usd || rec?.total_usd || item.amount_usd,
       concept: rec?.line_items?.[0]?.concept || item.explanation,
       verdict: "ESCALAR",
       reason_code: item.reason_code,
@@ -189,6 +205,48 @@ export default function Bandeja() {
       approvalId: item.id,
     });
   };
+
+  // Abre automáticamente la revisión de una factura específica si viene con ?invoice_id= o ?id=
+  useEffect(() => {
+    const targetInvoiceId = searchParams.get("invoice_id") || searchParams.get("id");
+    if (!targetInvoiceId) return;
+    if (selectedApproval) return;
+
+    // 1. Buscar coincidencia en la lista de aprobaciones pendientes ya cargadas
+    const match = approvals.find(
+      (a) =>
+        a.invoice_id.toLowerCase() === targetInvoiceId.toLowerCase() ||
+        a.id.toLowerCase() === targetInvoiceId.toLowerCase(),
+    );
+
+    if (match) {
+      handleOpenReview(match);
+      return;
+    }
+
+    // 2. Si no estaba en la lista y terminó la carga inicial, traer la factura directamente de la API
+    if (!loading) {
+      fetch(`/api/invoices/${encodeURIComponent(targetInvoiceId)}`)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((auditData) => {
+          if (auditData?.record) {
+            const rec = auditData.record;
+            const inv = rec.invoice;
+            const pending: PendingApproval = {
+              id: rec.id || `app-${targetInvoiceId}`,
+              invoice_id: rec.invoice_id || targetInvoiceId,
+              vendor_name: inv?.vendor_name || inv?.vendor_tax_id || "Proveedor",
+              amount_usd: rec.amount_usd || inv?.total_usd || 0,
+              reason_code: rec.reason_code || "ALERT_THRESHOLD_EXCEEDED",
+              explanation: rec.explanation || "Requiere revisión y firma humana",
+              requested_at: "Pendiente",
+            };
+            handleOpenReview(pending);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [searchParams, approvals, loading, selectedApproval]);
 
   const handleResolveHuman = async (approved: boolean, justification: string) => {
     if (!selectedApproval || !selectedInvoice) return;
@@ -238,7 +296,8 @@ export default function Bandeja() {
     return (
       (item.vendor_name?.toLowerCase().includes(q) ?? false) ||
       item.invoice_id.toLowerCase().includes(q) ||
-      item.reason_code.toLowerCase().includes(q)
+      item.reason_code.toLowerCase().includes(q) ||
+      formatReasonTitle(item.reason_code).toLowerCase().includes(q)
     );
   });
 
@@ -253,20 +312,21 @@ export default function Bandeja() {
           onBack={() => {
             setSelectedInvoice(null);
             setSelectedApproval(null);
+            window.history.replaceState({}, "", "/bandeja");
           }}
           onResolve={handleResolveHuman}
         />
       ) : (
         <div className="space-y-6 animate-in fade-in duration-200">
           {/* Encabezado */}
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border pb-5">
-            <div>
-              <div className="flex items-center gap-2.5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b border-border pb-5">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2.5">
                 <h2 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
                   Bandeja de revisión
                 </h2>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400 select-none">
-                  <span className="size-1.5 rounded-full bg-amber-500 animate-pulse" />
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400 select-none whitespace-nowrap shrink-0">
+                  <span className="size-1.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
                   <span className="font-semibold">{approvals.length}</span>
                   <span>pendientes</span>
                 </span>
@@ -277,9 +337,9 @@ export default function Bandeja() {
               </p>
             </div>
 
-            <div className="flex items-center gap-2.5">
-              <div className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-muted/40 px-2.5 py-1 text-[11px] text-muted-foreground transition-all">
-                <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+            <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+              <div className="inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-muted/40 px-2.5 py-1 text-[11px] text-muted-foreground whitespace-nowrap shrink-0">
+                <span className="size-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
                 <span>Canal push en vivo (SSE)</span>
               </div>
 
@@ -288,7 +348,7 @@ export default function Bandeja() {
                 size="sm"
                 onClick={handleManualRefresh}
                 disabled={loading}
-                className={`h-9 gap-1.5 text-xs rounded-xl transition-all ${
+                className={`h-9 gap-1.5 text-xs rounded-xl shrink-0 transition-all ${
                   justUpdated
                     ? "border-transparent bg-[#185338] text-white hover:bg-[#185338] shadow-xs"
                     : ""
@@ -314,7 +374,7 @@ export default function Bandeja() {
               <Button
                 asChild
                 size="sm"
-                className="h-9 text-xs font-semibold gap-1.5 shadow-xs bg-[#185338] hover:bg-[#185338]/90 text-white rounded-xl cursor-pointer"
+                className="h-9 text-xs font-semibold gap-1.5 shadow-xs bg-[#185338] hover:bg-[#185338]/90 text-white rounded-xl shrink-0 cursor-pointer"
               >
                 <Link to="/subir">Subir factura</Link>
               </Button>
@@ -342,7 +402,7 @@ export default function Bandeja() {
           )}
 
           {/* Búsqueda */}
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
               <input
@@ -353,7 +413,7 @@ export default function Bandeja() {
                 className="w-full rounded-lg border border-border bg-card pl-9 pr-3 py-2 text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary shadow-xs"
               />
             </div>
-            <span className="text-xs text-muted-foreground hidden sm:inline">
+            <span className="text-xs text-muted-foreground">
               Mostrando {filteredApprovals.length} de {approvals.length} facturas
             </span>
           </div>

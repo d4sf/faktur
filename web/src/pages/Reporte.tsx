@@ -11,6 +11,7 @@ import { Download, RefreshCw, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { VerdictBadge } from "@/components/ui/VerdictBadge";
+import { formatReasonTitle } from "@/lib/invoiceSubmit";
 import { AuditMetricsData } from "@/types/invoice";
 
 interface ReportRecord {
@@ -150,15 +151,16 @@ export default function Reporte() {
     return (
       (r.vendor_name?.toLowerCase().includes(q) ?? false) ||
       (r.invoice_number?.toLowerCase().includes(q) ?? false) ||
-      r.reason_code.toLowerCase().includes(q)
+      r.reason_code.toLowerCase().includes(q) ||
+      formatReasonTitle(r.reason_code).toLowerCase().includes(q)
     );
   });
 
   return (
     <div className="space-y-6">
       {/* Encabezado con Botón de Descarga Principal */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border pb-5">
-        <div>
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b border-border pb-5">
+        <div className="min-w-0">
           <h2 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
             Reporte y auditoría CSV
           </h2>
@@ -168,13 +170,13 @@ export default function Reporte() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
           <Button
             variant="outline"
             size="sm"
             onClick={loadAuditData}
             disabled={loading}
-            className="h-10 text-xs gap-1.5"
+            className="h-10 text-xs gap-1.5 shrink-0"
           >
             <RefreshCw className={`size-3.5 ${loading ? "animate-spin" : ""}`} />
             <span>Actualizar</span>
@@ -183,7 +185,7 @@ export default function Reporte() {
           <Button
             asChild
             size="lg"
-            className="h-10 px-4 text-xs font-semibold gap-2 shadow-xs bg-[#185338] hover:bg-[#185338]/90 text-white rounded-xl cursor-pointer"
+            className="h-10 px-4 text-xs font-semibold gap-2 shadow-xs bg-[#185338] hover:bg-[#185338]/90 text-white rounded-xl shrink-0 cursor-pointer"
           >
             {/* Sin `download`: el nombre fechado lo fija el Content-Disposition de la API. */}
             <a href="/api/report.csv">
@@ -316,9 +318,17 @@ export default function Reporte() {
                     <td className="px-4 py-3">
                       <VerdictBadge verdict={r.verdict} size="sm" />
                     </td>
-                    <td className="px-4 py-3 text-muted-foreground font-mono text-[11px] truncate max-w-[140px]">
-                      <div>{r.reason_code}</div>
-                      <div className="font-sans text-[10px] text-muted-foreground truncate">
+                    <td className="px-4 py-3 text-muted-foreground text-[11px] truncate max-w-[160px]">
+                      <div
+                        className="font-medium text-foreground truncate"
+                        title={`Código: ${r.reason_code}`}
+                      >
+                        {formatReasonTitle(r.reason_code)}
+                      </div>
+                      <div
+                        className="text-[10px] text-muted-foreground truncate"
+                        title={r.explanation}
+                      >
                         {r.explanation}
                       </div>
                     </td>

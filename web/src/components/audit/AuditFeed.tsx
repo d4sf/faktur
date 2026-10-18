@@ -15,26 +15,40 @@ function formatBudget(n: number): string {
 export function AuditFeed() {
   const [data, setData] = useState<AuditTrail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedRecord, setSelectedRecord] = useState<AuditRecordView | null>(null);
   const [inspectorOpen, setInspectorOpen] = useState(false);
 
-  const load = () => {
-    setLoading(true);
+  const load = (silent = false) => {
+    if (silent) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
     setError(null);
-    fetch("/api/audit-trail")
-      .then((res) => {
+    const minDelay = silent ? new Promise<void>((r) => setTimeout(r, 450)) : Promise.resolve();
+
+    Promise.all([
+      fetch("/api/audit-trail").then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
+        return res.json() as Promise<AuditTrail>;
+      }),
+      minDelay,
+    ])
+      .then(([d]) => {
+        setData(d);
       })
-      .then((d: AuditTrail) => setData(d))
-      .catch((err) => setError(err instanceof Error ? err.message : "Error al cargar"))
-      .finally(() => setLoading(false));
+      .catch((err) => setError(err instanceof Error ? err.message : "Error al actualizar"))
+      .finally(() => {
+        setLoading(false);
+        setRefreshing(false);
+      });
   };
 
   // Carga inicial
   useEffect(() => {
-    load();
+    load(false);
   }, []);
 
   const handleSelectRecord = (record: AuditRecordView) => {
@@ -93,29 +107,43 @@ export function AuditFeed() {
             <Button
               variant="outline"
               size="sm"
-              onClick={load}
-              disabled={loading}
-              className="h-7 px-2.5 text-xs shadow-xs"
+              onClick={() => load(true)}
+              disabled={refreshing || loading}
+              className="h-7 px-2.5 text-xs shadow-xs cursor-pointer transition-colors"
             >
-              <RefreshCw className={`size-3.5 mr-1 ${loading ? "animate-spin" : ""}`} />
-              <span>Refrescar</span>
+              <RefreshCw
+                className={`size-3.5 mr-1 text-[#185338] ${refreshing ? "animate-spin" : ""}`}
+              />
+              <span>{refreshing ? "Actualizando…" : "Refrescar"}</span>
             </Button>
           </div>
         </div>
 
-        {error ? (
+        {error && !data ? (
           <div className="flex flex-col items-center justify-center rounded-xl border border-destructive/50 bg-destructive/10 py-12 px-4 text-center">
             <p className="text-sm text-destructive">Error al cargar los datos: {error}</p>
-            <Button variant="outline" size="sm" onClick={load} className="mt-3 text-xs">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => load(false)}
+              className="mt-3 text-xs"
+            >
               Reintentar
             </Button>
           </div>
         ) : (
-          <AuditTable
-            records={data?.records ?? []}
-            onSelectRecord={handleSelectRecord}
-            loading={loading}
-          />
+          <div className="relative">
+            {refreshing && (
+              <div className="absolute inset-x-0 top-0 h-0.5 bg-[#185338]/20 overflow-hidden z-10 rounded-t-xl">
+                <div className="h-full bg-[#185338] animate-pulse w-full" />
+              </div>
+            )}
+            <AuditTable
+              records={data?.records ?? []}
+              onSelectRecord={handleSelectRecord}
+              loading={loading && !data}
+            />
+          </div>
         )}
       </div>
 

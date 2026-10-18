@@ -25,12 +25,12 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
+  SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { cn } from "@/lib/utils";
@@ -56,12 +56,17 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
           item.to === "/" ? location.pathname === "/" : location.pathname.startsWith(item.to);
 
         return (
-          <SidebarMenuItem key={item.to}>
+          <SidebarMenuItem
+            key={item.to}
+            className="h-9 flex items-center group-data-[collapsible=icon]:justify-center"
+          >
             <SidebarMenuButton
               asChild
               isActive={isActive}
+              tooltip={item.label}
               className={cn(
-                "h-9 px-3 rounded-xl font-medium transition-all duration-150",
+                "h-9 px-3 rounded-xl font-medium transition-[width,padding,background-color,border-radius,box-shadow] duration-300 ease-in-out",
+                "group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:rounded-lg group-data-[collapsible=icon]:justify-center",
                 isActive
                   ? "!bg-[#185338] !text-white font-semibold shadow-xs hover:!bg-[#185338] hover:!text-white"
                   : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
@@ -71,15 +76,20 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
                 to={item.to}
                 end={item.to === "/"}
                 onClick={onNavigate}
-                className="flex w-full items-center gap-2.5"
+                className="flex w-full items-center gap-3 overflow-hidden transition-[width,padding,gap] duration-300 ease-in-out group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:!p-0"
               >
                 <Icon
                   className={cn(
-                    "size-4 shrink-0 transition-colors",
+                    "size-4 shrink-0 transition-transform duration-300 ease-in-out group-hover/menu-item:scale-110",
                     isActive ? "!text-white opacity-100" : "text-muted-foreground",
                   )}
                 />
-                <span className={cn(isActive ? "!text-white font-semibold" : "")}>
+                <span
+                  className={cn(
+                    "overflow-hidden whitespace-nowrap transition-[opacity,max-width,transform] duration-300 ease-in-out group-data-[collapsible=icon]:max-w-0 group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:-translate-x-2 max-w-[180px] opacity-100 translate-x-0",
+                    isActive ? "!text-white font-semibold" : "",
+                  )}
+                >
                   {item.label}
                 </span>
               </NavLink>
@@ -100,30 +110,35 @@ export default function AppShell() {
   return (
     <SidebarProvider>
       <div className="flex min-h-svh w-full bg-background">
-        <Sidebar className="hidden md:flex border-r border-sidebar-border bg-sidebar">
-          <SidebarHeader className="flex h-14 justify-center border-b border-sidebar-border px-5">
-            <div className="flex flex-col">
-              <span className="text-sm font-bold leading-tight tracking-tight text-sidebar-foreground">
-                Blinka PayAgent
-              </span>
-              <span className="text-[11px] leading-tight text-muted-foreground font-normal">
-                Revisión de facturas
-              </span>
+        <Sidebar
+          collapsible="icon"
+          className="hidden md:flex border-r border-sidebar-border bg-sidebar"
+        >
+          <SidebarHeader className="flex h-14 justify-center border-b border-sidebar-border px-4 transition-[padding] duration-300 ease-in-out group-data-[collapsible=icon]:px-2">
+            <div className="flex items-center gap-3 overflow-hidden">
+              <div className="size-8 shrink-0 flex items-center justify-center rounded-lg bg-[#185338] text-white font-bold text-sm select-none transition-transform duration-300 ease-in-out hover:scale-105">
+                B
+              </div>
+              <div className="flex flex-col min-w-0 overflow-hidden whitespace-nowrap transition-[opacity,max-width,transform] duration-300 ease-in-out group-data-[collapsible=icon]:max-w-0 group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:-translate-x-2 max-w-[180px] opacity-100 translate-x-0">
+                <span className="text-sm font-bold leading-tight tracking-tight text-sidebar-foreground truncate">
+                  Blinka PayAgent
+                </span>
+                <span className="text-[11px] leading-tight text-muted-foreground font-normal truncate">
+                  Revisión de facturas
+                </span>
+              </div>
             </div>
           </SidebarHeader>
 
           <SidebarContent className="py-2">
             <SidebarGroup className="p-0">
-              <SidebarGroupLabel className="px-5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Navegación
-              </SidebarGroupLabel>
-              <SidebarGroupContent className="mt-1 px-3">
+              <SidebarGroupContent className="px-3 transition-[padding] duration-300 ease-in-out group-data-[collapsible=icon]:px-2">
                 <NavLinks />
               </SidebarGroupContent>
             </SidebarGroup>
           </SidebarContent>
 
-          <SidebarFooter className="border-t border-sidebar-border/60 p-3">
+          <SidebarFooter className="border-t border-sidebar-border/60 p-3 group-data-[collapsible=icon]:p-1.5 transition-all duration-300">
             <ThemeToggle />
           </SidebarFooter>
         </Sidebar>
@@ -152,6 +167,8 @@ export default function AppShell() {
                   </div>
                 </SheetContent>
               </Sheet>
+
+              <SidebarTrigger className="hidden md:flex text-muted-foreground hover:text-foreground transition-transform duration-200 ease-in-out hover:scale-105 active:scale-95" />
 
               <div className="flex items-center gap-2">
                 <h1 className="text-base md:text-lg font-semibold tracking-tight">

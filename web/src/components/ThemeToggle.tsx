@@ -16,16 +16,31 @@ export function ThemeToggle({ showLabel = true }: { showLabel?: boolean }) {
   const isDark = theme === "dark";
 
   return (
-    <div className="flex items-center justify-between gap-3 rounded-lg border border-sidebar-border bg-sidebar-accent/40 px-3 py-2 transition-colors">
-      <div className="flex items-center gap-2 text-xs font-medium text-sidebar-foreground">
+    <div className="flex items-center justify-between gap-3 rounded-lg border border-sidebar-border bg-sidebar-accent/40 px-3 py-2 transition-colors group-data-[collapsible=icon]:p-1.5 group-data-[collapsible=icon]:justify-center">
+      <button
+        type="button"
+        onClick={toggle}
+        className="flex items-center gap-2 text-xs font-medium text-sidebar-foreground cursor-pointer focus:outline-none"
+        title={isDark ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
+      >
         {isDark ? (
-          <Moon className="size-4 text-primary" />
+          <Moon className="size-4 text-primary shrink-0" />
         ) : (
-          <Sun className="size-4 text-amber-500" />
+          <Sun className="size-4 text-amber-500 shrink-0" />
         )}
-        {showLabel && <span>{isDark ? "Modo oscuro" : "Modo claro"}</span>}
+        {showLabel && (
+          <span className="group-data-[collapsible=icon]:hidden">
+            {isDark ? "Modo oscuro" : "Modo claro"}
+          </span>
+        )}
+      </button>
+      <div className="group-data-[collapsible=icon]:hidden">
+        <Switch
+          checked={isDark}
+          onCheckedChange={toggle}
+          aria-label="Alternar modo claro y oscuro"
+        />
       </div>
-      <Switch checked={isDark} onCheckedChange={toggle} aria-label="Alternar modo claro y oscuro" />
     </div>
   );
 }

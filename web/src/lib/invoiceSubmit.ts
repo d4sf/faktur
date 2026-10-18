@@ -140,6 +140,26 @@ export function formatReasonTitle(code: string | undefined): string {
 }
 
 /**
+ * Convierte cualquier código de razón técnico presente en un evento de línea de tiempo
+ * a su equivalente descriptivo en lenguaje natural.
+ */
+export function formatTimelineDetail(detail: string): string {
+  const match = detail.match(/^([A-Z]+)\s+([A-Z0-9_]+):\s*(.*)$/);
+  if (match) {
+    const [, verdict, code, explanation] = match;
+    const title = formatReasonTitle(code);
+    return `${verdict} · ${title}: ${explanation}`;
+  }
+  let res = detail;
+  for (const [code, title] of Object.entries(REASON_TITLES)) {
+    if (res.includes(code)) {
+      res = res.replace(`${code}:`, `${title}:`).replace(code, title);
+    }
+  }
+  return res;
+}
+
+/**
  * Respuesta de `POST /api/invoices` (campos que consume la UI).
  */
 interface IngestResponse {

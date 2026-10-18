@@ -49,8 +49,8 @@ export function AuditTable({ records, onSelectRecord, loading = false }: AuditTa
   if (loading) {
     return (
       <div className="overflow-hidden rounded-xl border border-border/80 bg-card shadow-xs">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
+        <div className="overflow-x-auto pb-1 [scrollbar-width:thin] [scrollbar-color:var(--border)_transparent] [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-muted/30 [&::-webkit-scrollbar-thumb]:bg-muted-foreground/30 hover:[&::-webkit-scrollbar-thumb]:bg-muted-foreground/50 [&::-webkit-scrollbar-thumb]:rounded-full">
+          <table className="w-full text-left text-xs min-w-[780px]">
             <thead className="border-b border-border bg-muted/30 text-muted-foreground">
               <tr>
                 <th className="px-4 py-3 font-semibold uppercase tracking-wider text-[10px]">
@@ -122,11 +122,11 @@ export function AuditTable({ records, onSelectRecord, loading = false }: AuditTa
 
   return (
     <div className="overflow-hidden rounded-xl border border-border/80 bg-card shadow-xs">
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-xs">
+      <div className="overflow-x-auto pb-1 [scrollbar-width:thin] [scrollbar-color:var(--border)_transparent] [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-muted/30 [&::-webkit-scrollbar-thumb]:bg-muted-foreground/30 hover:[&::-webkit-scrollbar-thumb]:bg-muted-foreground/50 [&::-webkit-scrollbar-thumb]:rounded-full">
+        <table className="w-full text-left text-xs min-w-[780px]">
           <thead className="border-b border-border bg-muted/30 text-muted-foreground">
             <tr>
-              <th className="px-4 py-3 font-semibold uppercase tracking-wider text-[10px]">
+              <th className="px-4 py-3 font-semibold uppercase tracking-wider text-[10px] whitespace-nowrap">
                 Folio
               </th>
               <th className="px-4 py-3 font-semibold uppercase tracking-wider text-[10px]">
@@ -144,7 +144,7 @@ export function AuditTable({ records, onSelectRecord, loading = false }: AuditTa
               <th className="px-4 py-3 font-semibold uppercase tracking-wider text-[10px]">
                 Motivo
               </th>
-              <th className="px-4 py-3 text-right font-semibold uppercase tracking-wider text-[10px]">
+              <th className="px-4 py-3 text-right font-semibold uppercase tracking-wider text-[10px] whitespace-nowrap">
                 Acción
               </th>
             </tr>
@@ -156,7 +156,7 @@ export function AuditTable({ records, onSelectRecord, loading = false }: AuditTa
                 className="hover:bg-muted/30 transition-colors cursor-pointer"
                 onClick={() => onSelectRecord(rec)}
               >
-                <td className="px-4 py-3 font-mono font-medium text-foreground">
+                <td className="px-4 py-3 font-mono font-medium text-foreground whitespace-nowrap">
                   {rec.invoice.invoice_number}
                 </td>
                 <td className="px-4 py-3">
@@ -195,7 +195,7 @@ export function AuditTable({ records, onSelectRecord, loading = false }: AuditTa
                     {rec.explanation}
                   </div>
                 </td>
-                <td className="px-4 py-3 text-right">
+                <td className="px-4 py-3 text-right whitespace-nowrap">
                   <Button
                     variant="ghost"
                     size="sm"
@@ -214,7 +214,10 @@ export function AuditTable({ records, onSelectRecord, loading = false }: AuditTa
                       asChild
                       className="h-7 px-3 text-xs font-semibold bg-amber-600 hover:bg-amber-700 text-white ml-1.5 rounded-lg shadow-xs cursor-pointer transition-colors"
                     >
-                      <a href="/bandeja" onClick={(e) => e.stopPropagation()}>
+                      <a
+                        href={`/bandeja?invoice_id=${encodeURIComponent(rec.invoice_id || rec.id)}`}
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         Revisar
                       </a>
                     </Button>
