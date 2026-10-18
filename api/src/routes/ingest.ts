@@ -37,8 +37,8 @@ export async function registerIngestRoutes(app: FastifyInstance): Promise<void> 
       }
 
       try {
-        const extracted = await extractInvoice({ buffer, mimeType: attempt.mime_type });
-        const persisted = persistExtraction(attempt.id, extracted, getDb());
+        const { extracted, raw } = await extractInvoice({ buffer, mimeType: attempt.mime_type });
+        const persisted = persistExtraction(attempt.id, extracted, getDb(), raw);
         if (persisted.duplicate) {
           return reply.code(200).send({
             attempt_id: attempt.id,
