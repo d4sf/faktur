@@ -7,6 +7,7 @@
 import { AlertTriangle, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { VerdictBadge } from "@/components/ui/VerdictBadge";
+import { MoneyDisplay } from "@/components/ui/money-display";
 import { formatReasonTitle } from "@/lib/invoiceSubmit";
 import { PendingApproval } from "@/types/invoice";
 
@@ -55,9 +56,7 @@ export function ApprovalCard({ item, onReview }: ApprovalCardProps) {
         {/* Importe a autorizar */}
         <div className="rounded-lg border border-border/60 bg-muted/20 p-3 flex items-center justify-between text-xs">
           <span className="text-muted-foreground font-medium">Importe a autorizar:</span>
-          <span className="font-mono text-sm font-bold text-foreground">
-            ${item.amount_usd.toLocaleString("en-US", { minimumFractionDigits: 2 })} USD
-          </span>
+          <MoneyDisplay amount={item.amount_usd} currency="USD" size="md" />
         </div>
 
         {/* Razón de escalación */}

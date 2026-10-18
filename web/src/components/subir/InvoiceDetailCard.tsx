@@ -1,6 +1,7 @@
 import { FileText, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { MoneyDisplay } from "@/components/ui/money-display";
 import { FlowState, InvoiceData } from "@/types/invoice";
 
 interface InvoiceDetailCardProps {
@@ -131,11 +132,15 @@ export function InvoiceDetailCard({
                   <span className="text-muted-foreground">Concepto:</span>
                   <span className="text-foreground">{invoice.concept}</span>
                 </div>
-                <div className="flex justify-between px-4 py-2.5 bg-muted/20 font-semibold">
+                <div className="flex justify-between items-center px-4 py-2.5 bg-muted/20 font-semibold">
                   <span>Total normalizado (USD):</span>
-                  <span className="font-mono text-sm">
-                    ${invoice.total_usd.toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                  </span>
+                  <MoneyDisplay
+                    amount={invoice.total_usd}
+                    currency="USD"
+                    originalAmount={invoice.total_amount}
+                    originalCurrency={invoice.currency}
+                    size="sm"
+                  />
                 </div>
               </div>
             </div>

@@ -8,7 +8,7 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host 0.0.0.0",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test src/lib/invoiceSubmit.test.ts src/components/ui/VerdictBadge.test.tsx src/components/subir/InvoiceFilePreview.test.tsx src/components/audit/AuditTable.test.tsx src/pages/Reporte.test.tsx src/lib/nielsenUsability.test.ts"
+    "test": "tsx --test src/lib/invoiceSubmit.test.ts src/components/ui/VerdictBadge.test.tsx src/components/ui/money-display.test.tsx src/components/ui/confirm-action-dialog.test.tsx src/components/subir/InvoiceFilePreview.test.tsx src/components/audit/AuditTable.test.tsx src/pages/Reporte.test.tsx src/lib/nielsenUsability.test.ts"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.0",
