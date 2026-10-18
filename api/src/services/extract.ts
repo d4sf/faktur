@@ -8,6 +8,7 @@ import { toGeminiResponseSchema } from "../domain/geminiSchema.js";
 import { getAttempt, linkAttemptToInvoice } from "../repositories/ingest.js";
 import { insertDecision } from "../repositories/decisions.js";
 import { getActivePolicyRow } from "../repositories/policies.js";
+import { defaultNotifier, dispatchNotification, queueNotification } from "./notifier.js";
 import { round2, toUsd } from "./fx.js";
 import { InvalidFileTypeError } from "./ingest.js";
 
@@ -164,7 +165,10 @@ export function persistExtraction(
   extracted: ExtractedInvoice,
   db: Database.Database,
 ): PersistExtractionResult {
-  return db.transaction(() => {
+  let notificationId: string | undefined;
+  let notifierInstance: import("./notifier.js").Notifier | undefined;
+
+  const result = db.transaction((): PersistExtractionResult => {
     const attempt = getAttempt(attemptId);
     if (attempt === null) throw new Error("attempt_not_found");
     if (attempt.invoice_id !== null) throw new Error("already_processed");
@@ -193,7 +197,7 @@ export function persistExtraction(
       if (policy === null) throw new Error("no_active_policy");
 
       const explanation = `La factura ${extracted.invoice_number} ya fue registrada el ${logicalDuplicate.ingested_at.slice(0, 10)}`;
-      insertDecision({
+      const decId = insertDecision({
         invoice_id: null,
         ingest_attempt_id: attemptId,
         verdict: "FRENAR",
@@ -203,6 +207,18 @@ export function persistExtraction(
         amount_usd_evaluated: 0,
         decided_by: "AGENTE",
       });
+
+      const notifier = defaultNotifier(db);
+      notificationId = queueNotification({
+        invoice_id: logicalDuplicate.id,
+        decision_id: decId,
+        channel: notifier.channel,
+        reason_code: "ERR_DUPLICATE_INVOICE",
+        explanation,
+        amount_usd: 0,
+        ...(extracted.vendor_name === undefined ? {} : { vendor_name: extracted.vendor_name }),
+      });
+      notifierInstance = notifier.notifier;
 
       return {
         duplicate: true as const,
@@ -264,4 +280,10 @@ export function persistExtraction(
     linkAttemptToInvoice(attemptId, invoiceId);
     return { duplicate: false as const, invoice_id: invoiceId };
   })();
+
+  if (notificationId !== undefined && notifierInstance !== undefined) {
+    void dispatchNotification(notificationId, notifierInstance, db);
+  }
+
+  return result;
 }

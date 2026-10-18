@@ -175,8 +175,9 @@ export default function Integraciones() {
               <li>Copiá la URL generada y pegala arriba.</li>
             </ol>
             <p className="pt-1">
-              El webhook se dispara cuando una factura se escala a un humano (ESCALAR) o es
-              rechazada (NEGADA). Las facturas frenadas automáticamente (FRENAR) no generan aviso.
+              El webhook se dispara cuando una factura se escala a un humano (ESCALAR), es
+              rechazada (NEGADA) o se frena automáticamente por las reglas (FRENAR, incluidos los
+              reenvíos duplicados). Las facturas pagadas (PAGAR) no generan aviso.
             </p>
           </div>
         </CardContent>

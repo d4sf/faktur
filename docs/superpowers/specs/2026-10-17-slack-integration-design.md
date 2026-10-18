@@ -6,7 +6,7 @@
 ## Decisión de producto
 
 - La URL del incoming webhook de Slack se configura en runtime desde una pantalla "Integraciones" y se persiste en la tabla `settings` (key/value). Tiene precedencia sobre la env var `NOTIFIER_WEBHOOK_URL`.
-- El webhook se dispara únicamente en dos casos: ESCALAR (pendiente de aprobación) y NEGADA (rechazo humano). No en FRENAR ni en PAGAR.
+- El webhook se dispara en tres casos: ESCALAR (pendiente de aprobación), NEGADA (rechazo humano) y FRENAR (bloqueo automático por reglas, incluidos los reenvíos duplicados). No en PAGAR.
 - El mensaje es un `text` simple de Slack con factura, proveedor, monto, motivo y (si existe) la explicación con IA cacheada. No se llama al modelo en el camino crítico.
 - Se reutiliza el outbox (`notifications`) y el patrón fire-and-forget: un webhook caído queda `FALLIDA` y no revierte la decisión.
 

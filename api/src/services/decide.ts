@@ -130,6 +130,18 @@ export function decideInvoice(invoiceId: string, db: Database.Database): Decisio
       });
     } else {
       updateInvoiceStatus(invoiceId, "FRENADA", db);
+
+      const cachedAi = getCachedAiExplanation(id, db);
+      notificationId = queueNotification({
+        invoice_id: invoiceId,
+        decision_id: id,
+        channel: notification.channel,
+        reason_code: result.reason_code,
+        explanation: result.explanation,
+        amount_usd: invoice.total_usd,
+        ...(extracted.vendor_name === undefined ? {} : { vendor_name: extracted.vendor_name }),
+        ...(cachedAi === undefined ? {} : { ai_explanation: cachedAi }),
+      });
     }
 
     return id;

@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Agregar una pantalla "Integraciones" donde el usuario pega la URL de un incoming webhook de Slack, y enviar un mensaje a ese canal cuando una factura es escalada a un humano o rechazada por un humano. Reutiliza (y extiende) el outbox/notifier existente.
+**Goal:** Agregar una pantalla "Integraciones" donde el usuario pega la URL de un incoming webhook de Slack, y enviar un mensaje a ese canal cuando una factura se escala a un humano, es rechazada por un humano o se frena automáticamente por las reglas (incluidos los reenvíos duplicados). Reutiliza (y extiende) el outbox/notifier existente.
 
 **Architecture:** Una tabla `settings` (key/value) persiste la URL. Un servicio `integrations.ts` la valida, guarda, borra y prueba. El notifier se extiende con un `SlackNotifier` que formatea un mensaje `text` con los datos del caso (y la explicación con IA si está cacheada). `defaultNotifier(db)` prioriza la URL guardada en `settings`, luego `NOTIFIER_WEBHOOK_URL`, luego consola. Se dispara en ESCALAR (ya existente en `decideInvoice`) y en NEGADA (nuevo, en `resolveApproval`). UI: nueva página `/integraciones` con formulario, botón de prueba y estado.
 

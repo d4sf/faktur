@@ -10,7 +10,7 @@ El agente notifica eventos a un canal externo. Hasta ahora la URL del webhook vi
 ## Decisión
 
 - La URL se persiste en la tabla `settings` (key/value) y tiene precedencia sobre la env var.
-- Se dispara únicamente en ESCALAR (pendiente de aprobación) y NEGADA (rechazo humano). No en FRENAR ni en PAGAR.
+- Se dispara en ESCALAR (pendiente de aprobación), NEGADA (rechazo humano) y FRENAR (bloqueo automático por reglas, incluidos los reenvíos duplicados). No en PAGAR.
 - El mensaje es un `text` simple de Slack con factura, proveedor, monto, motivo y, si existe, la explicación con IA cacheada. No se llama al modelo en el camino crítico.
 - Se reutiliza el outbox (`notifications`) y el patrón fire-and-forget: un webhook caído queda `FALLIDA` y no revierte la decisión.
 - Un botón "probar" valida la URL antes de confiar en ella.

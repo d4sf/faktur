@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { getDb } from "../db/index.js";
+import { defaultNotifier, dispatchNotification, queueNotification } from "./notifier.js";
 import type { EvaluationResult } from "../domain/ruleEngine.js";
 import { getDecisionForAttempt, insertDecision } from "../repositories/decisions.js";
 import {
@@ -88,7 +89,7 @@ export function ingestFile(input: IngestInput): IngestResult {
         ? "Reenvío duplicado: el archivo ya fue registrado"
         : `Reenvío duplicado: el archivo ya fue registrado el ${registeredAt.slice(0, 10)}`;
 
-    insertDecision({
+    const decId = insertDecision({
       invoice_id: null,
       ingest_attempt_id: attemptId,
       verdict: "FRENAR",
@@ -98,6 +99,21 @@ export function ingestFile(input: IngestInput): IngestResult {
       amount_usd_evaluated: 0,
       decided_by: "AGENTE",
     });
+
+    const db = getDb();
+    const duplicateInvoiceId = duplicateOf;
+    if (duplicateInvoiceId !== null) {
+      const notifier = defaultNotifier(db);
+      const nid = queueNotification({
+        invoice_id: duplicateInvoiceId,
+        decision_id: decId,
+        channel: notifier.channel,
+        reason_code: "ERR_DUPLICATE_INVOICE",
+        explanation,
+        amount_usd: 0,
+      });
+      void dispatchNotification(nid, notifier.notifier, db);
+    }
 
     return {
       attempt_id: attemptId,
