@@ -10,3 +10,5 @@ data/*
 .superpowers
 .agents/
 skills-lock.json
+demo-files/
+scripts/generate_demo_invoices.py

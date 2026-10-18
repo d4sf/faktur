@@ -4,7 +4,7 @@
  * "Analizando documento…" y la barra de progreso mientras el agente lo procesa.
  */
 
-import { FileJson, FileText, ImageIcon, Loader2 } from "lucide-react";
+import { Clock, FileJson, FileText, ImageIcon, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import type { FlowState } from "@/types/invoice";
@@ -30,6 +30,18 @@ interface InvoiceFilePreviewProps {
    * Porcentaje (0-100) del avance del análisis.
    */
   processingProgress: number;
+  /**
+   * Segundos transcurridos desde que inició la subida.
+   */
+  elapsedSeconds?: number;
+  /**
+   * Indica si el análisis está demorando más de lo previsto.
+   */
+  isDelayed?: boolean;
+  /**
+   * Acción opcional para cancelar el análisis en curso.
+   */
+  onCancel?: () => void;
 }
 
 /**
@@ -60,9 +72,13 @@ export function InvoiceFilePreview({
   flowState,
   processingMessage,
   processingProgress,
+  elapsedSeconds = 0,
+  isDelayed = false,
+  onCancel,
 }: InvoiceFilePreviewProps) {
   const { label, Icon } = describeFile(file);
   const isImage = file.type.startsWith("image/");
+  const showDelayedWarning = flowState === "PROCESSING" && (isDelayed || elapsedSeconds >= 10);
 
   return (
     <div className="space-y-5 lg:col-span-7">
@@ -98,7 +114,10 @@ export function InvoiceFilePreview({
             {flowState === "PROCESSING" ? (
               <span className="inline-flex items-center gap-1.5 rounded-md bg-primary/10 border border-primary/20 px-2.5 py-1 text-[11px] font-semibold tracking-wider text-primary">
                 <Loader2 className="size-3 animate-spin shrink-0" />
-                <span>En análisis</span>
+                <span>
+                  En análisis
+                  {elapsedSeconds > 0 ? ` (${elapsedSeconds}s)` : ""}
+                </span>
               </span>
             ) : (
               <span className="inline-flex items-center rounded-md bg-muted px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -170,7 +189,9 @@ export function InvoiceFilePreview({
                   <div
                     className={cn(
                       "size-1.5 rounded-full",
-                      processingProgress >= 45 ? "bg-primary" : "bg-muted-foreground/40",
+                      processingProgress >= 45
+                        ? "bg-primary animate-pulse"
+                        : "bg-muted-foreground/40",
                     )}
                   />
                   <span>2. IA Gemini</span>
@@ -208,6 +229,39 @@ export function InvoiceFilePreview({
                   <span>4. Veredicto</span>
                 </div>
               </div>
+
+              {/* Alerta inteligente de demora prolongada */}
+              {showDelayedWarning && (
+                <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3.5 space-y-2 text-amber-950 dark:text-amber-200 animate-in fade-in duration-300">
+                  <div className="flex items-start gap-2.5">
+                    <Clock className="size-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                    <div className="space-y-1">
+                      <p className="text-xs font-semibold">
+                        El análisis está demorando más de lo habitual ({elapsedSeconds}s)
+                      </p>
+                      <p className="text-[11px] text-amber-800/90 dark:text-amber-300/90 leading-relaxed">
+                        El modelo multimodal está realizando una extracción exhaustiva de tablas y
+                        campos.
+                        <strong> Por favor mantén la ventana abierta:</strong> el servidor sigue
+                        procesando tu solicitud. Si reintentas subir el mismo archivo ahora, el
+                        motor lo detectará como reenvío duplicado (veredicto <strong>FRENAR</strong>
+                        ).
+                      </p>
+                    </div>
+                  </div>
+                  {onCancel && (
+                    <div className="pt-1 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={onCancel}
+                        className="text-[11px] font-semibold text-amber-700 hover:text-amber-900 dark:text-amber-400 dark:hover:text-amber-200 underline underline-offset-2"
+                      >
+                        Cancelar y cambiar archivo
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <p className="text-[11px] text-muted-foreground leading-relaxed">
                 Extracción tipada con IA multimodal y verificación contra las 8 reglas

@@ -96,6 +96,8 @@ export default function Subir() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [processingProgress, setProcessingProgress] = useState<number>(0);
   const [processingMessage, setProcessingMessage] = useState<string>("Iniciando verificación...");
+  const [processingElapsed, setProcessingElapsed] = useState<number>(0);
+  const [isDelayed, setIsDelayed] = useState<boolean>(false);
   const [evaluatedRuleIndex, setEvaluatedRuleIndex] = useState<number>(-1);
   const [error, setError] = useState<string | null>(null);
 
@@ -224,6 +226,8 @@ export default function Subir() {
       if (runIdRef.current !== runId) return;
       setProcessingProgress(stage.progress);
       setProcessingMessage(stage.message);
+      setProcessingElapsed(stage.elapsedSeconds ?? 0);
+      setIsDelayed(stage.isDelayed ?? false);
       setEvaluatedRuleIndex(stage.progress <= 20 ? 0 : 6);
     };
 
@@ -232,6 +236,8 @@ export default function Subir() {
     setError(null);
     setFlowState("PROCESSING");
     setProcessingProgress(10);
+    setProcessingElapsed(0);
+    setIsDelayed(false);
     setProcessingMessage("Analizando documento…");
     setEvaluatedRuleIndex(0);
 
@@ -245,6 +251,8 @@ export default function Subir() {
       setPendingFile(null);
       setCurrentInvoice(null);
       setProcessingProgress(0);
+      setProcessingElapsed(0);
+      setIsDelayed(false);
       setEvaluatedRuleIndex(-1);
       setError(outcome.message);
       return;
@@ -268,6 +276,25 @@ export default function Subir() {
       return;
     }
     void startUpload(file);
+  };
+
+  /**
+   * Cancela el análisis en curso y previene bloqueos por doble envío.
+   */
+  const handleCancelUpload = () => {
+    submitter.abort();
+    runIdRef.current += 1;
+    setFlowState("IDLE");
+    setPendingFile(null);
+    setCurrentInvoice(null);
+    setPreviewUrl(null);
+    setProcessingProgress(0);
+    setProcessingElapsed(0);
+    setIsDelayed(false);
+    setEvaluatedRuleIndex(-1);
+    setError(
+      "Análisis cancelado por el usuario. Si deseas probar nuevamente, te recomendamos subir otro archivo para evitar que el intento previo sea detectado como duplicado por hash.",
+    );
   };
 
   /**
@@ -308,6 +335,7 @@ export default function Subir() {
    * Reinicia el estado para evaluar una nueva factura.
    */
   const handleReset = () => {
+    submitter.abort();
     runIdRef.current += 1;
     setFlowState("IDLE");
     setCurrentInvoice(null);
@@ -315,6 +343,8 @@ export default function Subir() {
     setPreviewUrl(null);
     setEvaluatedRuleIndex(-1);
     setProcessingProgress(0);
+    setProcessingElapsed(0);
+    setIsDelayed(false);
     setProcessingMessage("Iniciando verificación...");
     setError(null);
   };
@@ -355,6 +385,9 @@ export default function Subir() {
               flowState={flowState}
               processingMessage={processingMessage}
               processingProgress={processingProgress}
+              elapsedSeconds={processingElapsed}
+              isDelayed={isDelayed}
+              onCancel={handleCancelUpload}
             />
           )}
 

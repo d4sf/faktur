@@ -49,6 +49,8 @@ const ERROR_MESSAGES: Record<string, string> = {
 export interface SubmitStage {
   progress: number;
   message: string;
+  elapsedSeconds?: number;
+  isDelayed?: boolean;
 }
 
 /**
@@ -262,39 +264,72 @@ async function buildInvoice(
  */
 export function createInvoiceSubmitter(deps: InvoiceSubmitterDeps = {}) {
   let inFlight = false;
+  let activeAbortController: AbortController | null = null;
+
+  const abort = () => {
+    if (activeAbortController) {
+      activeAbortController.abort();
+      activeAbortController = null;
+    }
+    inFlight = false;
+  };
 
   const submit = async (file: File): Promise<SubmitOutcome> => {
     if (inFlight) return { status: "skipped" };
     inFlight = true;
+    activeAbortController = new AbortController();
 
     const fetchImpl = deps.fetchImpl ?? globalThis.fetch;
-    const stage = (progress: number, message: string) => deps.onStage?.({ progress, message });
+    const reportStage = (
+      progress: number,
+      message: string,
+      elapsedSeconds = 0,
+      isDelayed = false,
+    ) => deps.onStage?.({ progress, message, elapsedSeconds, isDelayed });
 
     let progressTimer: ReturnType<typeof setInterval> | null = null;
-    try {
-      stage(20, "Analizando documento…");
+    let elapsedSeconds = 0;
 
-      let currentProgress = 20;
+    try {
+      reportStage(20, "Analizando documento…", 0, false);
+
       progressTimer = setInterval(() => {
-        if (currentProgress < 45) {
-          currentProgress = 45;
-          stage(45, "Extrayendo entidades con IA multimodal…");
-        } else if (currentProgress < 70) {
-          currentProgress = 70;
-          stage(70, "Normalizando moneda FX y validando ítems…");
-        } else if (currentProgress < 85) {
-          currentProgress = 85;
-          stage(85, "Evaluando orden de precedencia de 8 reglas…");
-        } else if (currentProgress < 95) {
-          currentProgress = 95;
-          stage(95, "Generando veredicto y traza de auditoría…");
+        elapsedSeconds += 1;
+
+        if (elapsedSeconds < 3) {
+          reportStage(35, "Extrayendo entidades con IA multimodal…", elapsedSeconds, false);
+        } else if (elapsedSeconds < 6) {
+          reportStage(60, "Interpretando ítems, fechas e impuestos…", elapsedSeconds, false);
+        } else if (elapsedSeconds < 9) {
+          reportStage(78, "Normalizando moneda FX y validando proveedor…", elapsedSeconds, false);
+        } else if (elapsedSeconds < 12) {
+          reportStage(88, "Evaluando orden de precedencia de 8 reglas…", elapsedSeconds, false);
+        } else if (elapsedSeconds < 16) {
+          reportStage(
+            92,
+            "Inferencia multimodal exhaustiva en curso (Gemini IA)…",
+            elapsedSeconds,
+            true,
+          );
+        } else {
+          const dynamicProgress = Math.min(97, 92 + Math.floor((elapsedSeconds - 16) / 4));
+          reportStage(
+            dynamicProgress,
+            "El análisis está demorando más de lo habitual. Esperando respuesta del servidor…",
+            elapsedSeconds,
+            true,
+          );
         }
-      }, 700);
+      }, 1000);
 
       const formData = new FormData();
       formData.append("file", file);
 
-      const response = await fetchImpl("/api/invoices", { method: "POST", body: formData });
+      const response = await fetchImpl("/api/invoices", {
+        method: "POST",
+        body: formData,
+        signal: activeAbortController.signal,
+      });
       const payload = await readJson(response);
 
       if (progressTimer) {
@@ -306,20 +341,24 @@ export function createInvoiceSubmitter(deps: InvoiceSubmitterDeps = {}) {
         return { status: "error", message: describeError(response.status, payload) };
       }
 
-      stage(98, "Evaluando reglas deterministas de política…");
+      reportStage(99, "Evaluando reglas deterministas de política…", elapsedSeconds, false);
 
       const invoice = await buildInvoice(file, (payload ?? {}) as IngestResponse, fetchImpl);
       return { status: "completed", invoice };
-    } catch {
+    } catch (error) {
+      if ((error as { name?: string })?.name === "AbortError") {
+        return { status: "skipped" };
+      }
       return {
         status: "error",
         message: "No se pudo conectar con el agente. Revisá la conexión y reintentá.",
       };
     } finally {
       if (progressTimer) clearInterval(progressTimer);
+      activeAbortController = null;
       inFlight = false;
     }
   };
 
-  return { submit, isSubmitting: () => inFlight };
+  return { submit, abort, isSubmitting: () => inFlight };
 }
