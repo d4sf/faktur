@@ -191,13 +191,40 @@ bash ./scripts/compose.sh exec app sh -c 'cd /app/api && npm run db:demo'
 
 ### 4.2 Caso 1 — Escalada (ESCALAR) dispara webhook
 
-Subir una factura que escale (TC-04, Growth Agency, $3.500):
+> **Nota:** si ya sembraste los datos demo (`npm run db:demo`) o ya subiste TC-04 antes, re-subir el mismo archivo devuelve `DUPLICADA` (FRENAR) y **no** dispara el webhook. Para probar el disparo real, usá una base limpia o un archivo nuevo.
+
+**Opción A — Base limpia (recomendada):**
+
+```bash
+# Detener, borrar la base y levantar de nuevo (seed base, sin demo)
+COMPOSE_ENV=dev bash ./scripts/compose.sh down
+rm -f data/faktur.db
+COMPOSE_ENV=dev bash ./scripts/compose.sh up -d --build
+bash ./scripts/compose.sh exec app sh -c 'until wget -qO- http://127.0.0.1:3000/api/health >/dev/null 2>&1; do sleep 1; done; echo ready'
+```
+
+Luego configurar el webhook de nuevo (§3.2) y subir TC-04:
 
 ```bash
 RESP=$(curl -s -X POST http://127.0.0.1:3000/api/invoices \
   -F "file=@fixtures/TC-04.json;type=application/json")
 echo "$RESP"
 # Esperado: verdict "ESCALAR", reason_code "ALERT_THRESHOLD_EXCEEDED"
+```
+
+**Opción B — Archivo nuevo (sin borrar la base):** crear una copia con número de factura distinto para que no sea duplicado:
+
+```bash
+python3 -c "
+import json
+d=json.load(open('fixtures/TC-04.json'))
+d['invoice_number']='INV-GA-3500-TEST'
+json.dump(d, open('/tmp/tc04-nuevo.json','w'))
+"
+RESP=$(curl -s -X POST http://127.0.0.1:3000/api/invoices \
+  -F "file=@/tmp/tc04-nuevo.json;type=application/json")
+echo "$RESP"
+# Esperado: verdict "ESCALAR"
 ```
 
 Verificar en Slack/webhook.site que llegó un mensaje con:
@@ -208,6 +235,8 @@ Verificar en Slack/webhook.site que llegó un mensaje con:
 - (Si hay explicación con IA cacheada, se incluye "Explicación IA: ...")
 
 ### 4.3 Caso 2 — Rechazo humano (NEGADA) dispara webhook
+
+> Asegurate de tener al menos una factura escalada en la bandeja. Si está vacía, subí TC-04 (§4.2) o sembrá los datos demo (`npm run db:demo`) primero.
 
 1. Ir a la bandeja de aprobaciones: http://127.0.0.1:5173/bandeja
 2. Elegir una factura escalada (ESCALAR).
