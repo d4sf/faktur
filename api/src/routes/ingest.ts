@@ -53,10 +53,10 @@ export async function registerIngestRoutes(app: FastifyInstance): Promise<void> 
           return reply.code(400).send({ error: "invalid_file_type" });
         }
         if (error instanceof ExtractionNotConfiguredError) {
-          return reply.code(503).send({ error: "extraction_not_configured" });
+          return reply.code(503).send({ error: "extraction_not_configured", detail: (error as Error).message });
         }
         if (error instanceof ExtractionUnavailableError) {
-          return reply.code(503).send({ error: "extraction_unavailable" });
+          return reply.code(503).send({ error: "extraction_unavailable", detail: (error as Error).message });
         }
         if (error instanceof ExtractionInvalidError) {
           updateAttemptStatus(attempt.id, "RECHAZADA");
