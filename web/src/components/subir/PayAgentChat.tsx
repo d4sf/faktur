@@ -13,13 +13,17 @@ interface PayAgentChatProps {
    * Callback invocado al confirmar la resolución humana (aprobado o rechazado).
    */
   onResolve: (approved: boolean, justification: string) => void;
+  /**
+   * Sin `approval:resolve` se oculta la acción de aprobar/rechazar: el rol solo consulta.
+   */
+  readOnly?: boolean;
 }
 
 /**
  * Panel de revisión y decisión humana con soporte de explicación con IA.
  * Reemplaza el asistente conversacional por un flujo directo de auditoría.
  */
-export function PayAgentChat({ invoice, onResolve }: PayAgentChatProps) {
+export function PayAgentChat({ invoice, onResolve, readOnly = false }: PayAgentChatProps) {
   const [justification, setJustification] = useState("");
   const [pendingAction, setPendingAction] = useState<"APROBAR" | "RECHAZAR" | null>(null);
 
@@ -195,6 +199,11 @@ export function PayAgentChat({ invoice, onResolve }: PayAgentChatProps) {
           <p className="text-[10px] text-muted-foreground/80">
             Resuelto a las {invoice.resolved_at || "recientemente"} · Pista inmutable en ledger
           </p>
+        </div>
+      ) : readOnly ? (
+        <div className="rounded-lg border border-border bg-muted/30 p-3 text-[11px] text-muted-foreground">
+          Tu rol no puede aprobar ni rechazar pagos. Podés consultar el detalle y la explicación con
+          IA.
         </div>
       ) : (
         /* Formulario de Decisión Humana */

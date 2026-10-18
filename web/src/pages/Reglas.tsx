@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { VerdictBadge } from "@/components/ui/VerdictBadge";
 import { PolicyEditor } from "@/components/reglas/PolicyEditor";
+import { useSession } from "@/components/session/SessionProvider";
 import { usePolicy } from "@/hooks/usePolicy";
 
 /**
@@ -103,6 +104,8 @@ const CATEGORY_BUDGETS = [
 
 export default function Reglas() {
   const { policy, records, loading, error, refresh } = usePolicy();
+  const { can } = useSession();
+  const canEditPolicy = can("policy:edit");
   const [isEditing, setIsEditing] = useState(false);
 
   const handleApply = async (candidate: import("@/types/policy").CandidatePolicy) => {
@@ -165,25 +168,27 @@ export default function Reglas() {
             <span>Spec JSON</span>
           </a>
 
-          <Button
-            type="button"
-            variant={isEditing ? "secondary" : "default"}
-            size="sm"
-            onClick={() => setIsEditing((prev) => !prev)}
-            className="rounded-full text-xs font-semibold gap-1.5 h-8 px-3.5 shadow-xs shrink-0 whitespace-nowrap cursor-pointer"
-          >
-            {isEditing ? (
-              <>
-                <X className="size-3.5" />
-                <span>Cerrar editor</span>
-              </>
-            ) : (
-              <>
-                <SlidersHorizontal className="size-3.5" />
-                <span>Editar política</span>
-              </>
-            )}
-          </Button>
+          {canEditPolicy && (
+            <Button
+              type="button"
+              variant={isEditing ? "secondary" : "default"}
+              size="sm"
+              onClick={() => setIsEditing((prev) => !prev)}
+              className="rounded-full text-xs font-semibold gap-1.5 h-8 px-3.5 shadow-xs shrink-0 whitespace-nowrap cursor-pointer"
+            >
+              {isEditing ? (
+                <>
+                  <X className="size-3.5" />
+                  <span>Cerrar editor</span>
+                </>
+              ) : (
+                <>
+                  <SlidersHorizontal className="size-3.5" />
+                  <span>Editar política</span>
+                </>
+              )}
+            </Button>
+          )}
         </div>
       </div>
 
