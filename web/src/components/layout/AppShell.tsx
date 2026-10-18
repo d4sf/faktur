@@ -132,8 +132,8 @@ export default function AppShell() {
                 F
               </div>
               <div className="flex flex-col min-w-0 overflow-hidden whitespace-nowrap transition-[opacity,max-width,transform] duration-300 ease-in-out group-data-[collapsible=icon]:max-w-0 group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:-translate-x-2 max-w-[180px] opacity-100 translate-x-0">
-                <span className="text-sm font-bold leading-tight tracking-tight text-sidebar-foreground truncate">
-                  Faktur
+                <span className="text-sm font-bold leading-tight tracking-tight text-sidebar-foreground truncate font-logo">
+                  FLUSH
                 </span>
                 <span className="text-[11px] leading-tight text-muted-foreground font-normal truncate">
                   Revisión de facturas
@@ -168,7 +168,7 @@ export default function AppShell() {
                 <SheetContent side="left" className="w-72 p-0 flex flex-col justify-between">
                   <div>
                     <SheetHeader className="border-b border-border p-4 text-left">
-                      <SheetTitle className="text-base font-bold">Faktur</SheetTitle>
+                      <SheetTitle className="text-base font-bold font-logo">FLUSH</SheetTitle>
                     </SheetHeader>
                     <nav className="p-3">
                       <NavLinks />

@@ -44,7 +44,7 @@ Este documento define la política de estilos y UX del proyecto Faktur/Blinka Pa
 | Código (reason_code, folio) | `font-mono text-xs` o `font-mono text-[10px]`                       | IDs, folios, códigos       |
 | Botones                     | `text-xs` o `text-sm`                                               | Según tamaño del botón     |
 
-Fuente: sistema (`font-sans` = system-ui). No se usa fuente custom.
+Fuente: sistema (`font-sans` = system-ui). No se usa fuente custom, salvo el logo, que usa `Iceland` (Google Fonts) mediante la clase `.font-logo`.
 
 ## 3. Espaciado
 

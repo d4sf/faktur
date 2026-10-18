@@ -1,4 +1,4 @@
-# Blinka PayAgent
+# FLUSH
 
 Agente que revisa facturas y decide PAGAR / FRENAR / ESCALAR. El LLM solo
 extrae datos; la decisión la toma un motor de reglas determinista.
