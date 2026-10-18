@@ -340,7 +340,7 @@ export default function Bandeja() {
             <div className="flex flex-wrap items-center gap-2.5 shrink-0">
               <div className="inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-muted/40 px-2.5 py-1 text-[11px] text-muted-foreground whitespace-nowrap shrink-0">
                 <span className="size-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                <span>Canal push en vivo (SSE)</span>
+                <span>Sincronización en tiempo real</span>
               </div>
 
               <Button
