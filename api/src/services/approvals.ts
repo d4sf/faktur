@@ -11,6 +11,13 @@ import { getDecision } from "../repositories/decisions.js";
 import { getInvoiceRow, updateInvoiceStatus } from "../repositories/invoices.js";
 import { insertLedgerEntry } from "../repositories/ledger.js";
 import { getPolicySpecByVersion } from "../repositories/policies.js";
+import {
+  defaultNotifier,
+  dispatchNotification,
+  getCachedAiExplanation,
+  queueNotification,
+  type Notifier,
+} from "./notifier.js";
 
 export type ResolveInput = {
   approve: boolean;
@@ -92,7 +99,10 @@ export function resolveApproval(
   input: ResolveInput,
   db: Database.Database,
 ): ResolveResult {
-  return db.transaction((): ResolveResult => {
+  let notificationId: string | undefined;
+  let notifierInstance: Notifier | undefined;
+
+  const result = db.transaction((): ResolveResult => {
     const approval = getApproval(id, db);
     if (approval === null) throw new ApprovalError("not_found");
 
@@ -139,6 +149,20 @@ export function resolveApproval(
 
     if (!input.approve) {
       updateInvoiceStatus(invoice.id, "FRENADA", db);
+      const extracted = ExtractedInvoice.parse(JSON.parse(invoice.extraction_json));
+      const notifier = defaultNotifier(db);
+      const cachedAi = getCachedAiExplanation(decision.id, db);
+      notificationId = queueNotification({
+        invoice_id: invoice.id,
+        decision_id: decision.id,
+        channel: notifier.channel,
+        reason_code: decision.reason_code,
+        explanation: decision.explanation,
+        amount_usd: decision.amount_usd_evaluated,
+        ...(extracted.vendor_name === undefined ? {} : { vendor_name: extracted.vendor_name }),
+        ...(cachedAi === undefined ? {} : { ai_explanation: cachedAi }),
+      });
+      notifierInstance = notifier.notifier;
       return { status: "NEGADA" };
     }
 
@@ -153,4 +177,10 @@ export function resolveApproval(
     updateInvoiceStatus(invoice.id, "APROBADA", db);
     return { status: "APROBADA", ledger: ledger ?? undefined };
   })();
+
+  if (notificationId !== undefined && notifierInstance !== undefined) {
+    void dispatchNotification(notificationId, notifierInstance, db);
+  }
+
+  return result;
 }

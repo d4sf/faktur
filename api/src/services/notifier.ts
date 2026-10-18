@@ -4,6 +4,8 @@ import type Database from "better-sqlite3";
 
 import { getDb } from "../db/index.js";
 import { loadEnv } from "../config/env.js";
+import { getLatestAiExplanationByDecision } from "../repositories/aiExplanations.js";
+import { getSlackWebhookUrl } from "./integrations.js";
 
 export type NotificationChannel = "CONSOLE" | "WEBHOOK";
 
@@ -15,6 +17,7 @@ export type NotificationInput = {
   explanation: string;
   amount_usd: number;
   vendor_name?: string;
+  ai_explanation?: string;
 };
 
 export interface Notifier {
@@ -32,7 +35,6 @@ export class ConsoleNotifier implements Notifier {
 
 export class WebhookNotifier implements Notifier {
   constructor(private readonly url: string) {}
-
   async notify(input: NotificationInput): Promise<void> {
     const response = await fetch(this.url, {
       method: "POST",
@@ -43,10 +45,40 @@ export class WebhookNotifier implements Notifier {
   }
 }
 
-export function defaultNotifier(): { notifier: Notifier; channel: NotificationChannel } {
-  const url = loadEnv().NOTIFIER_WEBHOOK_URL;
-  if (url === undefined) return { notifier: new ConsoleNotifier(), channel: "CONSOLE" };
-  return { notifier: new WebhookNotifier(url), channel: "WEBHOOK" };
+export class SlackNotifier implements Notifier {
+  constructor(private readonly url: string) {}
+  async notify(input: NotificationInput): Promise<void> {
+    const lines: string[] = [];
+    lines.push(`*Factura ${input.invoice_id} — ${input.reason_code}*`);
+    if (input.vendor_name) lines.push(`Proveedor: ${input.vendor_name}`);
+    lines.push(`Monto: $${input.amount_usd.toFixed(2)} USD`);
+    lines.push(`Motivo: ${input.explanation}`);
+    if (input.ai_explanation) {
+      lines.push(`Explicación IA: ${input.ai_explanation}`);
+    }
+    const text = lines.join("\n");
+    const response = await fetch(this.url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ text }),
+    });
+    if (!response.ok) throw new Error(`slack_webhook_failed: ${response.status}`);
+  }
+}
+
+export function defaultNotifier(db: Database.Database): {
+  notifier: Notifier;
+  channel: NotificationChannel;
+} {
+  const slackUrl = getSlackWebhookUrl(db);
+  if (slackUrl !== null) {
+    return { notifier: new SlackNotifier(slackUrl), channel: "WEBHOOK" };
+  }
+  const envUrl = loadEnv().NOTIFIER_WEBHOOK_URL;
+  if (envUrl !== undefined) {
+    return { notifier: new WebhookNotifier(envUrl), channel: "WEBHOOK" };
+  }
+  return { notifier: new ConsoleNotifier(), channel: "CONSOLE" };
 }
 
 /** Outbox: la fila nace `PENDIENTE` en la misma transacción que la decisión ESCALAR. */
@@ -103,4 +135,13 @@ export function notificationStatus(id: string, db: Database.Database): string | 
   const row = db.prepare("SELECT status FROM notifications WHERE id = ?").get(id) as
     { status: string } | undefined;
   return row?.status ?? null;
+}
+
+/** Helper: devuelve la explicación con IA cacheada para una decisión, si existe. */
+export function getCachedAiExplanation(
+  decisionId: string,
+  db: Database.Database,
+): string | undefined {
+  const row = getLatestAiExplanationByDecision(decisionId, db);
+  return row?.explanation;
 }
