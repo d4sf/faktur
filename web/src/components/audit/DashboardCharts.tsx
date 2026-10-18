@@ -315,7 +315,7 @@ export function DashboardCharts({ records, metrics }: DashboardChartsProps) {
                 {activeSegment ? activeSegment.shortLabel : "Total evaluado"}
               </span>
 
-              <span className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground tabular-nums my-0.5">
+              <span className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground tabular-nums my-0.5 font-logo">
                 $
                 {Math.round(
                   activeSegment ? activeSegment.amount : donutData.totalUsd,

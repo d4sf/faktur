@@ -139,7 +139,7 @@ export default function Reglas() {
       {/* 1. Encabezado */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-1">
         <div className="min-w-0">
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground font-logo">
             Reglas de política
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
@@ -226,7 +226,7 @@ export default function Reglas() {
                 <Skeleton className="h-8 w-28 bg-white/20" />
               </div>
             ) : (
-              <div className="text-3xl font-extrabold tracking-tight mt-1.5">
+              <div className="text-3xl font-extrabold tracking-tight mt-1.5 font-logo">
                 ${threshold.toLocaleString("en-US")}
                 <span className="text-base font-normal text-emerald-200/80">.00</span>
               </div>
@@ -246,7 +246,7 @@ export default function Reglas() {
                 <Skeleton className="h-8 w-28" />
               </div>
             ) : (
-              <div className="text-3xl font-extrabold tracking-tight text-foreground mt-1.5">
+              <div className="text-3xl font-extrabold tracking-tight text-foreground mt-1.5 font-logo">
                 ${monthlyBudget.toLocaleString("en-US")}
                 <span className="text-base font-normal text-muted-foreground">.00</span>
               </div>
@@ -266,7 +266,7 @@ export default function Reglas() {
                 <Skeleton className="h-8 w-20" />
               </div>
             ) : (
-              <div className="text-3xl font-extrabold tracking-tight text-foreground mt-1.5">
+              <div className="text-3xl font-extrabold tracking-tight text-foreground mt-1.5 font-logo">
                 {driftFactor}
                 <span className="text-lg font-normal text-muted-foreground">x</span>
               </div>
@@ -286,7 +286,7 @@ export default function Reglas() {
                 <Skeleton className="h-8 w-20" />
               </div>
             ) : (
-              <div className="text-3xl font-extrabold tracking-tight text-foreground mt-1.5">
+              <div className="text-3xl font-extrabold tracking-tight text-foreground mt-1.5 font-logo">
                 {Math.round(minConfidence * 100)}
                 <span className="text-lg font-normal text-muted-foreground">%</span>
               </div>

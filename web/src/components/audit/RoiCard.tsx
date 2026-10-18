@@ -25,7 +25,7 @@ export function RoiCard({
               <Skeleton className="h-8 w-28 bg-white/20" />
             </div>
           ) : (
-            <div className="text-3xl font-extrabold tracking-tight mt-1.5">{value}</div>
+            <div className="text-3xl font-extrabold tracking-tight mt-1.5 font-logo">{value}</div>
           )}
         </div>
         <p className="text-[11px] font-medium text-emerald-200 mt-2">{subtitle}</p>
@@ -42,7 +42,7 @@ export function RoiCard({
             <Skeleton className="h-8 w-28" />
           </div>
         ) : (
-          <div className="text-3xl font-extrabold tracking-tight text-foreground mt-1.5">
+          <div className="text-3xl font-extrabold tracking-tight text-foreground mt-1.5 font-logo">
             {value}
           </div>
         )}
