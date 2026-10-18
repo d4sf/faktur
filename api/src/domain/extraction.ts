@@ -97,7 +97,7 @@ export type FieldConfidence = z.infer<typeof FieldConfidence>;
  */
 export const ExtractedInvoice = z.object({
   invoice_number: z.string().trim().min(1),
-  total_amount: z.number().positive(),
+  total_amount: z.number().nonnegative(),
   currency: Currency,
 
   vendor_name: z.string().trim().min(1).optional(),

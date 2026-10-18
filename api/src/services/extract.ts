@@ -204,7 +204,14 @@ export async function extractInvoice(
   };
 
   const rawResponse = await callModel(model, contents, config, caller);
-  const rawText = typeof rawResponse === "string" ? rawResponse : JSON.stringify(rawResponse);
+  let rawText =
+    typeof rawResponse === "string"
+      ? rawResponse
+      : typeof (rawResponse as { text?: unknown })?.text === "function"
+        ? ((rawResponse as { text: () => string }).text())
+        : typeof (rawResponse as { text?: unknown })?.text === "string"
+          ? ((rawResponse as { text: string }).text)
+          : JSON.stringify(rawResponse);
 
   let extracted: ExtractedInvoice;
   try {
@@ -217,6 +224,14 @@ export async function extractInvoice(
       { text: `${PROMPT}\n\nTu respuesta anterior falló la validación por: ${firstError.message}. Corregila y devolvé solo el JSON válido.` },
     ];
     const retryResponse = await callModel(model, retryContents, config, caller);
+    rawText =
+      typeof retryResponse === "string"
+        ? retryResponse
+        : typeof (retryResponse as { text?: unknown })?.text === "function"
+          ? ((retryResponse as { text: () => string }).text())
+          : typeof (retryResponse as { text?: unknown })?.text === "string"
+            ? ((retryResponse as { text: string }).text)
+            : JSON.stringify(retryResponse);
     extracted = parseResponse(retryResponse);
   }
 
