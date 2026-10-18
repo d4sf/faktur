@@ -16,29 +16,6 @@ function determineFailingRuleId(reasonCode?: string): number | undefined {
   return undefined;
 }
 
-const FALLBACK_PENDING: PendingApproval[] = [
-  {
-    id: "app-tc-04",
-    invoice_id: "inv-tc-04",
-    vendor_name: "Growth Agency",
-    amount_usd: 3500,
-    reason_code: "ALERT_THRESHOLD_EXCEEDED",
-    explanation:
-      "El importe de $3,500.00 USD supera el umbral de aprobación autónoma de $1,000.00 USD (Regla 7).",
-    requested_at: "Hace 5 min",
-  },
-  {
-    id: "app-tc-09",
-    invoice_id: "inv-tc-09",
-    vendor_name: "Estudio Creativo Alpha",
-    amount_usd: 1450,
-    reason_code: "ALERT_BUDGET_TIGHT",
-    explanation:
-      "El monto acumulado excede el presupuesto asignado a la categoría Diseño (Regla 6).",
-    requested_at: "Hace 15 min",
-  },
-];
-
 interface AuditRecordResponse {
   record?: {
     invoice_number?: string | null;
@@ -85,13 +62,13 @@ export function useApprovalQueue() {
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
-          setApprovals(data.length > 0 ? data : FALLBACK_PENDING);
+          setApprovals(data);
         }
       } else {
-        setApprovals((prev) => (prev.length > 0 ? prev : FALLBACK_PENDING));
+        setApprovals((prev) => (prev.length > 0 ? prev : []));
       }
     } catch {
-      setApprovals((prev) => (prev.length > 0 ? prev : FALLBACK_PENDING));
+      setApprovals((prev) => (prev.length > 0 ? prev : []));
     } finally {
       if (!silent) setLoading(false);
     }

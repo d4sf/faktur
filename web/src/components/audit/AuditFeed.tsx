@@ -67,16 +67,19 @@ export function AuditFeed() {
           title="Tasa de aprobación autónoma"
           value={metrics ? `${metrics.touchless_rate}%` : "—"}
           subtitle="Facturas procesadas directamente sin firma humana (STP)"
+          loading={loading && !metrics}
         />
         <RoiCard
           title="Presupuesto disponible"
           value={metrics ? formatBudget(metrics.budget_remaining) : "—"}
           subtitle="Balance mensual restante para dispersión"
+          loading={loading && !metrics}
         />
         <RoiCard
           title="Total procesadas"
           value={metrics ? `${metrics.total_processed}` : "—"}
           subtitle="Evaluadas con las 8 reglas deterministas"
+          loading={loading && !metrics}
         />
       </div>
 

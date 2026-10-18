@@ -221,10 +221,16 @@ export default function Reglas() {
         <div className="rounded-2xl bg-[#185338] text-white p-5 shadow-xs flex flex-col justify-between min-h-[130px]">
           <div>
             <span className="text-xs font-medium text-emerald-100/90">Umbral autónomo</span>
-            <div className="text-3xl font-extrabold tracking-tight mt-1.5">
-              ${threshold.toLocaleString("en-US")}
-              <span className="text-base font-normal text-emerald-200/80">.00</span>
-            </div>
+            {loading && !policy ? (
+              <div className="h-9 flex items-center mt-1.5">
+                <Skeleton className="h-8 w-28 bg-white/20" />
+              </div>
+            ) : (
+              <div className="text-3xl font-extrabold tracking-tight mt-1.5">
+                ${threshold.toLocaleString("en-US")}
+                <span className="text-base font-normal text-emerald-200/80">.00</span>
+              </div>
+            )}
           </div>
           <p className="text-[11px] font-medium text-emerald-200 mt-2">
             Pago directo sin firma humana
@@ -235,10 +241,16 @@ export default function Reglas() {
         <div className="rounded-2xl bg-card border border-border/80 p-5 shadow-xs flex flex-col justify-between min-h-[130px] hover:border-border transition-colors">
           <div>
             <span className="text-xs font-medium text-muted-foreground">Presupuesto mensual</span>
-            <div className="text-3xl font-extrabold tracking-tight text-foreground mt-1.5">
-              ${monthlyBudget.toLocaleString("en-US")}
-              <span className="text-base font-normal text-muted-foreground">.00</span>
-            </div>
+            {loading && !policy ? (
+              <div className="h-9 flex items-center mt-1.5">
+                <Skeleton className="h-8 w-28" />
+              </div>
+            ) : (
+              <div className="text-3xl font-extrabold tracking-tight text-foreground mt-1.5">
+                ${monthlyBudget.toLocaleString("en-US")}
+                <span className="text-base font-normal text-muted-foreground">.00</span>
+              </div>
+            )}
           </div>
           <p className="text-[11px] font-medium text-muted-foreground mt-2">
             Límite global por ciclo
@@ -249,10 +261,16 @@ export default function Reglas() {
         <div className="rounded-2xl bg-card border border-border/80 p-5 shadow-xs flex flex-col justify-between min-h-[130px] hover:border-border transition-colors">
           <div>
             <span className="text-xs font-medium text-muted-foreground">Tolerancia de desvío</span>
-            <div className="text-3xl font-extrabold tracking-tight text-foreground mt-1.5">
-              {driftFactor}
-              <span className="text-lg font-normal text-muted-foreground">x</span>
-            </div>
+            {loading && !policy ? (
+              <div className="h-9 flex items-center mt-1.5">
+                <Skeleton className="h-8 w-20" />
+              </div>
+            ) : (
+              <div className="text-3xl font-extrabold tracking-tight text-foreground mt-1.5">
+                {driftFactor}
+                <span className="text-lg font-normal text-muted-foreground">x</span>
+              </div>
+            )}
           </div>
           <p className="text-[11px] font-medium text-muted-foreground mt-2">
             Máximo +{Math.round((driftFactor - 1) * 100)}% sobre acordado
@@ -263,10 +281,16 @@ export default function Reglas() {
         <div className="rounded-2xl bg-card border border-border/80 p-5 shadow-xs flex flex-col justify-between min-h-[130px] hover:border-border transition-colors">
           <div>
             <span className="text-xs font-medium text-muted-foreground">Confianza mínima IA</span>
-            <div className="text-3xl font-extrabold tracking-tight text-foreground mt-1.5">
-              {Math.round(minConfidence * 100)}
-              <span className="text-lg font-normal text-muted-foreground">%</span>
-            </div>
+            {loading && !policy ? (
+              <div className="h-9 flex items-center mt-1.5">
+                <Skeleton className="h-8 w-20" />
+              </div>
+            ) : (
+              <div className="text-3xl font-extrabold tracking-tight text-foreground mt-1.5">
+                {Math.round(minConfidence * 100)}
+                <span className="text-lg font-normal text-muted-foreground">%</span>
+              </div>
+            )}
           </div>
           <p className="text-[11px] font-medium text-muted-foreground mt-2">
             Filtro de legibilidad OCR
