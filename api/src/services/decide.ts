@@ -9,7 +9,12 @@ import { getDecision, insertDecision } from "../repositories/decisions.js";
 import { getInvoiceRow, updateInvoiceStatus } from "../repositories/invoices.js";
 import { getBudgetState, insertLedgerEntry } from "../repositories/ledger.js";
 import { getActivePolicySpec } from "../repositories/policies.js";
-import { defaultNotifier, dispatchNotification, queueNotification } from "./notifier.js";
+import {
+  defaultNotifier,
+  dispatchNotification,
+  getCachedAiExplanation,
+  queueNotification,
+} from "./notifier.js";
 
 /**
  * Corre el motor contra la política activa y persiste la decisión en una sola transacción.
@@ -71,7 +76,7 @@ export function decideInvoice(invoiceId: string, db: Database.Database): Decisio
     context,
   );
 
-  const notification = defaultNotifier();
+  const notification = defaultNotifier(db);
   let notificationId: string | undefined;
 
   const decisionId = db.transaction(() => {
@@ -112,6 +117,7 @@ export function decideInvoice(invoiceId: string, db: Database.Database): Decisio
         0,
       );
 
+      const cachedAi = getCachedAiExplanation(id, db);
       notificationId = queueNotification({
         invoice_id: invoiceId,
         decision_id: id,
@@ -120,6 +126,7 @@ export function decideInvoice(invoiceId: string, db: Database.Database): Decisio
         explanation: result.explanation,
         amount_usd: invoice.total_usd,
         ...(extracted.vendor_name === undefined ? {} : { vendor_name: extracted.vendor_name }),
+        ...(cachedAi === undefined ? {} : { ai_explanation: cachedAi }),
       });
     } else {
       updateInvoiceStatus(invoiceId, "FRENADA", db);
