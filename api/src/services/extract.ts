@@ -56,20 +56,20 @@ export type ExtractionResult = {
   raw: string;
 };
 
-const PROMPT = `Sos un extractor de datos de facturas. Tu única tarea es leer el documento adjunto y devolver un JSON que cumpla exactamente el schema. No inventes datos.
+const PROMPT = `Sos un extractor de datos de facturas. Tu única tarea es leer el documento adjunto y devolver un JSON que cumpla exactamente el schema. No inventes datos. No incluyas razonamiento, comentarios ni texto explicativo en ningún campo.
 
 REGLAS DE EXTRACCIÓN:
 - invoice_number: el número o folio de la factura (string). Buscalo en el encabezado, cerca de "Invoice", "Factura", "Folio", "N°", "No.".
 - total_amount: el monto total a pagar (número, sin símbolos ni separadores de miles). Buscalo en "Total", "Total a pagar", "Grand Total", "Importe total".
 - currency: la moneda en código ISO (USD, MXN, COP o EUR). Normalizá: "usd"/"dólares"/"$" → "USD", "mxn"/"pesos" → "MXN", "cop" → "COP", "eur"/"€" → "EUR". Si no está explícita, inferila del símbolo o del país del emisor.
 - vendor_name: nombre del emisor/proveedor (string).
-- vendor_tax_id: identificador fiscal del emisor (RFC, CUIT, NIT, EIN, RUT, etc.). Si no aparece, omitilo.
+- vendor_tax_id: OPCIONAL. Identificador fiscal del emisor (RFC, CUIT, NIT, EIN, RUT, etc.). Si no aparece en el documento, OMITILO completamente. NO inventes un valor. NO incluyas razonamiento ni texto explicativo en este campo. Si lo incluís, debe ser un identificador corto (máximo 60 caracteres).
 - issue_date: fecha de emisión en YYYY-MM-DD.
 - due_date: fecha de vencimiento en YYYY-MM-DD.
 - subtotal: subtotal antes de impuestos (número).
 - tax_amount: monto de impuestos (número).
 - line_items: lista de conceptos con description, quantity, unit_price, total.
-- field_confidence: objeto con confianza (0 a 1) para invoice_number, vendor_tax_id, total_amount, currency, due_date. Reportalo siempre.
+- field_confidence: OPCIONAL. Objeto con confianza (0 a 1) para invoice_number, vendor_tax_id, total_amount, currency, due_date. Si lo incluís, debe tener los 5 campos. Si no podés calcular confianza, omitilo.
 
 REGLAS DE NORMALIZACIÓN:
 - Fechas: siempre YYYY-MM-DD. "12/10/2026", "Oct 12, 2026", "12-Oct-2026" → "2026-10-12".
@@ -82,7 +82,7 @@ INSTRUCCIONES PARA DOCUMENTOS ESCANEADOS O FOTOS:
 - Verificá dos veces los montos y las fechas.
 - Si no podés leer un campo con confianza, reportá confianza baja (< 0.7) en field_confidence.
 
-EJEMPLO:
+EJEMPLO 1 (con identificador fiscal):
 Entrada: factura de "CloudServers Inc", folio INV-9022, emisión 2026-10-01, vencimiento 2026-10-15, USD, subtotal 400, impuesto 20, total 420.
 Salida:
 {
@@ -104,7 +104,28 @@ Salida:
   }
 }
 
-Devolvé solamente el JSON que cumple el schema. No agregues texto fuera del JSON.`;
+EJEMPLO 2 (sin identificador fiscal — omitir vendor_tax_id):
+Entrada: factura de "Entidad Fantasma", folio INV-2026-DEMO-304, emisión 2026-10-18, vencimiento 2026-11-01, USD, subtotal 850, impuesto 50, total 900. No aparece identificador fiscal.
+Salida:
+{
+  "invoice_number": "INV-2026-DEMO-304",
+  "vendor_name": "Entidad Fantasma",
+  "issue_date": "2026-10-18",
+  "due_date": "2026-11-01",
+  "currency": "USD",
+  "subtotal": 850,
+  "tax_amount": 50,
+  "total_amount": 900,
+  "field_confidence": {
+    "invoice_number": 0.99,
+    "vendor_tax_id": 0.0,
+    "total_amount": 0.99,
+    "currency": 0.99,
+    "due_date": 0.98
+  }
+}
+
+Devolvé solamente el JSON que cumple el schema. No agregues texto fuera del JSON. No incluyas razonamiento en ningún campo.`;
 
 function responseBody(response: unknown): unknown {
   if (typeof response === "string") return JSON.parse(response);

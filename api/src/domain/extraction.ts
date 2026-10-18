@@ -101,7 +101,7 @@ export const ExtractedInvoice = z.object({
   currency: Currency,
 
   vendor_name: z.string().trim().min(1).optional(),
-  vendor_tax_id: z.string().trim().min(1).optional(),
+  vendor_tax_id: z.string().trim().min(1).max(60).optional(),
   issue_date: z.iso.date().optional(),
   due_date: z.iso.date().optional(),
   subtotal: z.number().nonnegative().optional(),
