@@ -183,7 +183,7 @@ export default function AppShell() {
               <SidebarTrigger className="hidden md:flex text-muted-foreground hover:text-foreground transition-transform duration-200 ease-in-out hover:scale-105 active:scale-95" />
 
               <div className="flex items-center gap-2">
-                <h1 className="text-base md:text-lg font-semibold tracking-tight">
+                <h1 className="text-base md:text-lg font-semibold tracking-tight font-logo">
                   {currentItem?.label ?? "Panel"}
                 </h1>
               </div>
