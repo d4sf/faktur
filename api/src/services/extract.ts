@@ -51,9 +51,60 @@ export const EXTRACTION_MIME_TYPES = [
   "application/json",
 ] as const;
 
-const PROMPT = `Extraé los datos de esta factura y devolvé solamente el JSON que cumple el schema.
-Normalizá todas las fechas a YYYY-MM-DD. La moneda debe ser una de USD, MXN, COP o EUR.
-No inventes campos: si un dato no está en el documento, omitilo.`;
+export type ExtractionResult = {
+  extracted: ExtractedInvoice;
+  raw: string;
+};
+
+const PROMPT = `Sos un extractor de datos de facturas. Tu única tarea es leer el documento adjunto y devolver un JSON que cumpla exactamente el schema. No inventes datos.
+
+REGLAS DE EXTRACCIÓN:
+- invoice_number: el número o folio de la factura (string). Buscalo en el encabezado, cerca de "Invoice", "Factura", "Folio", "N°", "No.".
+- total_amount: el monto total a pagar (número, sin símbolos ni separadores de miles). Buscalo en "Total", "Total a pagar", "Grand Total", "Importe total".
+- currency: la moneda en código ISO (USD, MXN, COP o EUR). Normalizá: "usd"/"dólares"/"$" → "USD", "mxn"/"pesos" → "MXN", "cop" → "COP", "eur"/"€" → "EUR". Si no está explícita, inferila del símbolo o del país del emisor.
+- vendor_name: nombre del emisor/proveedor (string).
+- vendor_tax_id: identificador fiscal del emisor (RFC, CUIT, NIT, EIN, RUT, etc.). Si no aparece, omitilo.
+- issue_date: fecha de emisión en YYYY-MM-DD.
+- due_date: fecha de vencimiento en YYYY-MM-DD.
+- subtotal: subtotal antes de impuestos (número).
+- tax_amount: monto de impuestos (número).
+- line_items: lista de conceptos con description, quantity, unit_price, total.
+- field_confidence: objeto con confianza (0 a 1) para invoice_number, vendor_tax_id, total_amount, currency, due_date. Reportalo siempre.
+
+REGLAS DE NORMALIZACIÓN:
+- Fechas: siempre YYYY-MM-DD. "12/10/2026", "Oct 12, 2026", "12-Oct-2026" → "2026-10-12".
+- Moneda: siempre código ISO de 3 letras en mayúsculas.
+- Montos: número sin símbolos, sin separadores de miles, con punto decimal (ej. 1234.56).
+- Si un campo no está en el documento, omitilo. Nunca inventes montos, fechas ni nombres.
+
+INSTRUCCIONES PARA DOCUMENTOS ESCANEADOS O FOTOS:
+- Si el documento está escaneado, es una foto o tiene baja calidad, leé con cuidado las cifras manuscritas o impresas con baja resolución.
+- Verificá dos veces los montos y las fechas.
+- Si no podés leer un campo con confianza, reportá confianza baja (< 0.7) en field_confidence.
+
+EJEMPLO:
+Entrada: factura de "CloudServers Inc", folio INV-9022, emisión 2026-10-01, vencimiento 2026-10-15, USD, subtotal 400, impuesto 20, total 420.
+Salida:
+{
+  "invoice_number": "INV-9022",
+  "vendor_name": "CloudServers Inc",
+  "vendor_tax_id": "CLOUD-SERVERS-INC",
+  "issue_date": "2026-10-01",
+  "due_date": "2026-10-15",
+  "currency": "USD",
+  "subtotal": 400,
+  "tax_amount": 20,
+  "total_amount": 420,
+  "field_confidence": {
+    "invoice_number": 0.99,
+    "vendor_tax_id": 0.98,
+    "total_amount": 0.99,
+    "currency": 1.0,
+    "due_date": 0.95
+  }
+}
+
+Devolvé solamente el JSON que cumple el schema. No agregues texto fuera del JSON.`;
 
 function responseBody(response: unknown): unknown {
   if (typeof response === "string") return JSON.parse(response);
@@ -86,60 +137,90 @@ async function defaultCaller(request: {
   });
 }
 
-/**
- * Manda el archivo al modelo y valida la respuesta con `ExtractedInvoice`. El LLM percibe,
- * no decide: lo único que sale de acá es el JSON validado (los campos extra se descartan).
- *
- * Un JSON mock se valida localmente sin red: es el camino de la demo y del seed.
- */
-export async function extractInvoice(
-  input: { buffer: Buffer; mimeType: string },
-  caller: GeminiCaller = defaultCaller,
-): Promise<ExtractedInvoice> {
-  if (!(EXTRACTION_MIME_TYPES as readonly string[]).includes(input.mimeType)) {
-    throw new InvalidFileTypeError(input.mimeType);
-  }
-
-  if (input.mimeType === "application/json") {
-    try {
-      return ExtractedInvoice.parse(JSON.parse(input.buffer.toString("utf8")));
-    } catch (error) {
-      throw new ExtractionInvalidError((error as Error).message);
-    }
-  }
-
-  const model = loadEnv().GEMINI_MODEL;
-  let raw: unknown;
+async function callModel(
+  model: string,
+  contents: unknown,
+  config: unknown,
+  caller: GeminiCaller,
+): Promise<unknown> {
   try {
-    raw = await caller({
-      model,
-      contents: [
-        { inlineData: { mimeType: input.mimeType, data: input.buffer.toString("base64") } },
-        { text: PROMPT },
-      ],
-      config: {
-        temperature: 0,
-        responseMimeType: "application/json",
-        responseSchema: toGeminiResponseSchema(),
-      },
-    });
+    return await caller({ model, contents, config });
   } catch (error) {
     if (error instanceof ExtractionUnavailableError) throw error;
     throw new ExtractionUnavailableError((error as Error).message);
   }
+}
 
+function parseResponse(raw: unknown): ExtractedInvoice {
   let parsed: unknown;
   try {
     parsed = responseBody(raw);
   } catch (error) {
     throw new ExtractionInvalidError((error as Error).message);
   }
-
   const result = ExtractedInvoice.safeParse(parsed);
   if (!result.success) {
     throw new ExtractionInvalidError(result.error.issues.map((i) => i.message).join("; "));
   }
   return result.data;
+}
+
+/**
+ * Manda el archivo al modelo y valida la respuesta con `ExtractedInvoice`. El LLM percibe,
+ * no decide: lo único que sale de acá es el JSON validado (los campos extra se descartan).
+ *
+ * Un JSON mock se valida localmente sin red: es el camino de la demo y del seed.
+ *
+ * Si la validación Zod falla, se hace un reintento con el error en el prompt.
+ * Si falla de nuevo, se lanza `ExtractionInvalidError` (fail-closed).
+ */
+export async function extractInvoice(
+  input: { buffer: Buffer; mimeType: string },
+  caller: GeminiCaller = defaultCaller,
+): Promise<ExtractionResult> {
+  if (!(EXTRACTION_MIME_TYPES as readonly string[]).includes(input.mimeType)) {
+    throw new InvalidFileTypeError(input.mimeType);
+  }
+
+  if (input.mimeType === "application/json") {
+    try {
+      const extracted = ExtractedInvoice.parse(JSON.parse(input.buffer.toString("utf8")));
+      return { extracted, raw: input.buffer.toString("utf8") };
+    } catch (error) {
+      throw new ExtractionInvalidError((error as Error).message);
+    }
+  }
+
+  const model = loadEnv().GEMINI_MODEL;
+  const contents = [
+    { inlineData: { mimeType: input.mimeType, data: input.buffer.toString("base64") } },
+    { text: PROMPT },
+  ];
+  const config = {
+    temperature: 0,
+    responseMimeType: "application/json",
+    responseSchema: toGeminiResponseSchema(),
+    mediaResolution: "MEDIA_RESOLUTION_HIGH",
+  };
+
+  const rawResponse = await callModel(model, contents, config, caller);
+  const rawText = typeof rawResponse === "string" ? rawResponse : JSON.stringify(rawResponse);
+
+  let extracted: ExtractedInvoice;
+  try {
+    extracted = parseResponse(rawResponse);
+  } catch (firstError) {
+    if (!(firstError instanceof ExtractionInvalidError)) throw firstError;
+    // Retry con feedback
+    const retryContents = [
+      { inlineData: { mimeType: input.mimeType, data: input.buffer.toString("base64") } },
+      { text: `${PROMPT}\n\nTu respuesta anterior falló la validación por: ${firstError.message}. Corregila y devolvé solo el JSON válido.` },
+    ];
+    const retryResponse = await callModel(model, retryContents, config, caller);
+    extracted = parseResponse(retryResponse);
+  }
+
+  return { extracted, raw: rawText.slice(0, 4000) };
 }
 
 export type PersistExtractionResult =
@@ -164,6 +245,7 @@ export function persistExtraction(
   attemptId: string,
   extracted: ExtractedInvoice,
   db: Database.Database,
+  raw?: string,
 ): PersistExtractionResult {
   let notificationId: string | undefined;
   let notifierInstance: import("./notifier.js").Notifier | undefined;
@@ -239,8 +321,8 @@ export function persistExtraction(
     db.prepare(
       `INSERT INTO invoices (id, vendor_id, invoice_number, status, file_name, mime_type,
         file_hash, issue_date, due_date, currency, subtotal, tax_amount, total_amount,
-        fx_rate_used, total_usd, extraction_confidence, extraction_json, ingested_at)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        fx_rate_used, total_usd, extraction_confidence, extraction_json, extraction_raw, ingested_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
     ).run(
       invoiceId,
       vendor?.id ?? null,
@@ -259,6 +341,7 @@ export function persistExtraction(
       total_usd,
       confidence ?? null,
       JSON.stringify(extracted),
+      raw === undefined ? null : raw.slice(0, 4000),
       new Date().toISOString(),
     );
 
