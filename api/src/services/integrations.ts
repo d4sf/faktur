@@ -7,9 +7,12 @@ import { deleteSetting, getSetting, setSetting } from "../repositories/settings.
 
 export const SLACK_WEBHOOK_KEY = "slack_webhook_url";
 
-const UrlSchema = z.string().url().refine((u) => u.startsWith("https://"), {
-  message: "la URL debe usar https://",
-});
+const UrlSchema = z
+  .string()
+  .url()
+  .refine((u) => u.startsWith("https://"), {
+    message: "la URL debe usar https://",
+  });
 
 export class InvalidIntegrationUrlError extends Error {
   constructor(detail: string) {

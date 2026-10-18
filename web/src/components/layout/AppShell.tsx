@@ -13,6 +13,7 @@ import {
   Menu,
   SlidersHorizontal,
   UploadCloud,
+  Webhook,
 } from "lucide-react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 
@@ -41,6 +42,7 @@ const navItems = [
   { to: "/reglas", label: "Reglas de política", icon: SlidersHorizontal },
   { to: "/reporte", label: "Reporte CSV", icon: FileSpreadsheet },
   { to: "/datos", label: "Datos de demo", icon: Database },
+  { to: "/integraciones", label: "Integraciones", icon: Webhook },
 ];
 
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {

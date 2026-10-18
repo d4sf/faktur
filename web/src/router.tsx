@@ -5,6 +5,7 @@ import Aprobacion from "@/pages/Aprobacion";
 import Bandeja from "@/pages/Bandeja";
 import Datos from "@/pages/Datos";
 import Detalle from "@/pages/Detalle";
+import Integraciones from "@/pages/Integraciones";
 import Procesando from "@/pages/Procesando";
 import Reglas from "@/pages/Reglas";
 import Reporte from "@/pages/Reporte";
@@ -25,6 +26,7 @@ const router = createBrowserRouter([
       { path: "aprobacion/:id", element: <Aprobacion /> },
       { path: "reporte", element: <Reporte /> },
       { path: "datos", element: <Datos /> },
+      { path: "integraciones", element: <Integraciones /> },
       { path: "*", element: <Navigate to="/" replace /> },
     ],
   },
