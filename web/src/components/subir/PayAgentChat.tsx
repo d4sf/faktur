@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Check, CheckCircle2, Loader2, Sparkles, UserCheck, X, XCircle } from "lucide-react";
+import { Check, CheckCircle2, Loader2, UserCheck, X, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { formatNaturalExplanation, formatReasonTitle } from "@/lib/invoiceSubmit";
 import { InvoiceData } from "@/types/invoice";
 
 interface PayAgentChatProps {
@@ -44,18 +45,31 @@ export function PayAgentChat({ invoice, onResolve }: PayAgentChatProps) {
   };
 
   const handleExplain = async (regenerate: boolean) => {
-    if (!invoice.id) return;
+    const targetId = invoice.id || invoice.invoice_number;
+    if (!targetId) return;
     setExplaining(true);
     setExplainError(null);
     try {
-      const res = await fetch(`/api/invoices/${invoice.id}/explain`, {
+      const res = await fetch(`/api/invoices/${encodeURIComponent(targetId)}/explain`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ regenerate }),
       });
       if (!res.ok) {
         const data = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(data?.error ?? `HTTP ${res.status}`);
+        let msg = data?.error ?? `HTTP ${res.status}`;
+        if (msg === "not_found" || msg === "invoice_not_found") {
+          msg = "Factura no encontrada para generar explicación.";
+        } else if (msg === "not_explainable") {
+          msg = "Esta factura no requiere explicación (solo facturas escaladas o frenadas).";
+        } else if (msg === "explanation_not_configured") {
+          msg = "El servicio de IA no está configurado (falta GEMINI_API_KEY).";
+        } else if (msg === "explanation_unavailable") {
+          msg = "El servicio de IA no está disponible en este momento.";
+        } else if (msg === "rate_limit_exceeded") {
+          msg = "Límite de solicitudes alcanzado. Intenta nuevamente en unos segundos.";
+        }
+        throw new Error(msg);
       }
       const data = (await res.json()) as { explanation: string; cached: boolean };
       setAiExplanation(data.explanation);
@@ -89,12 +103,12 @@ export function PayAgentChat({ invoice, onResolve }: PayAgentChatProps) {
 
       {/* Detalle de la excepción que provocó la escalación */}
       <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3.5 space-y-1.5 text-xs text-amber-950 dark:text-amber-200">
-        <div className="flex items-center justify-between">
+        <div className="flex items-start justify-between gap-2">
           <span className="font-semibold text-amber-900 dark:text-amber-200">
             Motivo de escalación
           </span>
-          <span className="text-[10px] font-mono text-amber-800 dark:text-amber-400">
-            {invoice.reason_code}
+          <span className="text-xs font-semibold text-amber-800 dark:text-amber-300 text-right">
+            {formatReasonTitle(invoice.reason_code)}
           </span>
         </div>
         <p className="text-amber-900/90 dark:text-amber-200/90 leading-relaxed">
@@ -108,21 +122,17 @@ export function PayAgentChat({ invoice, onResolve }: PayAgentChatProps) {
           <span className="text-xs font-semibold text-foreground">Análisis y recomendación</span>
           <Button
             size="sm"
-            variant="outline"
             onClick={() => handleExplain(false)}
             disabled={explaining}
-            className="h-7 text-xs gap-1.5"
+            className="h-7 px-3 text-xs font-semibold bg-[#185338] hover:bg-[#185338]/90 text-white shadow-xs rounded-lg transition-all cursor-pointer"
           >
             {explaining ? (
-              <>
-                <Loader2 className="size-3 animate-spin text-primary" />
-                <span>Generando explicación…</span>
-              </>
+              <span className="flex items-center gap-1.5">
+                <Loader2 className="size-3 animate-spin text-white" />
+                Generando explicación…
+              </span>
             ) : (
-              <>
-                <Sparkles className="size-3 text-primary" />
-                <span>Explicar con IA</span>
-              </>
+              <span>Explicar con IA</span>
             )}
           </Button>
         </div>
@@ -136,8 +146,7 @@ export function PayAgentChat({ invoice, onResolve }: PayAgentChatProps) {
         {aiExplanation && (
           <div className="rounded-lg border border-primary/20 bg-primary/5 p-3.5 space-y-2 text-xs animate-in fade-in duration-300">
             <div className="flex items-center justify-between">
-              <span className="font-semibold text-foreground flex items-center gap-1.5">
-                <Sparkles className="size-3.5 text-primary" />
+              <span className="font-semibold text-foreground">
                 Explicación generada por el motor de IA
               </span>
               {aiCached && (
@@ -145,7 +154,7 @@ export function PayAgentChat({ invoice, onResolve }: PayAgentChatProps) {
               )}
             </div>
             <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
-              {aiExplanation}
+              {formatNaturalExplanation(aiExplanation)}
             </p>
             <div className="flex justify-end pt-1">
               <Button
@@ -153,7 +162,7 @@ export function PayAgentChat({ invoice, onResolve }: PayAgentChatProps) {
                 variant="ghost"
                 onClick={() => handleExplain(true)}
                 disabled={explaining}
-                className="h-6 px-2 text-[11px] text-primary"
+                className="h-6 px-2 text-[11px] text-[#185338] dark:text-emerald-400 font-semibold hover:underline hover:bg-transparent cursor-pointer"
               >
                 Regenerar explicación
               </Button>

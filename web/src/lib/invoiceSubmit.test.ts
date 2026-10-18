@@ -5,6 +5,7 @@ import {
   createInvoiceSubmitter,
   describeError,
   determineFailingRuleId,
+  formatNaturalExplanation,
   formatReasonTitle,
   formatTimelineDetail,
   MAX_UPLOAD_BYTES,
@@ -280,4 +281,13 @@ test("formatTimelineDetail reemplaza códigos técnicos dentro de los detalles d
   const expected =
     "ESCALAR · Confianza insuficiente en lectura: No se pudo leer due_date con confianza (0.5 < 0.7)";
   assert.equal(formatTimelineDetail(input), expected);
+});
+
+test("formatNaturalExplanation limpia enums y códigos técnicos de las explicaciones", () => {
+  const raw =
+    "La factura ha recibido el veredicto debido a la regla ALERT_BUDGET_OVERRUN a pesar de estar (ALLOWLISTED).";
+  const cleaned = formatNaturalExplanation(raw);
+  assert.equal(cleaned.includes("ALERT_BUDGET_OVERRUN"), false);
+  assert.equal(cleaned.includes("ALLOWLISTED"), false);
+  assert.equal(cleaned.includes("Presupuesto del período superado"), true);
 });

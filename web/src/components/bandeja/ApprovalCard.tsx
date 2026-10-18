@@ -1,7 +1,7 @@
 /**
  * @file ApprovalCard.tsx
  * @description Tarjeta individual de factura pendiente de revisión humana.
- * Diseñada con espaciado simétrico exacto y etiqueta de estado de tipo píldora informativa.
+ * Diseñada con espaciado simétrico exacto y etiqueta de estado sólida.
  */
 
 import { AlertTriangle, Clock } from "lucide-react";
@@ -37,7 +37,7 @@ export function ApprovalCard({ item, onReview }: ApprovalCardProps) {
     <div className="rounded-xl border border-border/80 bg-card shadow-xs hover:border-foreground/20 transition-all flex flex-col justify-between overflow-hidden">
       {/* Cuerpo principal de la tarjeta */}
       <div className="p-5 space-y-4 flex-1">
-        {/* Cabecera con folio, proveedor y etiqueta de estado (no botón) */}
+        {/* Cabecera con folio, proveedor y etiqueta de estado sólida */}
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
             <span
@@ -50,13 +50,13 @@ export function ApprovalCard({ item, onReview }: ApprovalCardProps) {
               {item.vendor_name || "Proveedor sin nombre"}
             </h4>
           </div>
-          <VerdictBadge verdict="ESCALAR" size="sm" variant="pill" className="shrink-0" />
+          <VerdictBadge verdict="ESCALAR" size="sm" variant="solid" className="shrink-0" />
         </div>
 
         {/* Importe a autorizar */}
-        <div className="rounded-lg border border-border/60 bg-muted/20 p-3 flex items-center justify-between text-xs">
-          <span className="text-muted-foreground font-medium">Importe a autorizar:</span>
-          <MoneyDisplay amount={item.amount_usd} currency="USD" size="md" />
+        <div className="rounded-lg border border-border/60 bg-muted/20 px-3.5 py-2.5 flex items-center justify-between">
+          <span className="text-xs text-muted-foreground font-medium">Importe a autorizar:</span>
+          <MoneyDisplay amount={item.amount_usd} currency="USD" size="lg" />
         </div>
 
         {/* Razón de escalación */}
@@ -83,7 +83,7 @@ export function ApprovalCard({ item, onReview }: ApprovalCardProps) {
         <Button
           size="sm"
           onClick={() => onReview(item)}
-          className="h-8 px-4 text-xs font-semibold shadow-xs shrink-0 cursor-pointer"
+          className="h-8 px-4 text-xs font-semibold shadow-xs shrink-0 cursor-pointer bg-[#185338] hover:bg-[#185338]/90 text-white rounded-lg"
         >
           <span>Revisar caso</span>
         </Button>

@@ -67,9 +67,9 @@ export default function Bandeja() {
                 <h2 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
                   Bandeja de revisión
                 </h2>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400 select-none whitespace-nowrap shrink-0">
-                  <span className="size-1.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
-                  <span className="font-semibold">{approvals.length}</span>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500 dark:bg-amber-600 text-white px-2.5 py-0.5 text-xs font-bold shadow-xs select-none whitespace-nowrap shrink-0">
+                  <span className="size-1.5 rounded-full bg-white animate-pulse shrink-0" />
+                  <span>{approvals.length}</span>
                   <span>pendientes</span>
                 </span>
               </div>

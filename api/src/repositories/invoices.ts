@@ -31,7 +31,9 @@ export const INVOICE_COLUMNS = `id, vendor_id, invoice_number, status, file_name
   total_usd, extraction_confidence, extraction_json, ingested_at`;
 
 export function getInvoiceRow(id: string, db: Database.Database): InvoiceRow | null {
-  const row = db.prepare(`SELECT ${INVOICE_COLUMNS} FROM invoices WHERE id = ?`).get(id);
+  const row = db
+    .prepare(`SELECT ${INVOICE_COLUMNS} FROM invoices WHERE id = ? OR invoice_number = ?`)
+    .get(id, id);
   return (row as InvoiceRow | undefined) ?? null;
 }
 
@@ -163,7 +165,9 @@ export function getAuditRecord(
   timeline: TimelineEvent[];
   resolution: ResolutionView | null;
 } | null {
-  const row = db.prepare(`${RECORD_SELECT} WHERE i.id = ?`).get(invoiceId) as RecordRow | undefined;
+  const row = db
+    .prepare(`${RECORD_SELECT} WHERE i.id = ? OR i.invoice_number = ?`)
+    .get(invoiceId, invoiceId) as RecordRow | undefined;
   if (row === undefined) return null;
 
   const events: TimelineEvent[] = [];
@@ -172,7 +176,7 @@ export function getAuditRecord(
       `SELECT file_name, submitted_at FROM ingest_attempts WHERE invoice_id = ?
        ORDER BY submitted_at ASC, id ASC`,
     )
-    .all(invoiceId) as Array<{ file_name: string; submitted_at: string }>;
+    .all(row.id) as Array<{ file_name: string; submitted_at: string }>;
   for (const attempt of attempts) {
     events.push({
       type: "INGESTA",
@@ -192,7 +196,7 @@ export function getAuditRecord(
       `SELECT verdict, reason_code, explanation, decided_at FROM decisions
        WHERE invoice_id = ? ORDER BY decided_at ASC, id ASC`,
     )
-    .all(invoiceId) as Array<DecisionRow>;
+    .all(row.id) as Array<DecisionRow>;
   for (const decision of decisions) {
     events.push({
       type: "DECISION",
@@ -206,7 +210,7 @@ export function getAuditRecord(
       `SELECT status, resolved_by, resolved_at, comment FROM approvals
        WHERE invoice_id = ? AND resolved_at IS NOT NULL ORDER BY resolved_at ASC, id ASC`,
     )
-    .all(invoiceId) as Array<{
+    .all(row.id) as Array<{
     status: string;
     resolved_by: string | null;
     resolved_at: string | null;

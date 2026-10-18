@@ -162,6 +162,27 @@ export function formatTimelineDetail(detail: string): string {
 }
 
 /**
+ * Limpia y humaniza las explicaciones generadas por IA, sustituyendo
+ * constantes técnicas o enums en mayúsculas por expresiones en lenguaje natural.
+ */
+export function formatNaturalExplanation(text: string): string {
+  if (!text) return "";
+  let res = text;
+
+  for (const [code, title] of Object.entries(REASON_TITLES)) {
+    res = res.replaceAll(code, title);
+  }
+
+  res = res
+    .replace(/\s*\(\s*ALLOWLISTED\s*\)/gi, "")
+    .replace(/\s*\(\s*BLOCKLISTED\s*\)/gi, "")
+    .replaceAll("ALLOWLISTED", "habilitado")
+    .replaceAll("BLOCKLISTED", "bloqueado");
+
+  return res;
+}
+
+/**
  * Respuesta de `POST /api/invoices` (campos que consume la UI).
  */
 interface IngestResponse {
